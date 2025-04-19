@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@tailwind utilities;
 
 :root {
   --background: #ffffff;
@@ -20,70 +19,8 @@
   }
 }
 
-/* body {
+body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-} */
-
-/* :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-} */
-
-* {
-  font-family: var(--font-sora);
-  /* background: whitesmoke; */
-  /* outline: red 2px solid; */
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-/* Hide scrollbar for IE, Edge and Firefox */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  /* IE and Edge */
-  scrollbar-width: none;
-  /* Firefox */
-}
-
-@keyframes wiggle {
-
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-
-  25% {
-    transform: rotate(-5deg);
-  }
-
-  75% {
-    transform: rotate(5deg);
-  }
-}
-
-.animate-wiggle {
-  animation: wiggle 0.5s ease-in-out;
-}
-
-.formula {
-  background-color: #f0f7ff;
-  padding: 2px 4px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.formula:hover {
-  background-color: #e0f0ff;
 }
