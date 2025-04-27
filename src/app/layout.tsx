@@ -61,7 +61,7 @@ export default function RootLayout({
         <title>{metadata.title as string}</title>
         <meta name="description" content={metadata.description as string} />
       </head>
-      <body className="bg-[whitesmoke]">
+      <body className="bg-[whitesmoke] font-sora relative">
         <ClientWrapper>
           <NavigationWrapper>{children}</NavigationWrapper>
         </ClientWrapper>

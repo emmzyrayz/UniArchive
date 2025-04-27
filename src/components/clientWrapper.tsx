@@ -3,7 +3,7 @@
 
 import {createContext, useContext, useState, useEffect} from "react";
 import {usePathname} from "next/navigation";
-import {Loading} from "@/components/UI/loading";
+import {Loading} from "@/components/ui/loading";
 
 const LoadingContext = createContext({
   isLoading: true,

@@ -1,8 +1,8 @@
 // NavigationWrapper component (in the same file or separate)
 "use client";
 
-// import { Footer } from "@/components/footer/page";
-// import { LpNavbar } from "@/components/navbar/page";
+import { Footer } from "@/components/footer";
+import {Navbar} from "@/components/navbar";
 import {usePathname} from "next/navigation";
 
 // Helper function to check if path should hide navigation
@@ -21,9 +21,9 @@ export function NavigationWrapper({children}: {children: React.ReactNode}) {
 
   return (
     <>
-      {/* <LpNavbar /> */}
+      <Navbar />
       <main>{children}</main>
-      {/* <Footer /> */}
+      <Footer />
     </>
   );
 }
