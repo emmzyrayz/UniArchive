@@ -3,6 +3,7 @@
 
 import { Footer } from "@/components/footer";
 import {Navbar} from "@/components/navbar";
+import { ScrollRibbon } from "@/components/scrollribbon";
 import {usePathname} from "next/navigation";
 
 // Helper function to check if path should hide navigation
@@ -22,6 +23,7 @@ export function NavigationWrapper({children}: {children: React.ReactNode}) {
   return (
     <>
       <Navbar />
+      <ScrollRibbon />
       <main>{children}</main>
       <Footer />
     </>

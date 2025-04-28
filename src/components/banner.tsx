@@ -1,5 +1,6 @@
 "use client";
 import React, {useEffect, useRef, useState} from "react";
+import Image from "next/image";
 import {motion, AnimatePresence} from "framer-motion";
 import {MediaRenderer} from "@/utils/mediarender";
 import "./banner.css";
@@ -213,6 +214,15 @@ export const Banner = () => {
     setCurrentSlide(index);
   };
 
+  // Helper functions
+  const isStaticImageData = (image: any): image is StaticImageData => {
+    return image && typeof image === "object" && "src" in image;
+  };
+
+  const isString = (value: any): value is string => {
+    return typeof value === "string";
+  };
+
   // Helper function to get image source and handle error tracking
   const getImageSource = (image: string | StaticImageData | null) => {
     if (isStaticImageData(image)) {
@@ -231,6 +241,23 @@ export const Banner = () => {
     return src && !failedImages.has(src);
   };
 
+  // Convert banner image to MediaRenderer source format
+  const getMediaSources = (image: string | StaticImageData | null) => {
+    if (!image) return [];
+
+    const src = getImageSource(image);
+    if (!src) return [];
+
+    return [
+      {
+        url: src,
+        type: "image" as const,
+        alt: "Banner image",
+        priority: true,
+      },
+    ];
+  };
+
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center gap-[60px] p-4">
       <div className="banner-section h-[50vh] lg:h-[70vh] w-full relative overflow-hidden rounded-[14px]">
@@ -247,15 +274,15 @@ export const Banner = () => {
           >
             {/* Background Image/GIF (Large Screens Only) */}
             {shouldDisplayImage(slide.image) && (
-              <div className="hidden lg:flex items-center justify-center absolute inset-0 z-0 rounded-[14px]">
-                <img
-                  src={getImageSource(slide.image) || ""}
-                  alt={slide.title}
-                  className="w-full h-full object-cover rounded-[12px]"
-                  onError={() => {
+              <div className="flex items-center justify-center absolute inset-0 z-0 rounded-[14px]">
+                <MediaRenderer
+                  sources={getMediaSources(slide.image)}
+                  className="rounded-[12px]"
+                  onLoadError={() => {
                     const src = getImageSource(slide.image);
                     if (src) handleImageError(src);
                   }}
+                  returnNull={false}
                 />
               </div>
             )}
@@ -295,7 +322,9 @@ export const Banner = () => {
 
       {/* Stacked Card Carousel */}
       <div className="relative flex flex-col gap-4 items-center  justify-center w-full mb-5 min-h-[400px] z-40">
-        <span className='text-[22px] md:text-[24px] font-bold'>Top Universities</span>
+        <span className="text-[22px] md:text-[24px] font-bold">
+          Top Universities
+        </span>
         <ClientOnly>
           <DemoCardCarousel />
         </ClientOnly>

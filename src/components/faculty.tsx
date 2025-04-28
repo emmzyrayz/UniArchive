@@ -11,47 +11,47 @@ import Link from "next/link";
 import {CardOne} from "./ui/card";
 import {motion, useAnimationControls} from "framer-motion";
 
-export const TopDepartment = () => {
+export const TopFaculty = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
   const controls = useAnimationControls();
 
   // Generate department data to keep code DRY
-  const departments = [
+  const faculty = [
     {
       id: 1,
       imageUrl: Post1,
-      title: "Department Name",
+      title: "Faculty Name",
       description: "Lorem ipsum dolor sit amet elit. Quas, voluptatibus?",
     },
     {
       id: 2,
       imageUrl: Post2,
-      title: "Department Name",
+      title: "Faculty Name",
       description: "Lorem ipsum dolor sit elit. Quas, voluptatibus?",
     },
     {
       id: 3,
       imageUrl: Post3,
-      title: "Department Name",
+      title: "Faculty Name",
       description: "Lorem ipsum dolor elit. Quas, voluptatibus?",
     },
     {
       id: 4,
       imageUrl: Post1,
-      title: "Department Name",
+      title: "Faculty Name",
       description: "Lorem ipsum dolor sit amet elit. Quas, voluptatibus?",
     },
     {
       id: 5,
       imageUrl: Post2,
-      title: "Department Name",
+      title: "Faculty Name",
       description: "Lorem ipsum dolor sit elit. Quas, voluptatibus?",
     },
     {
       id: 6,
       imageUrl: Post3,
-      title: "Department Name",
+      title: "Faculty Name",
       description: "Lorem ipsum dolor elit. Quas, voluptatibus?",
     },
   ];
@@ -100,7 +100,7 @@ export const TopDepartment = () => {
     <div className="flex flex-col w-full h-full items-center justify-center gap-3 p-4">
       <div className="top-con flex w-full items-center justify-between px-4">
         <span className="flex  items-center justify-center text-[24px] xl:text-[26px] font-bold">
-          Top Department
+          Top Faculty
         </span>
 
         <div className="more-btn flex items-center justify-center cursor-pointer text-blue-600 hover:underline">
@@ -110,11 +110,11 @@ export const TopDepartment = () => {
 
       <div
         ref={containerRef}
-        className="department-con w-[95vw] h-full bg-gray-300 rounded-md overflow-hidden"
+        className="Faculty-con w-[95vw] h-[320px] items-center justify-center bg-gray-300 rounded-md overflow-hidden"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div className="relative flex w-full h-full items-center justify-evenly">
+        <div className="relative flex w-full h-full items-center justify-center">
           <motion.div
             className="flex flex-nowrap"
             animate={controls}
@@ -122,36 +122,36 @@ export const TopDepartment = () => {
             style={{display: "flex", width: "200%"}} // Double width for seamless loop
           >
             {/* First set of cards */}
-            {departments.map((dept) => (
+            {faculty.map((dept) => (
               <Link
                 key={`dept-${dept.id}`}
                 href={`/department/${dept.id}`}
-                className="department-card flex-shrink-0 p-2 w-[300px] h-[150px]"
+                className="department-card flex-shrink-0 p-2 h-[300px] w-[250px]"
               >
                 <CardOne
                   title={dept.title}
                   description={dept.description}
                   imageUrl={dept.imageUrl}
                   motionProps={cardMotionProps}
-                  layout="left"
-                  className="w-full h-full"
+                  layout="top"
+                  className="h-full w-full"
                 />
               </Link>
             ))}
 
             {/* Duplicated set of cards for infinite scroll effect */}
-            {departments.map((dept) => (
+            {faculty.map((dept) => (
               <Link
                 key={`dept-dup-${dept.id}`}
                 href={`/department/${dept.id}`}
-                className="department-card flex-shrink-0 p-2 w-[300px] h-[150px]"
+                className="department-card flex-shrink-0 p-2 h-[300px] w-[250px]"
               >
                 <CardOne
                   title={dept.title}
                   description={dept.description}
                   imageUrl={dept.imageUrl}
                   motionProps={cardMotionProps}
-                  layout="left"
+                  layout="top"
                   className="w-full h-full"
                 />
               </Link>
