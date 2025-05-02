@@ -11,51 +11,47 @@ import Link from "next/link";
 import {CardOne} from "./ui/card";
 import {motion, useAnimationControls} from "framer-motion";
 
-export const TopFaculty = () => {
+export const TopCourse = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
-  const [isInteracting, setIsInteracting] = useState(false);
-  const [currentPosition, setCurrentPosition] = useState(0);
-  const lastDragInfoRef = useRef({x: 0});
-  const [dragX, setDragX] = useState(0);
   const controls = useAnimationControls();
 
   // Generate department data to keep code DRY
-  const faculty = [
+  const course = [
     {
       id: 1,
       imageUrl: Post1,
-      title: "Faculty Name",
+      title: "course Name",
       description: "Lorem ipsum dolor sit amet elit. Quas, voluptatibus?",
     },
     {
       id: 2,
       imageUrl: Post2,
-      title: "Faculty Name",
+      title: "course Name",
       description: "Lorem ipsum dolor sit elit. Quas, voluptatibus?",
     },
     {
       id: 3,
       imageUrl: Post3,
-      title: "Faculty Name",
+      title: "course Name",
       description: "Lorem ipsum dolor elit. Quas, voluptatibus?",
     },
     {
       id: 4,
       imageUrl: Post1,
-      title: "Faculty Name",
+      title: "course Name",
       description: "Lorem ipsum dolor sit amet elit. Quas, voluptatibus?",
     },
     {
       id: 5,
       imageUrl: Post2,
-      title: "Faculty Name",
+      title: "course Name",
       description: "Lorem ipsum dolor sit elit. Quas, voluptatibus?",
     },
     {
       id: 6,
       imageUrl: Post3,
-      title: "Faculty Name",
+      title: "course Name",
       description: "Lorem ipsum dolor elit. Quas, voluptatibus?",
     },
   ];
@@ -70,21 +66,14 @@ export const TopFaculty = () => {
         return;
       }
 
-      if (isInteracting) {
-        // Stop auto-animation when user is interacting
-        return;
-      }
-
-      setCurrentPosition(dragX);
-
       // Get width of the scroll container for proper animation
       if (!containerRef.current) return;
 
       // Animation sequence for infinite loop
       await controls.start({
-        x: [dragX + "%", "-50%"],
+        x: [0, "-50%"],
         transition: {
-          duration: animationDuration * (1 - Math.abs(dragX) / -50),
+          duration: animationDuration,
           ease: "linear",
           repeat: Infinity,
           repeatType: "loop",
@@ -93,37 +82,7 @@ export const TopFaculty = () => {
     };
 
     startAnimation();
-  }, [controls, isHovering, isInteracting, dragX]);
-
-  const handleInteractionStart = () => {
-    controls.stop();
-    setIsInteracting(true);
-  };
-
-  const handleInteractionEnd = () => {
-    // When interaction ends, update dragX with final position
-    setDragX(currentPosition);
-    setIsInteracting(false);
-  };
-
-  const handleDrag = (_: any, info: {delta: {x: number}}) => {
-    // Convert pixel movement to percentage (approximation)
-    const containerWidth = containerRef.current?.offsetWidth || 1000;
-    const percentDelta = (info.delta.x / containerWidth) * 100;
-
-    // Calculate new position
-    const newPosition = currentPosition + percentDelta;
-
-    // Constrain position between 0 and -50%
-    const constrainedPosition = Math.min(0, Math.max(-50, newPosition));
-
-    // Update position
-    setCurrentPosition(constrainedPosition);
-    controls.set({x: `${constrainedPosition}%`});
-
-    // Save last drag info
-    lastDragInfoRef.current = {x: info.delta.x};
-  };
+  }, [controls, isHovering]);
 
   const handleMouseEnter = () => {
     setIsHovering(true);
@@ -141,7 +100,7 @@ export const TopFaculty = () => {
     <div className="flex flex-col w-full h-full items-center justify-center gap-3 p-4">
       <div className="top-con flex w-full items-center justify-between px-4">
         <span className="flex  items-center justify-center text-[24px] xl:text-[26px] font-bold">
-          Top Faculty
+          Top Course
         </span>
 
         <div className="more-btn flex items-center justify-center cursor-pointer text-blue-600 hover:underline">
@@ -161,26 +120,13 @@ export const TopFaculty = () => {
             animate={controls}
             initial={{x: 0}}
             style={{display: "flex", width: "200%"}} // Double width for seamless loop
-            drag="x"
-            dragConstraints={{left: 0, right: 0}}
-            dragElastic={0.2}
-            onDragStart={handleInteractionStart}
-            onDragEnd={handleInteractionEnd}
-            onDrag={handleDrag}
-            dragMomentum={false}
-            onTouchStart={handleInteractionStart}
-            onTouchEnd={handleInteractionEnd}
-            onMouseDown={handleInteractionStart}
-            onMouseUp={handleInteractionEnd}
-            onMouseLeave={handleInteractionEnd}
           >
             {/* First set of cards */}
-            {faculty.map((dept) => (
+            {course.map((dept) => (
               <Link
                 key={`dept-${dept.id}`}
                 href={`/department/${dept.id}`}
                 className="department-card flex-shrink-0 p-2 h-[300px] w-[250px]"
-                onClick={(e) => isInteracting && e.preventDefault()} // Prevent navigation during drag
               >
                 <CardOne
                   title={dept.title}
@@ -194,12 +140,11 @@ export const TopFaculty = () => {
             ))}
 
             {/* Duplicated set of cards for infinite scroll effect */}
-            {faculty.map((dept) => (
+            {course.map((dept) => (
               <Link
                 key={`dept-dup-${dept.id}`}
                 href={`/department/${dept.id}`}
                 className="department-card flex-shrink-0 p-2 h-[300px] w-[250px]"
-                onClick={(e) => isInteracting && e.preventDefault()} // Prevent navigation during drag
               >
                 <CardOne
                   title={dept.title}

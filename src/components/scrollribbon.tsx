@@ -45,6 +45,7 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
   const [ribbonHeight, setRibbonHeight] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const cycleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const ribbonRef = useRef<HTMLDivElement>(null);
 
   // Sample news items
   const newsItems: NewsItem[] = [
@@ -138,16 +139,45 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
 
   useEffect(() => {
     const updateRibbonHeight = () => {
-      const ribbon = document.querySelector(".scroll-ribbon") as HTMLElement;
-      if (ribbon) {
-        const height = ribbon.offsetHeight;
+      if (ribbonRef.current) {
+        const height = ribbonRef.current.offsetHeight;
         setRibbonHeight(height);
-      } else {
-        setRibbonHeight(0);
+
+        // Dispatch custom event for Navbar to detect height change
+        const ribbonHeightEvent = new CustomEvent("ribbonHeightChanged", {
+          detail: {height},
+        });
+        document.dispatchEvent(ribbonHeightEvent);
+
+        // Also dispatch visibility state
+        const ribbonVisibilityEvent = new CustomEvent(
+          "ribbonVisibilityChanged",
+          {
+            detail: {isVisible},
+          }
+        );
+        document.dispatchEvent(ribbonVisibilityEvent);
       }
     };
-    // ... observer setup
-  }, []);
+
+    // Update height after component mounts
+    updateRibbonHeight();
+
+    // Set up resize observer to detect changes in the ribbon's height
+    const resizeObserver = new ResizeObserver(() => {
+      updateRibbonHeight();
+    });
+
+    if (ribbonRef.current) {
+      resizeObserver.observe(ribbonRef.current);
+    }
+
+    return () => {
+      if (ribbonRef.current) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, [isScrolled, isVisible]);
 
   // Handle scroll events
   useEffect(() => {
@@ -188,6 +218,13 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
     const startCycle = () => {
       setIsVisible(true);
 
+      // Notify navbar that ribbon is visible
+      document.dispatchEvent(
+        new CustomEvent("ribbonVisibilityChanged", {
+          detail: {isVisible: true},
+        })
+      );
+
       // Calculate total cycle time
       const totalCycleTime = newsItems.length * displayTime;
 
@@ -200,6 +237,13 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
       cycleTimeoutRef.current = setTimeout(() => {
         if (isScrolled) {
           setIsVisible(false);
+
+          // Notify navbar that ribbon is hidden
+          document.dispatchEvent(
+            new CustomEvent("ribbonVisibilityChanged", {
+              detail: {isVisible: false},
+            })
+          );
 
           // Restart cycle after delay
           cycleTimeoutRef.current = setTimeout(() => {
@@ -216,6 +260,13 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
       startCycle();
     } else {
       setIsVisible(true);
+
+      // Notify navbar that ribbon is visible when not scrolled
+      document.dispatchEvent(
+        new CustomEvent("ribbonVisibilityChanged", {
+          detail: {isVisible: true},
+        })
+      );
     }
 
     return () => {
@@ -278,7 +329,7 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
           isScrolled
             ? "fixed top-0 left-0 z-50 h-8 bg-gray-900/90 backdrop-blur-sm"
             : "relative h-12 bg-gray-800"
-        } ${isVisible ? "opacity-100" : "opacity-0"} ${className}`}
+        } ${isVisible ? "opacity-100 flex items-center justify-center" : "opacity-0 hidden h-0"} ${className}`}
         onMouseEnter={() => pauseOnHover && setIsPaused(true)}
         onMouseLeave={() => pauseOnHover && setIsPaused(false)}
       >

@@ -114,14 +114,51 @@ export const Navbar = () => {
     };
   }, [isMobileMenuOpen]);
 
+  // Create a state to track if the scroll ribbon is currently visible
+  const [isRibbonVisible, setIsRibbonVisible] = useState(true);
+
+  // Add a listener for custom ribbon visibility events
+  useEffect(() => {
+    const handleRibbonVisibilityChange = (event: CustomEvent) => {
+      setIsRibbonVisible(event.detail.isVisible);
+    };
+
+    // Listen for the custom event from the ScrollRibbon component
+    document.addEventListener(
+      "ribbonVisibilityChanged",
+      handleRibbonVisibilityChange as EventListener
+    );
+
+    return () => {
+      document.removeEventListener(
+        "ribbonVisibilityChanged",
+        handleRibbonVisibilityChange as EventListener
+      );
+    };
+  }, []);
+
+  // Calculate the top position based on both ribbon height and visibility
+  const calculateTopPosition = () => {
+    // Only use the ribbon height if it's both visible and we're scrolled
+    if (isScrolled && isRibbonVisible && ribbonHeight > 0) {
+      return `${ribbonHeight}px`;
+    }
+    // Otherwise position at the top
+    return `${ribbonHeight}px`;
+  };
+
   return (
     <div
       ref={navbarRef}
-      className={`fixed z-40 flex items-center justify-center w-full h-[70px] transition-all duration-500 rounded-b-xl
-        ${isScrolled ? "bg-black/40 shadow-xl" : "bg-black/60"} 
-        ${isNavbarVisible ? "translate-y-0" : "-translate-y-full"}`}
+      className={`fixed z-90 flex items-center justify-center w-full transition-all duration-500 rounded-b-xl
+        ${isScrolled ? "bg-black/50 shadow-xl" : "bg-black/60"} 
+        ${
+          isNavbarVisible
+            ? "translate-y-0 h-[70px]"
+            : "-translate-y-full hidden h-0"
+        }`}
       style={{
-        top: `${ribbonHeight}px`, // Position right below the ribbon
+        top: calculateTopPosition(),
       }}
       onMouseEnter={handleMouseEnter}
     >

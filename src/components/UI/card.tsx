@@ -4,6 +4,7 @@
 import React from "react";
 import Image, {StaticImageData} from "next/image";
 import {motion, MotionProps} from "framer-motion";
+import Link from "next/link";
 
 interface BaseCardProps {
   title: string;
@@ -13,6 +14,17 @@ interface BaseCardProps {
   motionProps?: MotionProps;
   layout?: "top" | "left"; // for CardOne only
 }
+
+type LecturerCardProps = {
+  name: string;
+  title: string;
+  department: string;
+  imageUrl: string | StaticImageData;
+  desc?: string; // Made optional
+  specialties?: string[]; // Changed from list() function to array
+  slug: string; // e.g., "dr-jane-okafor"
+};
+
 
 // Card One: image left or top with text
 export const CardOne = ({
@@ -118,3 +130,46 @@ export const CardThree = ({
   );
 };
 
+export const LecturerCard = ({
+  name,
+  title,
+  department,
+  imageUrl,
+  specialties = ["Artificial Intelligence", "Software Engineering"], // Default specialties
+  desc = "", // Default empty description
+  slug,
+}: LecturerCardProps) => {
+  return (
+    <Link href={`/lecturers/${slug}`} className="block h-[350px]">
+      <div className="flex flex-col w-full h-full bg-white shadow-md rounded-xl p-4 hover:shadow-lg hover:scale-105 transition-all duration-500 ease-in-out gap-4 items-center justify-evenly">
+        <Image
+          src={imageUrl}
+          alt={name}
+          width={80}
+          height={80}
+          className="rounded-[12px] object-cover w-[100px] h-[100px]"
+        />
+        <div>
+          <h3 className="text-[14px] xl:text-[16px] font-semibold">{name}</h3>
+          <p className="text-[12px] xl:text-[14px] text-gray-500 font-normal">
+            {title}, {department}
+          </p>
+          {desc && (
+            <p className="mt-2 text-[14px] xl:text-[16px] text-center text-gray-700">
+              {desc}
+            </p>
+          )}
+          {specialties && specialties.length > 0 && (
+            <ul className="mt-2 text-sm  list-disc pl-5">
+              {specialties.map((specialty, index) => (
+                <li key={index} className="hover:text-underline text-blue-600">
+                  {specialty}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+};

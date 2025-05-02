@@ -22,8 +22,8 @@ export function NavigationWrapper({children}: {children: React.ReactNode}) {
 
   return (
     <>
+    <ScrollRibbon />
       <Navbar />
-      <ScrollRibbon />
       <main>{children}</main>
       <Footer />
     </>
