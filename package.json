@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@next/swc-win32-x64-msvc": "^15.3.1",
     "framer-motion": "^12.7.4",
     "next": "15.3.1",
     "react": "^19.0.0",
@@ -29,5 +28,8 @@
     "lightningcss": "^1.29.3",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18.17.0"
   }
 }
