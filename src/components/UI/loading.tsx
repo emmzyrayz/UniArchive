@@ -2,7 +2,7 @@
 "use client";
 
 import {motion, AnimatePresence} from "framer-motion";
-import Image from "next/image";
+// import Image from "next/image";
 import {useEffect, useState} from "react";
 import {usePathname} from "next/navigation";
 import {

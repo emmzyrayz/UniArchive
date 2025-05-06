@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect} from "react";
+// import {useEffect} from "react";
 import Link from "next/link";
 import {NotFoundIllustration} from "@/assets/svgs/notfound";
 import {motion} from "framer-motion";

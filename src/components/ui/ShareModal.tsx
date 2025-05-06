@@ -1,14 +1,14 @@
 "use client";
 
 import {useState, useRef, useEffect} from "react";
-import {useRouter} from "next/navigation";
+// import {useRouter} from "next/navigation";
 import {
   FiX,
   FiFacebook,
   FiTwitter,
   FiLinkedin,
   FiMail,
-  FiLink,
+  // FiLink,
   FiMessageCircle,
   FiRepeat,
   FiShare2,
@@ -26,7 +26,7 @@ type ShareType =
   | "copy";
 
 interface ShareModalProps {
-  postId?: number;
+  // postId?: number;
   shareTitle: string;
   shareUrl: string;
   onClose: () => void;
@@ -34,7 +34,7 @@ interface ShareModalProps {
 }
 
 export function ShareModal({
-  postId,
+  // postId,
   shareTitle,
   shareUrl,
   onClose,
@@ -42,7 +42,7 @@ export function ShareModal({
 }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+  // const router = useRouter();
 
   const fullUrl =
     typeof window !== "undefined"

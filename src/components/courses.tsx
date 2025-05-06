@@ -1,7 +1,7 @@
 "use client";
 
 import {useRef, useState, useEffect} from "react";
-import Image from "next/image";
+// import Image from "next/image";
 
 // Photos
 import Post1 from "@/assets/img/gallery/lego.jpg";

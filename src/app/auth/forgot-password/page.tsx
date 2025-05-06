@@ -3,11 +3,11 @@
 import React, {useState} from "react";
 // import {Button} from "@/components/ui/button";
 // import {Input} from "@/components/ui/input";
-import {motion} from "framer-motion";
+// import {motion} from "framer-motion";
 import Image from 'next/image';
 import Logo from '@/assets/img/logo/uniarchive.png';
 
-const steps = ["Account Info", "University Info"];
+// const steps = ["Account Info", "University Info"];
 
 
 export default function ForgotPassword() {

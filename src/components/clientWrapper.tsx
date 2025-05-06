@@ -7,7 +7,7 @@ import {Loading} from "@/components/ui/loading";
 
 const LoadingContext = createContext({
   isLoading: true,
-  setIsLoading: (loading: boolean) => {},
+  setIsLoading: (_loading: boolean) => {},
 });
 
 export const useLoading = () => useContext(LoadingContext);

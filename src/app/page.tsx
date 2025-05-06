@@ -11,7 +11,7 @@ import { FeaturedLecturer } from "@/components/featuredLecturer";
 import { StatsSection } from "@/components/statistic";
 import { NewsletterCTA } from "@/components/newsletter";
 import { ActivityFeed } from "@/components/activityfeed";
-import { DarkModeToggle } from "@/components/darkmode";
+// import { DarkModeToggle } from "@/components/darkmode";
 import { Leaderboard } from "@/components/leaderboardd";
 import { MobileAppPromo } from "@/components/mobileapppromo";
 import { HowItWorks } from "@/components/howitwork";

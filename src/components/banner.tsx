@@ -1,6 +1,6 @@
 "use client";
 import React, {useEffect, useRef, useState} from "react";
-import Image from "next/image";
+// import Image from "next/image";
 import {motion, AnimatePresence} from "framer-motion";
 import {MediaRenderer} from "@/utils/mediarender";
 import "./banner.css";
@@ -18,10 +18,10 @@ import Post1 from "@/assets/img/post/post_9.png";
 import RedBull from "@/assets/img/gallery/red-bull.jpg";
 
 // avatars
-import Ava1 from "@/assets/img/people/avatar/comment_1.png";
-import Ava2 from "@/assets/img/people/avatar/comment_2.png";
-import Ava3 from "@/assets/img/people/avatar/comment_3.png";
-import Ava4 from "@/assets/img/people/avatar/author.png";
+// import Ava1 from "@/assets/img/people/avatar/comment_1.png";
+// import Ava2 from "@/assets/img/people/avatar/comment_2.png";
+// import Ava3 from "@/assets/img/people/avatar/comment_3.png";
+// import Ava4 from "@/assets/img/people/avatar/author.png";
 
 // Add type guard functions
 function isStaticImageData(
@@ -215,11 +215,16 @@ export const Banner = () => {
   };
 
   // Helper functions
-  const isStaticImageData = (image: any): image is StaticImageData => {
-    return image && typeof image === "object" && "src" in image;
+  const isStaticImageData = (image: unknown): image is StaticImageData => {
+    return (
+      image !== null &&
+      typeof image === "object" &&
+      image !== undefined &&
+      "src" in image
+    );
   };
 
-  const isString = (value: any): value is string => {
+  const isString = (value: unknown): value is string => {
     return typeof value === "string";
   };
 
@@ -473,15 +478,15 @@ export const DemoCardCarousel = () => {
   }, [isHovered]);
 
   // Utility function to map a value from one range to another
-  const mapRange = (
-    value: number,
-    inMin: number,
-    inMax: number,
-    outMin: number,
-    outMax: number
-  ) => {
-    return ((value - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin;
-  };
+  // const mapRange = (
+  //   value: number,
+  //   inMin: number,
+  //   inMax: number,
+  //   outMin: number,
+  //   outMax: number
+  // ) => {
+  //   return ((value - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin;
+  // };
 
   const calculateCardPosition = (index: number) => {
     const totalCards = cardData.length;

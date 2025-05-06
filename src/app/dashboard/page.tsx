@@ -3,13 +3,13 @@
 import React from "react";
 import {useState} from "react";
 import {
-  LuBell,
+  // LuBell,
   LuBookOpen,
   LuFileText,
   LuUpload,
   LuChevronRight,
   LuAward,
-  LuBook,
+  // LuBook,
   LuBookmark,
   LuSearch,
 } from "react-icons/lu";
@@ -20,7 +20,7 @@ import {StaticImageData} from "next/image";
 // Images
 import Lego from "@/assets/img/gallery/lego.jpg";
 import Leica from "@/assets/img/gallery/leica.jpg";
-import Nashville from "@/assets/img/gallery/nashville.jpg";
+// import Nashville from "@/assets/img/gallery/nashville.jpg";
 import surf from "@/assets/img/gallery/surf.jpg";
 import Post from "@/assets/img/post/post_5.png";
 import Blog from "@/assets/img/people/gallery/g5.jpg";
@@ -28,10 +28,10 @@ import Post1 from "@/assets/img/post/post_9.png";
 import RedBull from "@/assets/img/gallery/red-bull.jpg";
 
 // avatars
-import Ava1 from "@/assets/img/people/avatar/comment_1.png";
-import Ava2 from "@/assets/img/people/avatar/comment_2.png";
+// import Ava1 from "@/assets/img/people/avatar/comment_1.png";
+// import Ava2 from "@/assets/img/people/avatar/comment_2.png";
 import Ava3 from "@/assets/img/people/avatar/comment_3.png";
-import Ava4 from "@/assets/img/people/avatar/author.png";
+// import Ava4 from "@/assets/img/people/avatar/author.png";
 
 interface Course {
   id: string;
@@ -132,14 +132,14 @@ const mockMaterials: Material[] = [
 ];
 
 const mockUniversities: University[] = [
-  {id: "1", name: "Lagos State University", logo: "/api/placeholder/40/40"},
-  {id: "2", name: "University of Lagos", logo: "/api/placeholder/40/40"},
+  {id: "1", name: "Lagos State University", logo: Blog},
+  {id: "2", name: "University of Lagos", logo: surf},
   {
     id: "3",
     name: "Federal University of Technology",
-    logo: "/api/placeholder/40/40",
+    logo: Post1,
   },
-  {id: "4", name: "Ahmadu Bello University", logo: "/api/placeholder/40/40"},
+  {id: "4", name: "Ahmadu Bello University", logo: RedBull},
 ];
 
 const mockAnnouncements: Announcement[] = [

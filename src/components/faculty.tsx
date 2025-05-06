@@ -1,7 +1,7 @@
 "use client";
 
 import {useRef, useState, useEffect} from "react";
-import Image from "next/image";
+// import Image from "next/image";
 
 // Photos
 import Post1 from "@/assets/img/gallery/lego.jpg";
@@ -9,7 +9,7 @@ import Post2 from "@/assets/img/gallery/leica.jpg";
 import Post3 from "@/assets/img/gallery/featured2.png";
 import Link from "next/link";
 import {CardOne} from "./ui/card";
-import {motion, useAnimationControls} from "framer-motion";
+import {motion, useAnimationControls, PanInfo} from "framer-motion";
 
 export const TopFaculty = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,7 +106,10 @@ export const TopFaculty = () => {
     setIsInteracting(false);
   };
 
-  const handleDrag = (_: any, info: {delta: {x: number}}) => {
+  const handleDrag = (
+    _event: MouseEvent | TouchEvent | PointerEvent,
+    info: PanInfo
+  ) => {
     // Convert pixel movement to percentage (approximation)
     const containerWidth = containerRef.current?.offsetWidth || 1000;
     const percentDelta = (info.delta.x / containerWidth) * 100;
@@ -131,7 +134,7 @@ export const TopFaculty = () => {
 
   const handleMouseLeave = () => {
     setIsHovering(false);
-  };
+  };        
 
   const cardMotionProps = {
     whileHover: {scale: 1.05, transition: {duration: 0.2}},

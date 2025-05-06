@@ -11,7 +11,7 @@ interface NotFoundIllustrationProps {
   fillbl?: string;
   fillr?: string;
   fillre?: string;
-  fillred?: string;
+  // fillred?: string;
   filly?: string;
 }
 
@@ -25,7 +25,7 @@ export const NotFoundIllustration: React.FC<NotFoundIllustrationProps> = ({
   fillr = "#F3475C",
   filly = "#FFCA51",
   fillre = '#982245',
-  fillred = "#2F1829",
+  // fillred = "#2F1829",
   className,
 }) => {
   return (

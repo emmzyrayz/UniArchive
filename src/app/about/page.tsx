@@ -2,7 +2,7 @@
 
 import React from "react";
 import {motion} from "framer-motion";
-import Image from "next/image";
+// import Image from "next/image";
 import Link from "next/link";
 import {
   LuBookOpen,
@@ -259,7 +259,7 @@ export default function Page() {
               Why UniArchive?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We're more than just a repository - we're a comprehensive academic
+              We&apos;re more than just a repository - we&apos;re a comprehensive academic
               resource hub designed with students in mind.
             </p>
           </motion.div>

@@ -144,7 +144,7 @@ export default function Page() {
   };
 
   // FAQ data
-  const faqItems = [
+  const faqItems: FaqItem[] = [
     {
       question: "What are your office hours?",
       answer:
@@ -186,7 +186,7 @@ export default function Page() {
             Get in Touch
           </h1>
           <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
-            Have questions about our programs or need assistance? We're here to
+            Have questions about our programs or need assistance? We&apos;re here to
             help you on your educational journey.
           </p>
         </motion.header>

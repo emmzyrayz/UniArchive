@@ -1,5 +1,5 @@
 // assets/data/blogData.ts
-import { getImageByID } from './imagesData';
+// import { getImageByID } from './imagesData';
 
 export type BlogType = "platform" | "teacher" | "student";
 export type ReactionType = "like" | "love" | "haha" | "wow" | "sad" | "angry";

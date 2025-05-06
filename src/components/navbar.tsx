@@ -10,7 +10,7 @@ import Logo from '@/assets/img/logo/uniarchive.png';
 import { useNavConfig } from "@/hooks/useNavConfig";
 
 // import icons
-import {FaRegUserCircle, FaUserCircle, FaSearch} from "react-icons/fa";
+import {FaUserCircle, FaSearch} from "react-icons/fa";
 import {FaXmark} from 'react-icons/fa6';
 import {IoMenu} from "react-icons/io5";
 
@@ -20,13 +20,13 @@ interface NavItem {
   path: string;
 }
 
-interface PageNavConfig {
-  [key: string]: {
-    items: NavItem[];
-    title?: string;
-    showSearch?: boolean;
-  }
-}
+// interface PageNavConfig {
+//   [key: string]: {
+//     items: NavItem[];
+//     title?: string;
+//     showSearch?: boolean;
+//   }
+// }
 
 
 export const Navbar = () => {

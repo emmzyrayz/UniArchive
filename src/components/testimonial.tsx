@@ -5,14 +5,14 @@ import Image, {StaticImageData} from "next/image";
 import Link from "next/link";
 
 // Images
-import Lego from "@/assets/img/gallery/lego.jpg";
-import Leica from "@/assets/img/gallery/leica.jpg";
-import Nashville from "@/assets/img/gallery/nashville.jpg";
-import surf from "@/assets/img/gallery/surf.jpg";
-import Post from "@/assets/img/post/post_5.png";
-import Blog from "@/assets/img/people/gallery/g5.jpg";
-import Post1 from "@/assets/img/post/post_9.png";
-import RedBull from "@/assets/img/gallery/red-bull.jpg";
+// import Lego from "@/assets/img/gallery/lego.jpg";
+// import Leica from "@/assets/img/gallery/leica.jpg";
+// import Nashville from "@/assets/img/gallery/nashville.jpg";
+// import surf from "@/assets/img/gallery/surf.jpg";
+// import Post from "@/assets/img/post/post_5.png";
+// import Blog from "@/assets/img/people/gallery/g5.jpg";
+// import Post1 from "@/assets/img/post/post_9.png";
+// import RedBull from "@/assets/img/gallery/red-bull.jpg";
 
 // avatars
 import Ava1 from "@/assets/img/people/avatar/comment_1.png";
@@ -40,20 +40,19 @@ export const Testimonial: React.FC<TestimonialProps> = ({
   institution = "",
   institutionLink = "#",
   rating = 5,
-  highlight = false,
 }) => {
   // Helper function to handle different avatar types
-  const renderAvatar = () => {
-    return (
-      <Image
-        src={avatar}
-        alt={`Avatar of ${name}`}
-        className="rounded-full object-cover"
-        width={80}
-        height={80}
-      />
-    );
-  };
+  // const renderAvatar = () => {
+  //   return (
+  //     <Image
+  //       src={avatar}
+  //       alt={`Avatar of ${name}`}
+  //       className="rounded-full object-cover"
+  //       width={80}
+  //       height={80}
+  //     />
+  //   );
+  // };
 
   // Render star ratings
   const renderStars = () => {
@@ -149,13 +148,11 @@ export const Testimonial: React.FC<TestimonialProps> = ({
 export interface TestimonialCarouselProps {
   testimonials: TestimonialProps[];
   speed?: number; // Animation speed in pixels per second
-  pauseOnHover?: boolean;
 }
 
 export const TestimonialCarousel: React.FC<TestimonialCarouselProps> = ({
   testimonials,
   speed = 30, // Default speed
-  pauseOnHover = true,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -367,7 +364,7 @@ export const TestimonialsSection: React.FC = () => {
             What Our Users Say
           </h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Don't just take our word for it. See what students and educators
+            Don&apos;t just take our word for it. See what students and educators
             have to say about their experience.
           </p>
         </div>

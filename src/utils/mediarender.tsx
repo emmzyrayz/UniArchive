@@ -2,7 +2,7 @@ import React, {useState, useEffect} from "react";
 import Image, { StaticImageData } from "next/image";
 import { IconType } from 'react-icons'; // Import IconType from react-icons
 import { IoImageOutline } from 'react-icons/io5'; // Default loading icon
-import { IoAlertCircleOutline } from 'react-icons/io5'; // Default error icon
+// import { IoAlertCircleOutline } from 'react-icons/io5'; // Default error icon
 
 // Types for different image sources
 type ImageSource = {
@@ -54,18 +54,14 @@ export const MediaRenderer: React.FC<MediaProps> = ({
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Early return if no sources provided
-  if (!sources || sources.length === 0) {
-    return null;
-  }
-
-  const currentSource = sources[currentSourceIndex];
-
   useEffect(() => {
     setHasError(false);
     setIsLoading(true);
     setCurrentSourceIndex(0);
   }, [sources]);
+
+
+  const currentSource = sources[currentSourceIndex];
 
   const handleError = () => {
     onLoadError?.(currentSource);
@@ -121,7 +117,7 @@ export const MediaRenderer: React.FC<MediaProps> = ({
             onError={handleError}
             onLoad={handleLoad}
           >
-            <img
+            <Image
               src={currentSource.url}
               alt={currentSource.alt || ""}
               className="w-full h-full"

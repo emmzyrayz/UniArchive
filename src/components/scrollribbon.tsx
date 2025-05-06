@@ -42,7 +42,7 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
   const [isVisible, setIsVisible] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [activeItemIndex, setActiveItemIndex] = useState(0);
-  const [ribbonHeight, setRibbonHeight] = useState(0);
+  // const [ribbonHeight, setRibbonHeight] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const cycleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const ribbonRef = useRef<HTMLDivElement>(null);
@@ -140,8 +140,8 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
   useEffect(() => {
     const updateRibbonHeight = () => {
       if (ribbonRef.current) {
+        // Instead of storing height in state, just use it directly
         const height = ribbonRef.current.offsetHeight;
-        setRibbonHeight(height);
 
         // Dispatch custom event for Navbar to detect height change
         const ribbonHeightEvent = new CustomEvent("ribbonHeightChanged", {
@@ -325,11 +325,16 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
       `}</style>
 
       <div
+        ref={ribbonRef}
         className={`scroll-ribbon transition-all duration-300 overflow-hidden w-full py-2 ${
           isScrolled
             ? "fixed top-0 left-0 z-50 h-8 bg-gray-900/90 backdrop-blur-sm"
             : "relative h-12 bg-gray-800"
-        } ${isVisible ? "opacity-100 flex items-center justify-center" : "opacity-0 hidden h-0"} ${className}`}
+        } ${
+          isVisible
+            ? "opacity-100 flex items-center justify-center"
+            : "opacity-0 hidden h-0"
+        } ${className}`}
         onMouseEnter={() => pauseOnHover && setIsPaused(true)}
         onMouseLeave={() => pauseOnHover && setIsPaused(false)}
       >
