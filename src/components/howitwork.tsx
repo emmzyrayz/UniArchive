@@ -42,7 +42,7 @@ export const HowItWorks = () => {
           UniArchive.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {steps.map((step, index) => (
             <motion.div
               key={index}
