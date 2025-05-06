@@ -29,7 +29,7 @@ const stats = [
 export const StatsSection = () => {
   return (
     <section className="bg-gray-50 py-12">
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+      <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 sm:grid-cols-2 gap-6 text-center">
         {stats.map((stat, index) => (
           <motion.div
             key={index}
