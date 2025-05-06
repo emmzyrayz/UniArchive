@@ -1,6 +1,6 @@
 "use client";
 import React, {useEffect, useRef, useState} from "react";
-// import Image from "next/image";
+import Image from "next/image";
 import {motion, AnimatePresence} from "framer-motion";
 import {MediaRenderer} from "@/utils/mediarender";
 import "./banner.css";
@@ -393,7 +393,7 @@ export const MBanner = () => {
             {/* Background Image/GIF (Large Screens Only) */}
             {shouldDisplayImage(slide.image) && (
               <div className="hidden lg:block absolute inset-0 z-0 rounded-xl">
-                <img
+                <Image
                   src={getImageSource(slide.image) || ""}
                   alt={slide.title}
                   className="w-full h-full object-cover rounded-xl"

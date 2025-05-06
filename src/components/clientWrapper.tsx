@@ -5,9 +5,12 @@ import {createContext, useContext, useState, useEffect} from "react";
 import {usePathname} from "next/navigation";
 import {Loading} from "@/components/ui/loading";
 
-const LoadingContext = createContext({
+const LoadingContext = createContext<{
+  isLoading: boolean;
+  setIsLoading: (loading: boolean) => void; // Updated to use 'loading' instead of '_loading'
+}>({
   isLoading: true,
-  setIsLoading: (_loading: boolean) => {},
+  setIsLoading: () => {}, // Default function
 });
 
 export const useLoading = () => useContext(LoadingContext);

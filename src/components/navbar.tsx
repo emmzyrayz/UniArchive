@@ -14,20 +14,6 @@ import {FaUserCircle, FaSearch} from "react-icons/fa";
 import {FaXmark} from 'react-icons/fa6';
 import {IoMenu} from "react-icons/io5";
 
-// Type definitions for navbar items
-interface NavItem {
-  name: string;
-  path: string;
-}
-
-// interface PageNavConfig {
-//   [key: string]: {
-//     items: NavItem[];
-//     title?: string;
-//     showSearch?: boolean;
-//   }
-// }
-
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
