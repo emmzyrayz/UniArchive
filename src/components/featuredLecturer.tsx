@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import {LecturerCard} from "./ui/card";
+import {LecturerCard} from "./reuse/card";
 
 // Photos
 import Post1 from "@/assets/img/gallery/lego.jpg";

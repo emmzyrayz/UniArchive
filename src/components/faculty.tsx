@@ -8,7 +8,7 @@ import Post1 from "@/assets/img/gallery/lego.jpg";
 import Post2 from "@/assets/img/gallery/leica.jpg";
 import Post3 from "@/assets/img/gallery/featured2.png";
 import Link from "next/link";
-import {CardOne} from "./ui/card";
+import {CardOne} from "./reuse/card";
 import {motion, useAnimationControls, PanInfo} from "framer-motion";
 
 export const TopFaculty = () => {
