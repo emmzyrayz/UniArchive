@@ -56,7 +56,7 @@ export const MobileAppPromo = () => {
             alt="Mobile App"
             width={500}
             height={500}
-            className="mx-auto"
+            className="mx-auto w-[350px] h-[350px]"
           />
         </motion.div>
       </div>

@@ -2,6 +2,7 @@
 
 import React from "react";
 import {useState} from "react";
+import Link from "next/link"
 import {
   // LuBell,
   LuBookOpen,
@@ -196,15 +197,15 @@ export default function Dashboardpage() {
                 </p>
               </div>
               <div className="mt-4 md:-mr-4 md:w-2/3 md:mt-0 flex flex-col md:flex-row gap-2 xl:gap-3 items-center">
-                <button className="bg-blue-600 hover:bg-blue-700 rounded-md text-white px-2 py-1 xl:px-4 xl:py-2 text-[14px] xl:text-[16px] font-medium flex items-center w-full cursor-pointer">
+                <button className="bg-blue-600 hover:bg-blue-700 rounded-md text-white p-2 xl:p-4 text-[14px] xl:text-[16px] font-medium flex items-center w-full cursor-pointer">
                   <LuBookOpen size={16} className="mr-2" />
                   Continue Learning
                 </button>
-                <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md px-2 py-1 xl:px-4 xl:py-2 text-[14px] xl:text-[16px] font-medium flex items-center w-full cursor-pointer">
+                <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md p-2 xl:p-2 text-[14px] xl:text-[16px] font-medium flex items-center w-full cursor-pointer">
                   <LuUpload size={16} className="mr-2" />
                   Upload Material
                 </button>
-                <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md px-2 py-1 xl:px-4 xl:py-2 text-[14px] xl:text-[16px] font-medium flex items-center w-full cursor-pointer">
+                <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md p-2 xl:p-2 text-[14px] xl:text-[16px] font-medium flex items-center w-full cursor-pointer">
                   <LuSearch size={16} className="mr-2" />
                   Browse Materials
                 </button>
@@ -263,7 +264,7 @@ export default function Dashboardpage() {
                               </p>
                             </div>
                           </div>
-                          <button className="mt-3 w-full bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1 rounded text-sm font-medium">
+                          <button className="mt-3 w-full bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1 rounded text-sm font-medium cursor-pointer">
                             Resume Course
                           </button>
                         </div>
@@ -320,7 +321,7 @@ export default function Dashboardpage() {
                           </div>
                           <button
                             onClick={() => toggleSave(material.id)}
-                            className="flex-shrink-0 text-gray-400 hover:text-blue-600 focus:outline-none"
+                            className="flex-shrink-0 text-gray-400 hover:text-blue-600 focus:outline-none cursor-pointer"
                           >
                             <LuBookmark
                               size={18}
@@ -333,10 +334,10 @@ export default function Dashboardpage() {
                           </button>
                         </div>
                         <div className="mt-3 flex justify-between">
-                          <button className="text-sm text-blue-600 hover:text-blue-500 font-medium">
+                          <button className="text-sm text-blue-600 hover:text-blue-500 font-medium cursor-pointer">
                             Download
                           </button>
-                          <button className="text-sm text-gray-500 hover:text-gray-700 font-medium">
+                          <button className="text-sm text-gray-500 hover:text-gray-700 font-medium cursor-pointer">
                             View Details
                           </button>
                         </div>
@@ -357,35 +358,35 @@ export default function Dashboardpage() {
                 </h3>
               </div>
               <div className="border-t border-gray-200">
-                <div className="px-4 py-5 sm:p-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="p-4 sm:p-6">
+                  <div className="flex flex-row flex-wrap items-center justify-center gap-4">
+                    <div className="bg-blue-50 p-4 rounded-lg flex flex-col w-[150px] items-center justify-center">
                       <div className="font-bold text-2xl text-blue-600">
                         {mockUserStats.downloads}
                       </div>
                       <div className="text-sm text-gray-500">Downloads</div>
                     </div>
-                    <div className="bg-green-50 p-4 rounded-lg">
+                    <div className="bg-green-50 p-4 rounded-lg flex flex-col w-[150px] items-center justify-center">
                       <div className="font-bold text-2xl text-green-600">
                         {mockUserStats.contributions}
                       </div>
                       <div className="text-sm text-gray-500">Contributions</div>
                     </div>
-                    <div className="bg-purple-50 p-4 rounded-lg">
+                    <div className="bg-purple-50 p-4 rounded-lg flex flex-col w-[150px] items-center justify-center">
                       <div className="font-bold text-2xl text-purple-600">
                         {mockUserStats.coursesFollowed}
                       </div>
                       <div className="text-sm text-gray-500">Courses</div>
                     </div>
-                    <div className="bg-yellow-50 p-4 rounded-lg flex items-center">
+                    <div className="bg-yellow-50 p-4 rounded-lg flex flex-col w-[150px] items-center justify-center">
                       <LuAward size={24} className="text-yellow-500 mr-2" />
-                      <div className="text-sm text-gray-700">
+                      <div className="text-sm text-gray-700 flex flex-col w-[150px] items-center justify-center">
                         {mockUserStats.rank}
                       </div>
                     </div>
                   </div>
                   <div className="mt-4">
-                    <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium">
+                    <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium cursor-pointer">
                       View Complete Profile
                     </button>
                   </div>
@@ -477,42 +478,20 @@ export default function Dashboardpage() {
                   with students in your university.
                 </div>
                 <div className="mt-4">
-                  <button className="bg-white text-blue-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-50">
-                    Upload Materials
-                  </button>
+                  <Link
+                    href="#"
+                    className="flex items-center justify-center bg-white text-blue-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-50 cursor-pointer"
+                  >
+                    <button className="cursor-pointer bg-transparent">
+                      Upload Materials
+                    </button>
+                  </Link>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="md:flex md:items-center md:justify-between">
-            <div className="flex justify-center md:justify-start space-x-6">
-              <a href="#" className="text-gray-400 hover:text-gray-500">
-                About
-              </a>
-              <a href="#" className="text-gray-400 hover:text-gray-500">
-                Privacy
-              </a>
-              <a href="#" className="text-gray-400 hover:text-gray-500">
-                Terms
-              </a>
-              <a href="#" className="text-gray-400 hover:text-gray-500">
-                Contact
-              </a>
-            </div>
-            <div className="mt-8 md:mt-0">
-              <p className="text-center md:text-right text-sm text-gray-400">
-                &copy; 2025 EduConnect. All rights reserved.
-              </p>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

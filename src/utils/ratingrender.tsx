@@ -19,12 +19,14 @@ const RatingStars: React.FC<RatingStarsProps> = ({
   const stars = [];
 
   for (let i = 1; i <= 5; i++) {
-    if (i <= Math.floor(numRating)) {
+    const adjustedRating = numRating - (i - 1); // Adjust rating for current star position
+
+    if (adjustedRating >= 0.7) {
       // Full star
       stars.push(
         <FaStar key={i} size={size} className="inline-block" color={color} />
       );
-    } else if (i === Math.ceil(numRating) && !Number.isInteger(numRating)) {
+    } else if (adjustedRating >= 0.3) {
       // Half star
       stars.push(
         <FaStarHalf
@@ -49,7 +51,7 @@ const RatingStars: React.FC<RatingStarsProps> = ({
       aria-label={`Rating: ${numRating} out of 5 stars`}
     >
       {stars}
-      <span className="ml-2 text-sm text-gray-600">{numRating}</span>
+      <span className="ml-2 text-sm text-gray-600">({numRating})</span>
     </div>
   );
 };

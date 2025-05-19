@@ -141,15 +141,17 @@ export const LecturerCard = ({
 }: LecturerCardProps) => {
   return (
     <Link href={`/lecturers/${slug}`} className="block h-[350px]">
-      <div className="flex flex-col w-full h-full bg-white shadow-md rounded-xl p-4 hover:shadow-lg hover:scale-105 transition-all duration-500 ease-in-out gap-4 items-center justify-evenly">
-        <Image
-          src={imageUrl}
-          alt={name}
-          width={80}
-          height={80}
-          className="rounded-[12px] object-cover w-[100px] h-[100px]"
-        />
-        <div>
+      <div className="flex flex-col w-[250px] md:w-[350px] min-h-[300px] h-full bg-white shadow-md rounded-xl p-4 hover:shadow-lg hover:scale-105 transition-all duration-500 ease-in-out gap-4 items-center justify-evenly">
+        <div className="flex w-full h-1/3 items-center justify-center">
+          <Image
+            src={imageUrl}
+            alt={name}
+            width={80}
+            height={80}
+            className="rounded-[12px] object-cover w-full h-full"
+          />
+        </div>
+        <div className='flex flex-col w-full h-2/3 items-center justify-center'>
           <h3 className="text-[14px] xl:text-[16px] font-semibold">{name}</h3>
           <p className="text-[12px] xl:text-[14px] text-gray-500 font-normal">
             {title}, {department}

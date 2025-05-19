@@ -209,7 +209,7 @@ export const TestimonialCarousel: React.FC<TestimonialCarouselProps> = ({
         }
       `}</style>
 
-      <div ref={scrollRef} className="flex flex-col lg:flex-row lg:gap-1 gap-3 whitespace-nowrap">
+      <div ref={scrollRef} className="flex flex-col md:flex-row lg:gap-1 gap-3 whitespace-nowrap">
         {/* Original testimonials */}
         {testimonials.map((testimonial, index) => (
           <div key={`original-${index}`} className="inline-block mx-4">
@@ -357,20 +357,18 @@ export const TestimonialsSection: React.FC = () => {
   ];
 
   return (
-    <section className="py-12">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-8">
+    <section className="w-full flex flex-col items-center justify-center py-12 px-3">
+      <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-gray-800 mb-4">
             What Our Users Say
           </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
+          <p className="text-gray-600 max-w-2xl flex ">
             Don&apos;t just take our word for it. See what students and educators
             have to say about their experience.
           </p>
         </div>
 
         <TestimonialCarousel testimonials={testimonials} speed={40} />
-      </div>
     </section>
   );
 };

@@ -22,7 +22,7 @@ const navConfig: PageNavConfig = {
   "/": {
     items: [
       {name: "Home", path: "/"},
-      {name: "School", path: "/school"},
+      {name: "Schools", path: "/schools"},
       {name: "About", path: "/about"},
       {name: "Contact", path: "/contact"},
     ],

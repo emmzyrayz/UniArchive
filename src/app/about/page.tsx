@@ -259,8 +259,9 @@ export default function Page() {
               Why UniArchive?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We&apos;re more than just a repository - we&apos;re a comprehensive academic
-              resource hub designed with students in mind.
+              We&apos;re more than just a repository - we&apos;re a
+              comprehensive academic resource hub designed with students in
+              mind.
             </p>
           </motion.div>
 
@@ -354,13 +355,13 @@ export default function Page() {
               <div className="mt-8 md:mt-0 flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 justify-center md:justify-start">
                 <Link
                   href="/register"
-                  className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 transition duration-150"
+                  className="flex items-center w-[170px] xl:w-[240px] h-[70px]  justify-center px-4 py-2 border border-transparent text-[14px] xl:text-[16px] font-semibold rounded-md text-blue-700 bg-white hover:bg-blue-300 hover:text-white hover:border-white hover:border-[2px] hover:shadow-lg  transition-all duration-350"
                 >
                   Sign Up Free
                 </Link>
                 <Link
                   href="/resources"
-                  className="inline-flex items-center justify-center px-6 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-blue-700 transition duration-150"
+                  className="flex items-center justify-center w-[170px] xl:w-[240px] h-[70px] px-4 py-2  border-white text-[14px] xl:text-[16px] font-semibold rounded-md text-white hover:bg-blue-200 hover:text-blue-700 hover:border-blue-500 border-[2px] hover:shadow-lg transition-all duration-350"
                 >
                   Explore Resources <LuArrowRight className="ml-2" />
                 </Link>
