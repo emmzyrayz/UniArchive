@@ -1,5 +1,6 @@
 // upload/layout.tsx
 'use client';
+
 import React from 'react';
 
 export default function UploadLayout({ children }: { children: React.ReactNode }) {

@@ -49,11 +49,11 @@ export const FeaturedLecturer: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col gap-4 bg-linear-to-r bbg-black/20 items-center justify-between rounded-[12px] m-2 p-4 mb-4">
+    <div className="flex flex-col gap-4 bg-linear-to-r bg-black/20 items-center justify-between rounded-[12px] m-2 p-4 mb-4">
       <div className="top">
         <span className='flex w-full text-[22px] font-semibold'>Featured Lecturers</span>
       </div>
-      <div className="flex flex-col lg:flex-row items-center justify-center w-[98%]  gap-6">
+      <div className="flex flex-col lg:flex-row items-center justify-center w-[98%]  gap-6 overflow-hidden">
         {featuredLecturers.map((lecturer, index) => (
           <LecturerCard
             key={index}
