@@ -19,14 +19,23 @@ export type Section = {
   id: string;
   type: 'title' | 'subtitle' | 'richText' | 'formula' | 'image';
   content: string;
+  formatting?: {
+    align?: 'left' | 'center' | 'right';
+    underline?: boolean;
+    bold?: boolean;
+    italic?: boolean;
+  };
+  imageDescription?: string;
 };
 
 // Sortable item component
-const SortableSection = ({ section, updateContent, removeSection }: { 
+const SortableSection = ({ section, updateContent, removeSection, updateFormatting, updateImageDescription }: { 
   section: Section, 
   index: number,
   updateContent: (id: string, content: string) => void,
-  removeSection: (id: string) => void
+  removeSection: (id: string) => void,
+  updateFormatting: (id: string, formatting: Section['formatting']) => void,
+  updateImageDescription: (id: string, description: string) => void
 }) => {
   const { 
     attributes, 
@@ -61,6 +70,68 @@ const SortableSection = ({ section, updateContent, removeSection }: {
     }
   }, [section.type, section.content]);
 
+  // Text formatting controls for title and subtitle
+  const renderTextFormatControls = () => {
+    if (section.type !== 'title' && section.type !== 'subtitle') return null;
+    
+    const formatting = section.formatting || { align: 'left', underline: false, bold: false, italic: false };
+    
+    return (
+      <div className="flex items-center gap-2 mb-2 text-sm">
+        <div className="flex border rounded overflow-hidden">
+          {(['left', 'center', 'right'] as const).map(align => (
+            <button
+              key={align}
+              onClick={() => updateFormatting(section.id, { ...formatting, align })}
+              className={`px-2 py-1 ${formatting.align === align ? 'bg-blue-100' : 'bg-white'}`}
+              title={`Align ${align}`}
+            >
+              {align === 'left' && '⇠'}
+              {align === 'center' && '⇔'}
+              {align === 'right' && '⇢'}
+            </button>
+          ))}
+        </div>
+        
+        <div className="flex border rounded overflow-hidden">
+          <button
+            onClick={() => updateFormatting(section.id, { ...formatting, bold: !formatting.bold })}
+            className={`px-2 py-1 ${formatting.bold ? 'bg-blue-100' : 'bg-white'}`}
+            title="Bold"
+          >
+            B
+          </button>
+          <button
+            onClick={() => updateFormatting(section.id, { ...formatting, italic: !formatting.italic })}
+            className={`px-2 py-1 ${formatting.italic ? 'bg-blue-100' : 'bg-white'}`}
+            title="Italic"
+          >
+            I
+          </button>
+          <button
+            onClick={() => updateFormatting(section.id, { ...formatting, underline: !formatting.underline })}
+            className={`px-2 py-1 ${formatting.underline ? 'bg-blue-100' : 'bg-white'}`}
+            title="Underline"
+          >
+            U
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+   // Apply formatting to input elements
+  const getFormattedStyle = () => {
+    if (!section.formatting) return {};
+    
+    return {
+      textAlign: section.formatting.align || 'left',
+      textDecoration: section.formatting.underline ? 'underline' : 'none',
+      fontWeight: section.formatting.bold ? 'bold' : 'normal',
+      fontStyle: section.formatting.italic ? 'italic' : 'normal'
+    };
+  };
+
   return (
     <div 
       ref={setNodeRef} 
@@ -94,12 +165,15 @@ const SortableSection = ({ section, updateContent, removeSection }: {
         </div>
       </div>
 
+      {(section.type === 'title' || section.type === 'subtitle') && renderTextFormatControls()}
+
       {section.type === 'title' && (
         <input
           type="text"
           placeholder="Enter Title"
           value={section.content}
           onChange={(e) => updateContent(section.id, e.target.value)}
+          style={getFormattedStyle()}
           className="w-full p-3 border border-gray-300 rounded-md font-bold text-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
       )}
@@ -109,6 +183,7 @@ const SortableSection = ({ section, updateContent, removeSection }: {
           placeholder="Enter Subtitle"
           value={section.content}
           onChange={(e) => updateContent(section.id, e.target.value)}
+          style={getFormattedStyle()}
           className="w-full p-3 border border-gray-300 rounded-md font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
       )}
@@ -153,6 +228,17 @@ const SortableSection = ({ section, updateContent, removeSection }: {
                 width={500}
           height={300}
               />
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Image Description
+                </label>
+                <textarea
+                  value={section.imageDescription || ''}
+                  onChange={(e) => updateImageDescription(section.id, e.target.value)}
+                  placeholder="Add a description for this image..."
+                  className="w-full p-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 min-h-20"
+                />
+              </div>
             </div>
           ) : (
             <div className="border-2 border-dashed border-gray-300 rounded-md p-8 text-center">
@@ -197,7 +283,13 @@ export default function TextUploader({ onContentChange = () => {} }: TextUploade
   const generateId = () => `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   const addSection = (type: Section['type']) => {
-    const newSection = { id: generateId(), type, content: '' };
+    const newSection: Section = { 
+      id: generateId(), 
+      type, 
+      content: '',
+      ...(type === 'title' || type === 'subtitle' ? { formatting: { align: 'left', underline: false, bold: false, italic: false } } : {}),
+      ...(type === 'image' ? { imageDescription: '' } : {})
+    };
     setSections([...sections, newSection]);
     updateParentContent([...sections, newSection]);
   };
@@ -205,6 +297,22 @@ export default function TextUploader({ onContentChange = () => {} }: TextUploade
   const updateSectionContent = (id: string, content: string) => {
     const updatedSections = sections.map(section => 
       section.id === id ? { ...section, content } : section
+    );
+    setSections(updatedSections);
+    updateParentContent(updatedSections);
+  };
+
+  const updateSectionFormatting = (id: string, formatting: Section['formatting']) => {
+    const updatedSections = sections.map(section => 
+      section.id === id ? { ...section, formatting } : section
+    );
+    setSections(updatedSections);
+    updateParentContent(updatedSections);
+  };
+
+  const updateImageDescription = (id: string, description: string) => {
+    const updatedSections = sections.map(section => 
+      section.id === id ? { ...section, imageDescription: description } : section
     );
     setSections(updatedSections);
     updateParentContent(updatedSections);
@@ -264,24 +372,40 @@ export default function TextUploader({ onContentChange = () => {} }: TextUploade
   };
 
   // Effect to render formulas in preview mode
+  // Effect to render formulas in preview mode
   useEffect(() => {
     if (previewMode) {
       try {
-        const formulaElements = document.querySelectorAll('.preview-formula[data-formula]');
-        formulaElements.forEach(element => {
-          const formula = element.getAttribute('data-formula');
-          if (formula) {
-            katex.render(formula, element as HTMLElement, {
-              throwOnError: false,
-              displayMode: true
-            });
-          }
-        });
+        // Use setTimeout to ensure the DOM is fully rendered before attempting to render formulas
+        setTimeout(() => {
+          const formulaElements = document.querySelectorAll('.preview-formula[data-formula]');
+          formulaElements.forEach(element => {
+            const formula = element.getAttribute('data-formula');
+            if (formula) {
+              katex.render(formula, element as HTMLElement, {
+                throwOnError: false,
+                displayMode: true
+              });
+            }
+          });
+        }, 100);
       } catch (error) {
         console.error('Failed to render formulas in preview:', error);
       }
     }
   }, [previewMode, sections]);
+
+  // Apply formatting for preview mode
+  const getPreviewStyles = (section: Section) => {
+    if (!section.formatting) return {};
+    
+    return {
+      textAlign: section.formatting.align || 'left',
+      textDecoration: section.formatting.underline ? 'underline' : 'none',
+      fontWeight: section.formatting.bold ? 'bold' : 'normal',
+      fontStyle: section.formatting.italic ? 'italic' : 'normal'
+    };
+  };
 
   // Preview component
   const PreviewContent = () => (
@@ -297,10 +421,10 @@ export default function TextUploader({ onContentChange = () => {} }: TextUploade
           {sections.map((section) => (
             <div key={section.id} className="mb-4">
               {section.type === 'title' && (
-                <h1 className="text-2xl font-bold my-2">{section.content || 'Title'}</h1>
+                <h1 className="text-2xl font-bold my-2" style={getPreviewStyles(section)}>{section.content || 'Title'}</h1>
               )}
               {section.type === 'subtitle' && (
-                <h2 className="text-xl font-semibold my-2">{section.content || 'Subtitle'}</h2>
+                <h2 className="text-xl font-semibold my-2" style={getPreviewStyles(section)}>{section.content || 'Subtitle'}</h2>
               )}
               {section.type === 'richText' && (
                 <div className="my-3" dangerouslySetInnerHTML={{ __html: section.content || 'Rich text content will appear here' }}></div>
@@ -309,8 +433,15 @@ export default function TextUploader({ onContentChange = () => {} }: TextUploade
                 <div className="formula my-3 flex justify-center" data-formula={section.content}></div>
               )}
               {section.type === 'image' && section.content && (
-                <div className="my-3 flex justify-center">
-                  <Image src={section.content} alt="Content" className="max-w-full h-auto rounded" width={500} height={300} />
+                <div className="my-3">
+                  <div className="flex justify-center">
+                    <Image src={section.content} alt="Content" className="max-w-full h-auto rounded" width={500} height={300} />
+                  </div>
+                  {section.imageDescription && (
+                    <p className="text-gray-600 italic text-center mt-2 max-w-lg mx-auto">
+                      {section.imageDescription}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -410,6 +541,8 @@ export default function TextUploader({ onContentChange = () => {} }: TextUploade
                         index={index}
                         updateContent={updateSectionContent}
                         removeSection={removeSection}
+                        updateFormatting={updateSectionFormatting}
+                        updateImageDescription={updateImageDescription}
                       />
                     ))}
                   </SortableContext>
