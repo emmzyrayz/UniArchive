@@ -7,7 +7,7 @@ type PhotoUploaderProps = {
   onFilesSelected: (files: File[] | null) => void;
 };
 
-export default function PhotoUploader({ onFilesSelected }: PhotoUploaderProps) {
+export const PhotoUploader = ({ onFilesSelected }: PhotoUploaderProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
   const [previews, setPreviews] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);

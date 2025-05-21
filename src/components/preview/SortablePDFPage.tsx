@@ -10,7 +10,7 @@ type SortablePDFPageProps = {
   pageNumber: number;
 };
 
-export function SortablePDFPage({ id, url, pageNumber }: SortablePDFPageProps) {
+export const SortablePDFPage = ({ id, url, pageNumber }: SortablePDFPageProps) => {
   const {
     attributes,
     listeners,

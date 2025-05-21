@@ -11,7 +11,7 @@ type PhotoPreviewProps = {
   materialInfo: MaterialInfo;
 };
 
-export default function PhotoPreview({ materialInfo }: PhotoPreviewProps) {
+export const PhotoPreview = ({ materialInfo }: PhotoPreviewProps) => {
   const [photos, setPhotos] = useState<string[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<string>('none');
   const [brightness, setBrightness] = useState<number>(100);

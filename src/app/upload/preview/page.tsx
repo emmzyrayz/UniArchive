@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import PDFPreview from '@/components/preview/PDFPreview';
-import PhotoPreview from '@/components/preview/PhotoPreview';
-import VideoPreview from '@/components/preview/VideoPreview';
-import TextPreview from '@/components/preview/TextPreview';
+import {PDFPreview} from '@/components/preview/PDFPreview';
+import {PhotoPreview} from '@/components/preview/PhotoPreview';
+import {VideoPreview} from '@/components/preview/VideoPreview';
+import {TextPreview} from '@/components/preview/TextPreview';
 import type { MaterialInfo } from '@/app/upload/page';
 
 export default function PreviewPage() {

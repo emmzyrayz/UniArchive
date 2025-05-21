@@ -6,7 +6,7 @@ type PDFUploaderProps = {
   onFilesSelected: (files: File[] | null) => void;
 };
 
-export default function PDFUploader({ onFilesSelected }: PDFUploaderProps) {
+export const PDFUploader = ({ onFilesSelected }: PDFUploaderProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

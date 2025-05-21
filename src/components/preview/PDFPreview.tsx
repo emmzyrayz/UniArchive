@@ -10,7 +10,7 @@ type PDFPreviewProps = {
   materialInfo: MaterialInfo;
 };
 
-export default function PDFPreview({ materialInfo }: PDFPreviewProps) {
+export const PDFPreview = ({ materialInfo }: PDFPreviewProps) => {
   const [pdfPages, setPdfPages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedEnhancement, setSelectedEnhancement] = useState<string>('original');

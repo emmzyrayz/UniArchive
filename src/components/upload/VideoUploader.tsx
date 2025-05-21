@@ -6,7 +6,7 @@ type VideoUploaderProps = {
   onFilesSelected: (files: File[] | null) => void;
 };
 
-export default function VideoUploader({ onFilesSelected }: VideoUploaderProps) {
+export const VideoUploader = ({ onFilesSelected }: VideoUploaderProps) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);

@@ -7,7 +7,7 @@ type TextPreviewProps = {
   materialInfo: MaterialInfo;
 };
 
-export default function TextPreview({ materialInfo }: TextPreviewProps) {
+export const TextPreview = ({ materialInfo }: TextPreviewProps) => {
   const [textContent, setTextContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [fontSize, setFontSize] = useState<string>('medium');

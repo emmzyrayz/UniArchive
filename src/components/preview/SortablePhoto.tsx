@@ -10,7 +10,7 @@ type SortablePhotoProps = {
   index: number;
 };
 
-export function SortablePhoto({ id, url, index }: SortablePhotoProps) {
+export const SortablePhoto = ({ id, url, index }: SortablePhotoProps) => {
   const {
     attributes,
     listeners,

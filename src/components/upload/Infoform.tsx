@@ -15,7 +15,7 @@ type InfoFormProps = {
   onSelectMaterialType: (type: MaterialType) => void;
 };
 
-export default function InfoForm({ materialInfo, onChange, onSelectMaterialType }: InfoFormProps) {
+export const InfoForm = ({ materialInfo, onChange, onSelectMaterialType }: InfoFormProps) => {
   const [formComplete, setFormComplete] = useState(false);
 
   // Check if required fields are filled

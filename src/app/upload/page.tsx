@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import PDFUploader from '@/components/upload/PDFUploader';
-import PhotoUploader from '@/components/upload/PhotoUploader';
-import VideoUploader from '@/components/upload/VideoUploader';
-import TextUploader from '@/components/upload/TextUploader';
-import InfoForm from '@/components/upload/Infoform';
+import {PDFUploader} from '@/components/upload/PDFUploader';
+import {PhotoUploader} from '@/components/upload/PhotoUploader';
+import {VideoUploader} from '@/components/upload/VideoUploader';
+import {TextUploader} from '@/components/upload/TextUploader';
+import {InfoForm} from '@/components/upload/Infoform';
 
 export type MaterialType = 'PDF' | 'PHOTOS' | 'VIDEO' | 'TEXT';
 export type MaterialInfo = {

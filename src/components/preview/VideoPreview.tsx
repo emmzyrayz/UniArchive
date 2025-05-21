@@ -7,7 +7,7 @@ type VideoPreviewProps = {
   materialInfo: MaterialInfo;
 };
 
-export default function VideoPreview({ materialInfo }: VideoPreviewProps) {
+export const VideoPreview = ({ materialInfo }: VideoPreviewProps) => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [videoQuality, setVideoQuality] = useState<string>('720p');
