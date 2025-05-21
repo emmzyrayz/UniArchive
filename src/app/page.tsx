@@ -7,7 +7,7 @@ import { TopDepartment } from "@/components/department";
 import { TopFaculty } from "@/components/faculty";
 import { TopCourse} from "@/components/courses";
 import {TestimonialsSection} from "@/components/testimonial";
-import { FeaturedLecturer } from "@/components/featuredLecturer";
+import { ScrollableLecturer } from "@/components/featuredLecturer";
 import { StatsSection } from "@/components/statistic";
 import { NewsletterCTA } from "@/components/newsletter";
 import { ActivityFeed } from "@/components/activityfeed";
@@ -24,7 +24,7 @@ export default function Home() {
       <TopFaculty />
       <TopCourse />
       <TestimonialsSection />
-      <FeaturedLecturer />
+      <ScrollableLecturer />
       <StatsSection />
       <NewsletterCTA />
       <ActivityFeed />

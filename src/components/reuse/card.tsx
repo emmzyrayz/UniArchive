@@ -15,7 +15,7 @@ interface BaseCardProps {
   layout?: "top" | "left"; // for CardOne only
 }
 
-type LecturerCardProps = {
+export type LecturerCardProps = {
   name: string;
   title: string;
   department: string;
@@ -141,7 +141,7 @@ export const LecturerCard = ({
 }: LecturerCardProps) => {
   return (
     <Link href={`/lecturers/${slug}`} className="block h-[350px]">
-      <div className="flex flex-col w-[250px] md:w-[350px] min-h-[300px] h-full bg-white shadow-md rounded-xl p-4 hover:shadow-lg hover:scale-105 transition-all duration-500 ease-in-out gap-4 items-center justify-evenly">
+      <div className="flex flex-col w-[200px] md:w-[300px] min-h-[300px] h-full bg-white shadow-md rounded-xl p-4 hover:shadow-lg hover:scale-105 transition-all duration-500 ease-in-out gap-4 items-center justify-evenly">
         <div className="flex w-full h-1/3 items-center justify-center">
           <Image
             src={imageUrl}
