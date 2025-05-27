@@ -26,6 +26,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Additional password validation (optional but recommended)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+    if (!passwordRegex.test(newPassword)) {
+      return NextResponse.json(
+        { 
+          message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character' 
+        },
+        { status: 400 }
+      );
+    }
+
     // Hash the token to compare with stored hash
     const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
 

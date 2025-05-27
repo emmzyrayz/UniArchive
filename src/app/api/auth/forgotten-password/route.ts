@@ -3,24 +3,13 @@ import connectDB from '@/lib/database';
 import User from '@/models/usermodel';
 import { emailService } from '@/utils/email';
 import crypto from 'crypto';
-import CryptoJS from 'crypto-js';
-
-// Decryption utility
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-secret-encryption-key-32-chars';
-
-const decryptSensitiveData = (encryptedData: string): string => {
-  const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
-  return bytes.toString(CryptoJS.enc.Utf8);
-};
 
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
 
     const body = await request.json();
-    
-    // Decrypt email
-    const email = decryptSensitiveData(body.email);
+    const { email } = body;
 
     // Validate required fields
     if (!email) {
@@ -39,8 +28,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find user by email
-    const user = await User.findOne({ email });
+    // Create hash for searching the user by email
+    const emailHash = User.hashForSearch(email);
+
+    // Find user by email hash (since email is encrypted, we search by hash)
+    const user = await User.findOne({ emailHash });
 
     if (!user) {
       // Don't reveal if user exists or not for security
@@ -67,10 +59,22 @@ export async function POST(request: NextRequest) {
     user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     await user.save();
 
+    // Decrypt the stored email to send the reset email
+    let decryptedEmail: string;
+    try {
+      decryptedEmail = User.decryptSensitiveData(user.email);
+    } catch (decryptError) {
+      console.error('Failed to decrypt email:', decryptError);
+      return NextResponse.json(
+        { message: 'Failed to process request. Please contact support.' },
+        { status: 500 }
+      );
+    }
+
     // Send password reset email
     try {
       await emailService.sendPasswordResetEmail(
-        email,
+        decryptedEmail,
         user.fullName,
         resetToken
       );
