@@ -87,7 +87,7 @@ class EmailService {
   }
 
   generatePasswordResetEmail(name: string, resetToken: string): string {
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.APP_URL}/reset-password?token=${resetToken}`;
     
     return `
       <!DOCTYPE html>
