@@ -8,6 +8,7 @@ import { baseMetadata } from "@/utils/metadata";
 import ClientWrapper from "@/components/clientWrapper";
 
 import {NavigationWrapper} from "@/context/navigationWrapper";
+import { AuthProvider } from "@/context/authContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -62,9 +63,11 @@ export default function RootLayout({
         <meta name="description" content={metadata.description as string} />
       </head>
       <body className="bg-[whitesmoke] font-sora relative">
-        <ClientWrapper>
+        <AuthProvider>
+          <ClientWrapper>
           <NavigationWrapper>{children}</NavigationWrapper>
         </ClientWrapper>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -148,6 +148,8 @@ export const PhotoUploader = ({ onFilesSelected }: PhotoUploaderProps) => {
                   src={preview} 
                   alt={`Preview ${index + 1}`} 
                   className="w-full h-32 object-cover rounded"
+                  width={300}
+                  height={500}
                 />
                 <button
                   onClick={(e) => {

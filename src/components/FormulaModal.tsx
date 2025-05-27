@@ -3,8 +3,9 @@ import katex from "katex";
 
 type FormulaModalProps = {
   onClose: () => void;
-  onInsert: (formula: string) => void;
+  onInsert: (formula: string, description?: string) => void;
   initialFormula?: string; // Add this to receive an initial formula when editing
+  initialDescription?: string;
 };
 
 
@@ -21,10 +22,14 @@ export const FormulaModal: React.FC<FormulaModalProps> = ({
   onClose,
   onInsert,
   initialFormula = "",
+  initialDescription = "",
 }) => {
   const [formula, setFormula] = useState("");
   const [preview, setPreview] = useState("");
   const [activeCategory, setActiveCategory] = useState("basic");
+  const [formulaDescription, setFormulaDescription] = useState(""); // New state for formula description
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null); // Track selected template
+
   // const [showHumanReadable, setShowHumanReadable] = useState(false); 
   // Toggle for human readable display
 
@@ -200,11 +205,30 @@ export const FormulaModal: React.FC<FormulaModalProps> = ({
     return humanReadable;
   };
 
+   // Get complete human-readable description including formula name
+  const getCompleteDescription = (): string => {
+    const basicDescription = getFormulaDescription(formula);
+    
+    if (formulaDescription.trim() && basicDescription.trim()) {
+      return `${formulaDescription}: ${basicDescription}`;
+    } else if (formulaDescription.trim()) {
+      return formulaDescription;
+    } else if (basicDescription.trim()) {
+      return basicDescription;
+    } else {
+      return "Your formula description will appear here";
+    }
+  };
+
   // Update the formula input and preview
- // Update the formula input and preview
+  // Update the formula input and preview
   const updateFormula = (newFormula: string) => {
     setFormula(newFormula);
     renderPreview(newFormula);
+    // Clear selected template when manually editing formula
+    if (selectedTemplate && newFormula !== selectedTemplate) {
+      setSelectedTemplate(null);
+    }
   };
 
   // Separate function to render the preview
@@ -227,12 +251,15 @@ export const FormulaModal: React.FC<FormulaModalProps> = ({
   };
 
 
-  // Initialize the preview when component mounts or initialFormula changes
+   // Initialize the preview when component mounts or initialFormula changes
   useEffect(() => {
     if (initialFormula) {
       updateFormula(initialFormula);
     }
-  }, [initialFormula, updateFormula]);
+    if (initialDescription) {
+      setFormulaDescription(initialDescription);
+    }
+  }, [initialFormula, initialDescription, updateFormula]);
 
   // Add a symbol to the formula
   const insertSymbol = (symbol: string) => {
@@ -240,21 +267,12 @@ export const FormulaModal: React.FC<FormulaModalProps> = ({
   };
 
   // Use a template formula
-  const applyTemplate = (latex: string) => {
-    updateFormula(latex);
+  // Use a template formula
+  const applyTemplate = (template: {label: string, latex: string}) => {
+    updateFormula(template.latex);
+    setFormulaDescription(template.label);
+    setSelectedTemplate(template.latex);
   };
-
-  // Generate SVG from KaTeX output
-  // const generateSvgFromKatex = (katexHtml: string): string => {
-  //   // This is a placeholder for the actual SVG conversion
-  //   // In a real implementation, you would parse the KaTeX HTML and convert it to SVG
-  //   // This is a simplified version that wraps the KaTeX HTML in an SVG container
-  //   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60">
-  //     <foreignObject width="100%" height="100%">
-  //       <div xmlns="http://www.w3.org/1999/xhtml">${katexHtml}</div>
-  //     </foreignObject>
-  //   </svg>`;
-  // };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
@@ -267,6 +285,21 @@ export const FormulaModal: React.FC<FormulaModalProps> = ({
           <h2 className="text-xl font-bold mb-4">
             Insert Mathematical Formula
           </h2>
+
+          {/* Formula Name/Description Input */}
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Formula Name/Description:</label>
+            <input
+              type="text"
+              value={formulaDescription}
+              onChange={(e) => setFormulaDescription(e.target.value)}
+              placeholder="e.g., Quadratic Formula, Pythagorean Theorem"
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Optional: Give your formula a descriptive name
+            </p>
+          </div>
 
           {/* Formula Input */}
           <div className="mb-4">
@@ -282,11 +315,9 @@ export const FormulaModal: React.FC<FormulaModalProps> = ({
 
           {/* Human Readable Description */}
           <div className="mb-4">
-            <label className="block mb-2 font-medium">Human Readable:</label>
+            <label className="block mb-2 font-medium">Complete Description:</label>
             <div className="p-2 border border-gray-300 rounded bg-gray-50 min-h-10">
-              {formula
-                ? getFormulaDescription(formula)
-                : "Your formula in plain language will appear here"}
+              {getCompleteDescription()}
             </div>
           </div>
 
@@ -345,8 +376,12 @@ export const FormulaModal: React.FC<FormulaModalProps> = ({
               {templates.map((template, index) => (
                 <button
                   key={index}
-                  className="p-2 border border-gray-300 rounded hover:bg-gray-100 flex flex-col items-center"
-                  onClick={() => applyTemplate(template.latex)}
+                  className={`p-2 border rounded hover:bg-gray-100 flex flex-col items-center ${
+                    selectedTemplate === template.latex 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300'
+                  }`}
+                  onClick={() => applyTemplate(template)}
                 >
                   <span
                     dangerouslySetInnerHTML={{
@@ -369,7 +404,7 @@ export const FormulaModal: React.FC<FormulaModalProps> = ({
             <button
               className="px-4 py-2 bg-blue-500 text-white rounded"
               onClick={() => {
-                onInsert(formula);
+                onInsert(formula, getCompleteDescription());
                 onClose();
               }}
             >

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { FormulaModal } from '@/components/FormulaModal';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -19,6 +19,7 @@ export type Section = {
   id: string;
   type: 'title' | 'subtitle' | 'richText' | 'formula' | 'image';
   content: string;
+  description?: string;
   formatting?: {
     align?: 'left' | 'center' | 'right';
     underline?: boolean;
@@ -28,15 +29,265 @@ export type Section = {
   imageDescription?: string;
 };
 
-// Sortable item component
-const SortableSection = ({ section, updateContent, removeSection, updateFormatting, updateImageDescription }: { 
-  section: Section, 
-  index: number,
-  updateContent: (id: string, content: string) => void,
-  removeSection: (id: string) => void,
-  updateFormatting: (id: string, formatting: Section['formatting']) => void,
-  updateImageDescription: (id: string, description: string) => void
-}) => {
+
+
+export const TextUploader = ({ onContentChange = () => {}, initialContent }: TextUploaderProps) => {
+  const [sections, setSections] = useState<Section[]>([]);
+  const [showFormulaModal, setShowFormulaModal] = useState(false);
+  const [currentFormulaId, setCurrentFormulaId] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [idCounter, setIdCounter] = useState(0); // Add counter for stable IDs
+
+
+  // Configure DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+   // Generate stable unique IDs using counter
+  const generateId = useCallback(() => {
+    const newId = `section-${idCounter}`;
+    setIdCounter(prev => prev + 1);
+    return newId;
+  }, [idCounter]);
+
+  // Initialize with initial content if provided
+  // Initialize with initial content if provided
+  useEffect(() => {
+    if (initialContent) {
+      try {
+        const parsedContent = JSON.parse(initialContent);
+        if (Array.isArray(parsedContent)) {
+          setSections(parsedContent);
+          // Update counter to avoid ID conflicts
+          const maxId = parsedContent.reduce((max, section) => {
+            const match = section.id.match(/section-(\d+)/);
+            return match ? Math.max(max, parseInt(match[1])) : max;
+          }, -1);
+          setIdCounter(maxId + 1);
+        }
+      } catch (error) {
+        console.error("Failed to parse initial content:", error);
+      }
+    }
+  }, [initialContent]);
+
+   // Memoize update function to prevent unnecessary re-renders
+  const updateParentContent = useCallback((updatedSections: Section[]) => {
+    if (typeof onContentChange === 'function') {
+      onContentChange(JSON.stringify(updatedSections));
+    }
+  }, [onContentChange]);
+
+  const addSection = useCallback((type: Section['type']) => {
+    const newSection: Section = { 
+      id: generateId(), 
+      type, 
+      content: '',
+      ...(type === 'title' || type === 'subtitle' ? { formatting: { align: 'left', underline: false, bold: false, italic: false } } : {}),
+      ...(type === 'image' ? { imageDescription: '' } : {})
+    };
+    setSections(prev => {
+      const updated = [...prev, newSection];
+      updateParentContent(updated);
+      return updated;
+    });
+  }, [generateId, updateParentContent]);
+
+  const updateSectionContent = useCallback((id: string, content: string) => {
+    setSections(prev => {
+      const updatedSections = prev.map(section => 
+        section.id === id ? { ...section, content } : section
+      );
+      updateParentContent(updatedSections);
+      return updatedSections;
+    });
+  }, [updateParentContent]);
+
+  const updateSectionFormatting = useCallback((id: string, formatting: Section['formatting']) => {
+    setSections(prev => {
+      const updatedSections = prev.map(section => 
+        section.id === id ? { ...section, formatting } : section
+      );
+      updateParentContent(updatedSections);
+      return updatedSections;
+    });
+  }, [updateParentContent]);
+
+  const updateImageDescription = useCallback((id: string, description: string) => {
+    setSections(prev => {
+      const updatedSections = prev.map(section => 
+        section.id === id ? { ...section, imageDescription: description } : section
+      );
+      updateParentContent(updatedSections);
+      return updatedSections;
+    });
+  }, [updateParentContent]);
+
+  const removeSection = useCallback((id: string) => {
+    setSections(prev => {
+      const updatedSections = prev.filter(section => section.id !== id);
+      updateParentContent(updatedSections);
+      return updatedSections;
+    });
+  }, [updateParentContent]);
+
+  const handleFormulaInsert = useCallback((formula: string, description?: string) => {
+    if (formula) {
+      if (currentFormulaId) {
+        // Update existing formula section
+        setSections(prev => {
+          const updatedSections = prev.map(section => 
+            section.id === currentFormulaId 
+              ? { ...section, content: formula, description: description || '' }
+              : section
+          );
+          updateParentContent(updatedSections);
+          return updatedSections;
+        });
+        setCurrentFormulaId(null);
+      } else {
+        // Create new formula section
+        const newSection = { 
+          id: generateId(), 
+          type: 'formula' as const, 
+          content: formula,
+          description: description || ''
+        };
+        setSections(prev => {
+          const updated = [...prev, newSection];
+          updateParentContent(updated);
+          return updated;
+        });
+      }
+    }
+    setShowFormulaModal(false);
+  }, [currentFormulaId, generateId, updateParentContent]);
+
+  // Add function to edit existing formula
+  const editFormula = useCallback((sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (section && section.type === 'formula') {
+      setCurrentFormulaId(sectionId);
+      setShowFormulaModal(true);
+    }
+  }, [sections]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (active.id !== over?.id) {
+      setSections((items) => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over?.id);
+        
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        updateParentContent(reordered);
+        return reordered;
+      });
+    }
+  }, [updateParentContent]);
+
+  // Reset all sections
+  const clearAll = useCallback(() => {
+    if (window.confirm('Are you sure you want to clear all content? This action cannot be undone.')) {
+      setSections([]);
+      updateParentContent([]);
+      setIdCounter(0); // Reset counter
+    }
+  }, [updateParentContent]);
+
+  // Effect to render formulas in preview mode
+  useEffect(() => {
+    if (previewMode) {
+      try {
+        // Use setTimeout to ensure the DOM is fully rendered before attempting to render formulas
+        setTimeout(() => {
+          const formulaElements = document.querySelectorAll('.preview-formula[data-formula]');
+          formulaElements.forEach(element => {
+            const formula = element.getAttribute('data-formula');
+            if (formula) {
+              katex.render(formula, element as HTMLElement, {
+                throwOnError: false,
+                displayMode: true
+              });
+            }
+          });
+        }, 100);
+      } catch (error) {
+        console.error('Failed to render formulas in preview:', error);
+      }
+    }
+  }, [previewMode, sections]);
+
+  // Apply formatting for preview mode
+   const getPreviewStyles = useCallback((section: Section) => {
+    if (!section.formatting) return {};
+    
+    return {
+      textAlign: section.formatting.align || 'left',
+      textDecoration: section.formatting.underline ? 'underline' : 'none',
+      fontWeight: section.formatting.bold ? 'bold' : 'normal',
+      fontStyle: section.formatting.italic ? 'italic' : 'normal'
+    };
+  }, []);
+
+  // Preview component
+  const PreviewContent = () => (
+    <div className="preview-container p-6 border rounded-lg bg-white">
+      <h2 className="text-xl font-bold mb-4 border-b pb-2">Content Preview</h2>
+      
+      {sections.length === 0 ? (
+        <div className="text-center py-10 text-gray-500">
+          No content has been added yet. Add sections using the toolbar above.
+        </div>
+      ) : (
+        <div className="preview-content">
+          {sections.map((section) => (
+            <div key={section.id} className="mb-4">
+              {section.type === 'title' && (
+                <h1 className="text-2xl font-bold my-2" style={getPreviewStyles(section)}>{section.content || 'Title'}</h1>
+              )}
+              {section.type === 'subtitle' && (
+                <h2 className="text-xl font-semibold my-2" style={getPreviewStyles(section)}>{section.content || 'Subtitle'}</h2>
+              )}
+              {section.type === 'richText' && (
+                <div className="my-3" dangerouslySetInnerHTML={{ __html: section.content || 'Rich text content will appear here' }}></div>
+              )}
+              {section.type === 'formula' && (
+  <div className="my-4">
+    {section.description && (
+      <div className="text-center text-gray-600 italic mb-2 font-medium">
+        {section.description}
+      </div>
+    )}
+    <div className="preview-formula flex justify-center" data-formula={section.content}></div>
+  </div>
+)}
+              {section.type === 'image' && section.content && (
+                <div className="my-3">
+                  <div className="flex justify-center">
+                    <Image src={section.content} alt={section.imageDescription || "Content"} className="max-w-full h-auto rounded" width={500} height={300} />
+                  </div>
+                  {section.imageDescription && (
+                    <p className="text-gray-600 italic text-center mt-2 max-w-lg mx-auto">
+                      {section.imageDescription}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // Sortable item component
+const SortableSection = ({ section }: { section: Section }) => {
   const { 
     attributes, 
     listeners, 
@@ -50,25 +301,27 @@ const SortableSection = ({ section, updateContent, removeSection, updateFormatti
     transition,
   };
 
+  
+
   // Effect to render formulas when they appear in the document
-  useEffect(() => {
-    if (section.type === 'formula' && section.content) {
-      try {
-        const formulaElements = document.querySelectorAll('.formula[data-formula]');
-        formulaElements.forEach(element => {
-          const formula = element.getAttribute('data-formula');
-          if (formula) {
-            katex.render(formula, element as HTMLElement, {
-              throwOnError: false,
-              displayMode: true
-            });
-          }
-        });
-      } catch (error) {
-        console.error('Failed to render formula:', error);
+   useEffect(() => {
+      if (section.type === 'formula' && section.content) {
+        try {
+          const formulaElements = document.querySelectorAll(`[data-section-id="${section.id}"] .formula[data-formula]`);
+          formulaElements.forEach(element => {
+            const formula = element.getAttribute('data-formula');
+            if (formula) {
+              katex.render(formula, element as HTMLElement, {
+                throwOnError: false,
+                displayMode: true
+              });
+            }
+          });
+        } catch (error) {
+          console.error('Failed to render formula:', error);
+        }
       }
-    }
-  }, [section.type, section.content]);
+    }, [section.type, section.content, section.id]);
 
   // Text formatting controls for title and subtitle
   const renderTextFormatControls = () => {
@@ -82,7 +335,7 @@ const SortableSection = ({ section, updateContent, removeSection, updateFormatti
           {(['left', 'center', 'right'] as const).map(align => (
             <button
               key={align}
-              onClick={() => updateFormatting(section.id, { ...formatting, align })}
+              onClick={() => updateSectionFormatting(section.id, { ...formatting, align })}
               className={`px-2 py-1 ${formatting.align === align ? 'bg-blue-100' : 'bg-white'}`}
               title={`Align ${align}`}
             >
@@ -95,21 +348,21 @@ const SortableSection = ({ section, updateContent, removeSection, updateFormatti
         
         <div className="flex border rounded overflow-hidden">
           <button
-            onClick={() => updateFormatting(section.id, { ...formatting, bold: !formatting.bold })}
+            onClick={() => updateSectionFormatting(section.id, { ...formatting, bold: !formatting.bold })}
             className={`px-2 py-1 ${formatting.bold ? 'bg-blue-100' : 'bg-white'}`}
             title="Bold"
           >
             B
           </button>
           <button
-            onClick={() => updateFormatting(section.id, { ...formatting, italic: !formatting.italic })}
+            onClick={() => updateSectionFormatting(section.id, { ...formatting, italic: !formatting.italic })}
             className={`px-2 py-1 ${formatting.italic ? 'bg-blue-100' : 'bg-white'}`}
             title="Italic"
           >
             I
           </button>
           <button
-            onClick={() => updateFormatting(section.id, { ...formatting, underline: !formatting.underline })}
+            onClick={() => updateSectionFormatting(section.id, { ...formatting, underline: !formatting.underline })}
             className={`px-2 py-1 ${formatting.underline ? 'bg-blue-100' : 'bg-white'}`}
             title="Underline"
           >
@@ -137,6 +390,7 @@ const SortableSection = ({ section, updateContent, removeSection, updateFormatti
       ref={setNodeRef} 
       style={style} 
       className="section mb-4 border border-gray-200 rounded-lg p-3 bg-white shadow-sm"
+      data-section-id={section.id}
     >
       <div className="flex justify-between items-center mb-2">
         <div 
@@ -172,7 +426,7 @@ const SortableSection = ({ section, updateContent, removeSection, updateFormatti
           type="text"
           placeholder="Enter Title"
           value={section.content}
-          onChange={(e) => updateContent(section.id, e.target.value)}
+          onChange={(e) => updateSectionContent(section.id, e.target.value)}
           style={getFormattedStyle()}
           className="w-full p-3 border border-gray-300 rounded-md font-bold text-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
@@ -182,7 +436,7 @@ const SortableSection = ({ section, updateContent, removeSection, updateFormatti
           type="text"
           placeholder="Enter Subtitle"
           value={section.content}
-          onChange={(e) => updateContent(section.id, e.target.value)}
+          onChange={(e) => updateSectionContent(section.id, e.target.value)}
           style={getFormattedStyle()}
           className="w-full p-3 border border-gray-300 rounded-md font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
@@ -190,33 +444,56 @@ const SortableSection = ({ section, updateContent, removeSection, updateFormatti
       {section.type === 'richText' && (
         <RichTextEditor
           content={section.content}
-          onChange={(content) => updateContent(section.id, content)}
+          onChange={(content) => updateSectionContent(section.id, content)}
           editorType="full"
           className="min-h-40 border rounded"
           placeholder="Enter educational content here..."
         />
       )}
       {section.type === 'formula' && (
-        <div className="formula-section p-4 border border-gray-300 rounded-md bg-gray-50">
-          {section.content ? (
-            <div>
-              <div className="text-sm text-gray-500 mb-2">Formula (LaTeX):</div>
-              <code className="block bg-gray-100 p-2 mb-3 overflow-x-auto font-mono text-sm">
-                {section.content}
-              </code>
-              <div className="border-t pt-3">
-                <div className="text-sm text-gray-500 mb-2">Preview:</div>
-                <div 
-                  className="formula p-2 flex justify-center items-center" 
-                  data-formula={section.content}
-                ></div>
-              </div>
+  <div className="formula-section p-4 border border-gray-300 rounded-md bg-gray-50">
+    {section.content ? (
+      <div>
+        {/* Formula Description */}
+        {section.description && (
+          <div className="mb-3">
+            <div className="text-sm font-medium text-gray-700 mb-1">Description:</div>
+            <div className="text-gray-600 italic bg-white p-2 rounded border">
+              {section.description}
             </div>
-          ) : (
-            <div className="text-gray-400 italic">Formula will be displayed here after insertion</div>
-          )}
+          </div>
+        )}
+        
+        {/* LaTeX Source */}
+        <div className="mb-3">
+          <div className="flex justify-between items-center mb-1">
+            <div className="text-sm text-gray-500">Formula (LaTeX):</div>
+            <button
+              onClick={() => editFormula(section.id)}
+              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+            >
+              Edit Formula
+            </button>
+          </div>
+          <code className="block bg-gray-100 p-2 overflow-x-auto font-mono text-sm rounded">
+            {section.content}
+          </code>
         </div>
-      )}
+        
+        {/* Rendered Preview */}
+        <div className="border-t pt-3">
+          <div className="text-sm text-gray-500 mb-2">Preview:</div>
+          <div 
+            className="formula p-2 flex justify-center items-center bg-white rounded border" 
+            data-formula={section.content}
+          ></div>
+        </div>
+      </div>
+    ) : (
+      <div className="text-gray-400 italic">Formula will be displayed here after insertion</div>
+    )}
+  </div>
+)}
       {section.type === 'image' && (
         <div className="image-section">
           {section.content ? (
@@ -249,7 +526,7 @@ const SortableSection = ({ section, updateContent, removeSection, updateFormatti
                   const file = e.target.files?.[0];
                   if (file) {
                     const reader = new FileReader();
-                    reader.onload = (e) => updateContent(section.id, e.target?.result as string);
+                    reader.onload = (e) => updateSectionContent(section.id, e.target?.result as string);
                     reader.readAsDataURL(file);
                   }
                 }}
@@ -264,204 +541,6 @@ const SortableSection = ({ section, updateContent, removeSection, updateFormatti
     </div>
   );
 };
-
-export const TextUploader = ({ onContentChange = () => {}, initialContent }: TextUploaderProps) => {
-  const [sections, setSections] = useState<Section[]>([]);
-  const [showFormulaModal, setShowFormulaModal] = useState(false);
-  const [currentFormulaId, setCurrentFormulaId] = useState<string | null>(null);
-  const [previewMode, setPreviewMode] = useState(false);
-
-  // Configure DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  // Generate unique IDs
-  const generateId = () => `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  // Initialize with initial content if provided
-  useEffect(() => {
-    if (initialContent) {
-      try {
-        const parsedContent = JSON.parse(initialContent);
-        if (Array.isArray(parsedContent)) {
-          setSections(parsedContent);
-        }
-      } catch (error) {
-        console.error("Failed to parse initial content:", error);
-      }
-    }
-  }, [initialContent]);
-
-  const addSection = (type: Section['type']) => {
-    const newSection: Section = { 
-      id: generateId(), 
-      type, 
-      content: '',
-      ...(type === 'title' || type === 'subtitle' ? { formatting: { align: 'left', underline: false, bold: false, italic: false } } : {}),
-      ...(type === 'image' ? { imageDescription: '' } : {})
-    };
-    setSections([...sections, newSection]);
-    updateParentContent([...sections, newSection]);
-  };
-
-  const updateSectionContent = (id: string, content: string) => {
-    const updatedSections = sections.map(section => 
-      section.id === id ? { ...section, content } : section
-    );
-    setSections(updatedSections);
-    updateParentContent(updatedSections);
-  };
-
-  const updateSectionFormatting = (id: string, formatting: Section['formatting']) => {
-    const updatedSections = sections.map(section => 
-      section.id === id ? { ...section, formatting } : section
-    );
-    setSections(updatedSections);
-    updateParentContent(updatedSections);
-  };
-
-  const updateImageDescription = (id: string, description: string) => {
-    const updatedSections = sections.map(section => 
-      section.id === id ? { ...section, imageDescription: description } : section
-    );
-    setSections(updatedSections);
-    updateParentContent(updatedSections);
-  };
-
-  const removeSection = (id: string) => {
-    const updatedSections = sections.filter(section => section.id !== id);
-    setSections(updatedSections);
-    updateParentContent(updatedSections);
-  };
-
-  const handleFormulaInsert = (formula: string) => {
-    if (formula) {
-      if (currentFormulaId) {
-        // Update existing formula section
-        updateSectionContent(currentFormulaId, formula);
-        setCurrentFormulaId(null);
-      } else {
-        // Create new formula section
-        const newSection = { id: generateId(), type: 'formula' as const, content: formula };
-        setSections([...sections, newSection]);
-        updateParentContent([...sections, newSection]);
-      }
-    }
-    setShowFormulaModal(false);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (active.id !== over?.id) {
-      setSections((items) => {
-        const oldIndex = items.findIndex(item => item.id === active.id);
-        const newIndex = items.findIndex(item => item.id === over?.id);
-        
-        const reordered = arrayMove(items, oldIndex, newIndex);
-        updateParentContent(reordered);
-        return reordered;
-      });
-    }
-  };
-
-  // Update the parent component with the content
-  const updateParentContent = (updatedSections: Section[]) => {
-    if (typeof onContentChange === 'function') {
-      onContentChange(JSON.stringify(updatedSections));
-    }
-  };
-
-  // Reset all sections
-  const clearAll = () => {
-    if (window.confirm('Are you sure you want to clear all content? This action cannot be undone.')) {
-      setSections([]);
-      updateParentContent([]);
-    }
-  };
-
-  // Effect to render formulas in preview mode
-  useEffect(() => {
-    if (previewMode) {
-      try {
-        // Use setTimeout to ensure the DOM is fully rendered before attempting to render formulas
-        setTimeout(() => {
-          const formulaElements = document.querySelectorAll('.preview-formula[data-formula]');
-          formulaElements.forEach(element => {
-            const formula = element.getAttribute('data-formula');
-            if (formula) {
-              katex.render(formula, element as HTMLElement, {
-                throwOnError: false,
-                displayMode: true
-              });
-            }
-          });
-        }, 100);
-      } catch (error) {
-        console.error('Failed to render formulas in preview:', error);
-      }
-    }
-  }, [previewMode, sections]);
-
-  // Apply formatting for preview mode
-  const getPreviewStyles = (section: Section) => {
-    if (!section.formatting) return {};
-    
-    return {
-      textAlign: section.formatting.align || 'left',
-      textDecoration: section.formatting.underline ? 'underline' : 'none',
-      fontWeight: section.formatting.bold ? 'bold' : 'normal',
-      fontStyle: section.formatting.italic ? 'italic' : 'normal'
-    };
-  };
-
-  // Preview component
-  const PreviewContent = () => (
-    <div className="preview-container p-6 border rounded-lg bg-white">
-      <h2 className="text-xl font-bold mb-4 border-b pb-2">Content Preview</h2>
-      
-      {sections.length === 0 ? (
-        <div className="text-center py-10 text-gray-500">
-          No content has been added yet. Add sections using the toolbar above.
-        </div>
-      ) : (
-        <div className="preview-content">
-          {sections.map((section) => (
-            <div key={section.id} className="mb-4">
-              {section.type === 'title' && (
-                <h1 className="text-2xl font-bold my-2" style={getPreviewStyles(section)}>{section.content || 'Title'}</h1>
-              )}
-              {section.type === 'subtitle' && (
-                <h2 className="text-xl font-semibold my-2" style={getPreviewStyles(section)}>{section.content || 'Subtitle'}</h2>
-              )}
-              {section.type === 'richText' && (
-                <div className="my-3" dangerouslySetInnerHTML={{ __html: section.content || 'Rich text content will appear here' }}></div>
-              )}
-              {section.type === 'formula' && (
-                <div className="preview-formula my-3 flex justify-center" data-formula={section.content}></div>
-              )}
-              {section.type === 'image' && section.content && (
-                <div className="my-3">
-                  <div className="flex justify-center">
-                    <Image src={section.content} alt={section.imageDescription || "Content"} className="max-w-full h-auto rounded" width={500} height={300} />
-                  </div>
-                  {section.imageDescription && (
-                    <p className="text-gray-600 italic text-center mt-2 max-w-lg mx-auto">
-                      {section.imageDescription}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <div className="flex flex-col mb-6 p-2 w-full h-full bg-gray-50">
@@ -546,15 +625,11 @@ export const TextUploader = ({ onContentChange = () => {}, initialContent }: Tex
                     items={sections.map(s => s.id)} 
                     strategy={verticalListSortingStrategy}
                   >
-                    {sections.map((section, index) => (
+                    {sections.map((section) => (
                       <SortableSection
                         key={section.id}
                         section={section}
-                        index={index}
-                        updateContent={updateSectionContent}
-                        removeSection={removeSection}
-                        updateFormatting={updateSectionFormatting}
-                        updateImageDescription={updateImageDescription}
+                       
                       />
                     ))}
                   </SortableContext>
@@ -567,12 +642,24 @@ export const TextUploader = ({ onContentChange = () => {}, initialContent }: Tex
 
       {/* Formula Modal */}
       {showFormulaModal && (
-        <FormulaModal
-          onClose={() => setShowFormulaModal(false)}
-          onInsert={handleFormulaInsert}
-          initialFormula=''
-        />
-      )}
+  <FormulaModal
+    onClose={() => {
+      setShowFormulaModal(false);
+      setCurrentFormulaId(null);
+    }}
+    onInsert={handleFormulaInsert}
+    initialFormula={
+      currentFormulaId 
+        ? sections.find(s => s.id === currentFormulaId)?.content || ''
+        : ''
+    }
+    initialDescription={
+      currentFormulaId
+        ? sections.find(s => s.id === currentFormulaId)?.description || ''
+        : ''
+    }
+  />
+)}
       
       {/* Save/Export Actions */}
       <div className="max-w-5xl mx-auto w-full mt-6 p-4 bg-white rounded-lg shadow-sm border">

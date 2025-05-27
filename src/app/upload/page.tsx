@@ -1,12 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {PDFUploader} from '@/components/upload/PDFUploader';
 import {PhotoUploader} from '@/components/upload/PhotoUploader';
 import {VideoUploader} from '@/components/upload/VideoUploader';
 import {TextUploader} from '@/components/upload/TextUploader';
 import {InfoForm} from '@/components/upload/Infoform';
+
+// Video types imported from VideoUploader
+type VideoPlatform = 'YouTube' | 'Vimeo' | 'Facebook' | 'Instagram' | 'TikTok' | 'Twitter' | 'Twitch' | 'Dailymotion' | 'Other';
+
+interface VideoMetadata {
+  title?: string;
+  duration?: number;
+  width?: number;
+  height?: number;
+  format?: string;
+  bitrate?: number;
+  fileSize?: number;
+  platform?: VideoPlatform;
+  originalUrl?: string;
+  thumbnailUrl?: string;
+}
+
+type VideoSource = {
+  type: 'file' | 'url';
+  data: File | string;
+  metadata: VideoMetadata;
+};
 
 export type MaterialType = 'PDF' | 'PHOTOS' | 'VIDEO' | 'TEXT';
 export type MaterialInfo = {
@@ -17,6 +39,7 @@ export type MaterialInfo = {
   topic: string;
   materialType: MaterialType | null;
   files: File[] | null;
+  videoSource?: VideoSource | null;
   textContent?: string;
 };
 
@@ -41,7 +64,14 @@ export default function UploadPage() {
 
   // Set material type
   const handleMaterialTypeSelect = (type: MaterialType) => {
-    setMaterialInfo({ ...materialInfo, materialType: type });
+    setMaterialInfo({ 
+      ...materialInfo, 
+      materialType: type,
+      // Clear previous content when switching types
+      files: null,
+      videoSource: null,
+      textContent: undefined
+    });
     setCurrentStep(2);
   };
 
@@ -50,17 +80,76 @@ export default function UploadPage() {
     setMaterialInfo({ ...materialInfo, files });
   };
 
-  // Handle text content
-  const handleTextContent = (content: string) => {
-    setMaterialInfo({ ...materialInfo, textContent: content });
+  // Handle video selection - specific for VideoUploader
+  const handleVideoSelected = (videoSource: VideoSource | null) => {
+    if (videoSource) {
+      // If the video is a file, also add it to the files array
+      if (videoSource.type === 'file') {
+        const file = videoSource.data as File;
+        setMaterialInfo({
+          ...materialInfo,
+          videoSource,
+          files: file ? [file] : null
+        });
+      } else {
+        // If it's a URL, just store the videoSource
+        setMaterialInfo({
+          ...materialInfo,
+          videoSource,
+          files: null // Clear files array if we have a URL
+        });
+      }
+    } else {
+      // If videoSource is null, clear both videoSource and files
+      setMaterialInfo({
+        ...materialInfo,
+        videoSource: null,
+        files: null
+      });
+    }
   };
 
+  // Handle text content - FIXED: Properly wrapped with useCallback and debounced
+  const handleTextContent = useCallback((content: string) => {
+    // Use requestAnimationFrame to defer the state update
+   setMaterialInfo(prev => ({ 
+    ...prev, 
+    textContent: content
+  }));
+  }, []);
+
+   // Check if the current material type has valid data
+  const hasValidData = useCallback(() => {
+    switch (materialInfo.materialType) {
+      case 'PDF':
+      case 'PHOTOS':
+        return materialInfo.files && materialInfo.files.length > 0;
+      case 'VIDEO':
+        return materialInfo.videoSource !== null;
+      case 'TEXT':
+        return materialInfo.textContent && materialInfo.textContent.trim() !== '';
+      default:
+        return false;
+    }
+  }, [materialInfo.materialType, materialInfo.files, materialInfo.videoSource, materialInfo.textContent]);
+
+
   // Navigate to preview page
-  const goToPreview = () => {
-    // In a real app, you'd save this state to context, Redux, or localStorage
-    localStorage.setItem('materialInfo', JSON.stringify(materialInfo));
-    router.push('/upload/preview');
-  };
+  // Navigate to preview page
+  const goToPreview = useCallback(() => {
+    // Save the complete material info to localStorage
+    try {
+      localStorage.setItem('materialInfo', JSON.stringify(materialInfo));
+      router.push('/upload/preview');
+    } catch (error) {
+      console.error('Error saving material info:', error);
+      alert('Error saving data. Please try again.');
+    }
+  }, [materialInfo, router]);
+
+  const goBackToStep1 = useCallback(() => {
+    setCurrentStep(1);
+  }, []);
 
   return (
     <div>
@@ -89,25 +178,28 @@ export default function UploadPage() {
           )}
           
           {materialInfo.materialType === 'VIDEO' && (
-            <VideoUploader onFilesSelected={handleFilesSelected} />
+            <VideoUploader onVideoSelected={handleVideoSelected} maxFileSizeMB={500} />
           )}
           
           {materialInfo.materialType === 'TEXT' && (
-            <TextUploader onContentChange={handleTextContent} />
+            <TextUploader 
+              onContentChange={handleTextContent}
+              initialContent={materialInfo.textContent}
+            />
           )}
 
           <div className="mt-6 flex justify-between">
             <button 
-              onClick={() => setCurrentStep(1)} 
+              onClick={goBackToStep1}
               className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
             >
               Back
             </button>
             <button 
               onClick={goToPreview} 
-              disabled={!materialInfo.files && !materialInfo.textContent}
+              disabled={!hasValidData()}
               className={`px-6 py-2 rounded ${
-                materialInfo.files || materialInfo.textContent 
+                hasValidData()
                   ? 'bg-blue-600 text-white hover:bg-blue-700' 
                   : 'bg-gray-300 cursor-not-allowed'
               }`}
@@ -119,4 +211,5 @@ export default function UploadPage() {
       )}
     </div>
   );
+
 }

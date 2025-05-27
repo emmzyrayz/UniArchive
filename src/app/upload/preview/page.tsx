@@ -7,6 +7,8 @@ import {PhotoPreview} from '@/components/preview/PhotoPreview';
 import {VideoPreview} from '@/components/preview/VideoPreview';
 import {TextPreview} from '@/components/preview/TextPreview';
 import type { MaterialInfo } from '@/app/upload/page';
+import { DebugPanel } from '@/components/test/debugDataFlow';
+
 
 export default function PreviewPage() {
   const router = useRouter();
@@ -132,6 +134,8 @@ export default function PreviewPage() {
         >
           Submit Material
         </button>
+
+        <DebugPanel materialInfo={materialInfo} />
       </div>
     </div>
   );

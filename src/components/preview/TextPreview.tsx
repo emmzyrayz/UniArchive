@@ -11,54 +11,91 @@ type TextPreviewProps = {
 };
 
 export const TextPreview = ({ materialInfo }: TextPreviewProps) => {
-  const [textContent, setTextContent] = useState<string>('');
   const [parsedSections, setParsedSections] = useState<Section[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fontSize, setFontSize] = useState<string>('medium');
   const [lineSpacing, setLineSpacing] = useState<number>(1.6);
   const [showRawText, setShowRawText] = useState(false);
+  const [rawTextContent, setRawTextContent] = useState<string>('');
+  
   
   // Load content from file
+   // Load content - FIXED: Now properly handles textContent from materialInfo
   useEffect(() => {
-    if (materialInfo.files && materialInfo.files.length > 0) {
-      const file = materialInfo.files[0];
-      console.log(`Processing file: ${file.name}, type: ${file.type}`);
+    console.log('MaterialInfo received:', materialInfo);
+    
+    // First priority: Check if we have textContent (structured content)
+    if (materialInfo.textContent) {
+      console.log('Found textContent:', materialInfo.textContent);
       
+      try {
+        const parsed = JSON.parse(materialInfo.textContent);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          console.log('Successfully parsed sections:', parsed);
+          setParsedSections(parsed);
+          setRawTextContent(materialInfo.textContent); // Store raw JSON for raw view
+          setShowRawText(false);
+        } else {
+          console.log('TextContent is not a valid sections array');
+          setRawTextContent(materialInfo.textContent);
+          setShowRawText(true);
+        }
+      } catch (error) {
+        console.error('Error parsing textContent:', error);
+        setRawTextContent(materialInfo.textContent);
+        setShowRawText(true);
+      }
+      
+      setIsLoading(false);
+    } 
+    // Second priority: Check if we have files (for backward compatibility)
+    else if (materialInfo.files && materialInfo.files.length > 0) {
+      console.log('Found files, reading first file:', materialInfo.files[0].name);
+      
+      const file = materialInfo.files[0];
       const reader = new FileReader();
+      
       reader.onload = (e) => {
         const content = e.target?.result as string || '';
-        setTextContent(content);
+        console.log('File content loaded:', content.substring(0, 100) + '...');
+        
+        setRawTextContent(content);
         
         // Try parsing as JSON (structured content)
         try {
           const parsed = JSON.parse(content);
           if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
+            console.log('File contains structured sections');
             setParsedSections(parsed);
             setShowRawText(false);
           } else {
-            // If not valid sections format, treat as raw text
+            console.log('File contains plain text');
             setShowRawText(true);
           }
         } catch {
-          // If parsing fails, treat as raw text (removed unused error variable)
-          console.log('Not JSON format, treating as raw text');
+          console.log('File is not JSON format, treating as plain text');
           setShowRawText(true);
         }
         
         setIsLoading(false);
       };
+      
       reader.onerror = () => {
         console.error('Error reading file');
         setIsLoading(false);
       };
+      
       reader.readAsText(file);
-    } else {
+    } 
+    // No content found
+    else {
+      console.log('No textContent or files found');
       setIsLoading(false);
     }
-  }, [materialInfo.files]);
+  }, [materialInfo]);
 
   // Render formulas
-  useEffect(() => {
+   useEffect(() => {
     if (!showRawText && parsedSections.length > 0) {
       try {
         setTimeout(() => {
@@ -110,11 +147,23 @@ export const TextPreview = ({ materialInfo }: TextPreviewProps) => {
     );
   }
 
-  if (!textContent) {
+  // Check if we have any content to display
+  const hasContent = parsedSections.length > 0 || rawTextContent.trim() !== '';
+
+
+  if (!hasContent) {
     return (
       <div className="text-center py-12">
         <h2 className="text-xl font-semibold mb-4">No Content Found</h2>
-        <p>Unable to load content from the uploaded file.</p>
+        <p className="text-gray-600 mb-4">
+          No text content was found in the uploaded material.
+        </p>
+        <div className="text-sm text-gray-500">
+          <p>Debug info:</p>
+          <p>Has textContent: {materialInfo.textContent ? 'Yes' : 'No'}</p>
+          <p>Has files: {materialInfo.files?.length ? `Yes (${materialInfo.files.length})` : 'No'}</p>
+          <p>Parsed sections: {parsedSections.length}</p>
+        </div>
       </div>
     );
   }
@@ -190,15 +239,31 @@ export const TextPreview = ({ materialInfo }: TextPreviewProps) => {
         style={{ lineHeight: lineSpacing }}
       >
         {showRawText ? (
-          <pre className="whitespace-pre-wrap font-mono text-sm">{textContent}</pre>
+          <div>
+            <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded">
+              <p className="text-sm text-blue-700">
+                <strong>Raw Content:</strong> This shows the raw content as stored in the system.
+              </p>
+            </div>
+            <pre className="whitespace-pre-wrap font-mono text-sm bg-gray-50 p-4 rounded border">
+              {rawTextContent}
+            </pre>
+          </div>
         ) : (
           <div className="preview-formatted">
             {parsedSections.length === 0 ? (
-              <div className="text-center py-10 text-gray-500">
-                No formatted content available. Try switching to raw text view.
+               <div className="text-center py-10 text-gray-500">
+                <p>No formatted content available.</p>
+                <p className="text-sm mt-2">Try switching to raw text view to see the content.</p>
               </div>
             ) : (
               <div>
+                <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-400 rounded">
+                  <p className="text-sm text-green-700">
+                    <strong>Formatted Content:</strong> Showing {parsedSections.length} section(s) with proper formatting.
+                  </p>
+                </div>
+
                 {parsedSections.map((section) => (
                   <div key={section.id} className="mb-4">
                     {section.type === 'title' && (
@@ -206,7 +271,7 @@ export const TextPreview = ({ materialInfo }: TextPreviewProps) => {
                         className="text-2xl font-bold my-2" 
                         style={getPreviewStyles(section)}
                       >
-                        {section.content || 'Title'}
+                        {section.content || 'Untitled'}
                       </h1>
                     )}
                     
@@ -221,33 +286,33 @@ export const TextPreview = ({ materialInfo }: TextPreviewProps) => {
                     
                     {section.type === 'richText' && (
                       <div 
-                        className="my-3" 
-                        dangerouslySetInnerHTML={{ __html: section.content || 'Rich text content will appear here' }}
+                        className="my-3 prose max-w-none" 
+                        dangerouslySetInnerHTML={{ __html: section.content || '<p><em>No content</em></p>' }}
                       ></div>
                     )}
                     
                     {section.type === 'formula' && (
                       <div className="my-3 flex justify-center">
                         <div 
-                          className="preview-formula p-2" 
+                          className="preview-formula p-4 bg-gray-50 rounded border" 
                           data-formula={section.content}
                         ></div>
                       </div>
                     )}
                     
                     {section.type === 'image' && section.content && (
-                      <div className="my-3">
+                      <div className="my-4">
                         <div className="flex justify-center">
                           <Image 
                             src={section.content} 
                             alt={section.imageDescription || "Content image"} 
-                            className="max-w-full h-auto rounded" 
+                            className="max-w-full h-auto rounded border shadow-sm" 
                             width={500} 
                             height={300} 
                           />
                         </div>
                         {section.imageDescription && (
-                          <p className="text-gray-600 italic text-center mt-2 max-w-lg mx-auto">
+                          <p className="text-gray-600 italic text-center mt-3 max-w-2xl mx-auto">
                             {section.imageDescription}
                           </p>
                         )}
@@ -263,19 +328,27 @@ export const TextPreview = ({ materialInfo }: TextPreviewProps) => {
       
       {/* Information and Download */}
       <div className="mt-6 flex items-center justify-between">
-        <div className="flex items-center">
+        <div className="flex items-center space-x-4">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
             {materialInfo.topic || 'Unnamed Document'}
           </span>
+          <span className="text-sm text-gray-500">
+            {parsedSections.length} sections
+          </span>
           {materialInfo.files && materialInfo.files.length > 0 && (
-            <span className="ml-2 text-sm text-gray-500">
-              {materialInfo.files[0].name}
+            <span className="text-sm text-gray-500">
+              Source: {materialInfo.files[0].name}
             </span>
           )}
         </div>
-        <button className="bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-1 px-3 rounded-md text-sm transition-colors">
-          Download
-        </button>
+        <div className="flex space-x-2">
+          <button className="bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-md text-sm transition-colors">
+            Edit Content
+          </button>
+          <button className="bg-green-50 hover:bg-green-100 text-green-700 font-medium py-2 px-4 rounded-md text-sm transition-colors">
+            Export
+          </button>
+        </div>
       </div>
     </div>
   );
