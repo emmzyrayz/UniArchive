@@ -9,7 +9,7 @@ export interface IUser extends Document {
   email: string;
   emailHash: string; // For searching
   password: string;
-  role: "admin" | "worker" | "student";
+  role: "admin" | "contributor" | "student" | "mod";
   dob: Date;
   phone: string;
   phoneHash: string; // For searching
@@ -91,7 +91,7 @@ const UserSchema: Schema = new Schema<IUser>(
     profilePhoto: { type: String },
     role: {
       type: String,
-      enum: ["admin", "worker", "student"],
+      enum: ["admin", "contributor", "student", "mod"],
       default: "student",
     },
     school: { type: String, required: true },

@@ -1,13 +1,18 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import jwt from 'jsonwebtoken';
 
+// User role type
+type UserRole = "admin" | "contributor" | "student" | "mod";
+
+
 // User interface
-interface User {
+export interface User {
   id: string;
   fullName: string;
   email: string;
+  role: UserRole; // Added role property
   school: string;
   faculty: string;
   department: string;
@@ -15,6 +20,10 @@ interface User {
   upid: string;
   isVerified: boolean;
   profilePhoto?: string;
+  dob: Date; // Changed from optional to required Date type
+  phone?: string; // Added phone property
+  gender?: string; // Added gender property
+  regNumber?: string; // Added regNumber property
 }
 
 // Form data interface for signup
@@ -35,8 +44,18 @@ interface SignupFormData {
 // JWT payload interface
 interface JWTPayload {
   user: User;
+  sessionToken: string;
   iat?: number;
   exp?: number;
+}
+
+// Session info interface
+interface SessionInfo {
+  signInTime: string;
+  lastActivity: string;
+  expiresAt: string;
+  deviceInfo: string;
+  sessionToken?: string; // Add session token to session info
 }
 
 // Context interface
@@ -44,9 +63,11 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  sessionInfo: SessionInfo | null;
   register: (formData: SignupFormData) => Promise<{ success: boolean; message: string; requiresVerification?: boolean }>;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
-  logout: () => void;
+  logout: (logoutAllSessions?: boolean) => Promise<void>;
+  checkOnlineStatus: () => Promise<boolean>;
   verifyEmail: (email: string, code: string) => Promise<{ success: boolean; message: string }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message: string }>;
   resetPassword: (token: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
@@ -91,21 +112,181 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
 
-  // Check for existing token on mount
-  useEffect(() => {
+  // Use ref to prevent multiple simultaneous auth checks
+  const isCheckingAuth = useRef(false);
+  const initializationComplete = useRef(false);
+
+
+  // Handle logout - moved up to be used in checkOnlineStatus
+  // Handle logout - moved up to be used in checkOnlineStatus
+  const handleLogout = useCallback(async (logoutAllSessions: boolean = false) => {
     const token = getStorageItem('authToken');
+    
     if (token) {
-      const decoded = verifyToken(token);
-      if (decoded) {
-        setUser(decoded.user);
-        setIsAuthenticated(true);
-      } else {
-        removeStorageItem('authToken');
+      try {
+        if (logoutAllSessions) {
+          // Logout all sessions
+          await fetch('/api/auth/logout', {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+        } else {
+          // Logout current session only
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+        }
+      } catch (error) {
+        console.error('Logout API call failed:', error);
+        // Continue with local logout even if API fails
       }
     }
-    setIsLoading(false);
+
+    // Clear local state regardless of API response
+    removeStorageItem('authToken');
+    removeStorageItem('sessionToken');
+    setUser(null);
+    setIsAuthenticated(false);
+    setSessionInfo(null);
   }, []);
+
+  // Check online status with server
+   // Check online status with server - wrapped with useCallback
+  const checkOnlineStatus = useCallback(async (): Promise<boolean> => {
+    
+    if (isCheckingAuth.current) {
+      return false;
+    }
+    const token = getStorageItem('authToken');
+    if (!token) {
+      return false;
+    }
+
+    isCheckingAuth.current = true;
+
+    try {
+      const response = await fetch('/api/user/online-status', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        // If response is not ok, consider session invalid
+        if (response.status === 401) {
+          console.log("Session expired, logging out");
+          await handleLogout(false);
+        }
+        return false;
+      }
+
+      const data = await response.json();
+
+      if (data.isOnline) {
+        // Update session info if available
+        if (data.sessionInfo) {
+          setSessionInfo({
+            ...data.sessionInfo,
+            sessionToken: getStorageItem('sessionToken') || undefined
+          });
+        }
+        return true;
+      } else {
+        // Session expired or invalid
+        if (data.sessionExpired) {
+          console.log("Session expired, logging out");
+          await handleLogout(false);
+        }
+        return false;
+      }
+    } catch (error) {
+      console.error('Online status check failed:', error);
+      return false;
+    }
+  }, [handleLogout]);
+
+   // Initialize auth state - wrapped in useCallback and using ref to prevent loops
+  const initializeAuth = useCallback(async () => {
+    if (initializationComplete.current || isCheckingAuth.current) {
+      return;
+    }
+
+    isCheckingAuth.current = true;
+    setIsLoading(true);
+
+    try {
+      const token = getStorageItem('authToken');
+      if (token) {
+        const decoded = verifyToken(token);
+        if (decoded) {
+          // Token is valid locally, now check with server
+          const isOnline = await checkOnlineStatus();
+          if (isOnline) {
+            setUser(decoded.user);
+            setIsAuthenticated(true);
+          } else {
+            // Server says session is invalid
+            removeStorageItem('authToken');
+            removeStorageItem('sessionToken');
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        } else {
+          // Token is invalid locally
+          removeStorageItem('authToken');
+          removeStorageItem('sessionToken');
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      }
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+      // Clear invalid state
+      removeStorageItem('authToken');
+      removeStorageItem('sessionToken');
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+      initializationComplete.current = true;
+      isCheckingAuth.current = false;
+    }
+  }, [checkOnlineStatus]);
+
+
+
+  // Periodic session validation (every 5 minutes) - only after initialization
+  useEffect(() => {
+    if (!isAuthenticated || !initializationComplete.current) return;
+
+    const interval = setInterval(async () => {
+      if (!isCheckingAuth.current) {
+        const isStillOnline = await checkOnlineStatus();
+        if (!isStillOnline) {
+          console.log("Session validation failed, logging out");
+          await handleLogout(false);
+        }
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, checkOnlineStatus, handleLogout]);
+
+// Check for existing token and validate with server on mount
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
 
   // Register function - now sends plain data to API
   const register = async (formData: SignupFormData): Promise<{ success: boolean; message: string; requiresVerification?: boolean }> => {
@@ -164,10 +345,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await response.json();
 
       if (response.ok) {
-        const { token, user: userData } = data;
+        const { token, user: userData, sessionToken } = data;
+
+        // Store both JWT token and session token
         setStorageItem('authToken', token);
+        if (sessionToken) {
+          setStorageItem('sessionToken', sessionToken);
+        }
+
         setUser(userData);
         setIsAuthenticated(true);
+
+         // Get session info after verification
+        await checkOnlineStatus();
+
         return { success: true, message: 'Login successful!' };
       } else {
         return { success: false, message: data.message || 'Login failed' };
@@ -181,11 +372,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Logout function
-  const logout = () => {
-    removeStorageItem('authToken');
-    setUser(null);
-    setIsAuthenticated(false);
+  const logout = async (logoutAllSessions: boolean = false): Promise<void> => {
+    await handleLogout(logoutAllSessions);
   };
+
 
   // Verify email function - now sends plain email to API
   const verifyEmail = async (email: string, code: string): Promise<{ success: boolean; message: string }> => {
@@ -314,6 +504,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     user,
     isLoading,
     isAuthenticated,
+    sessionInfo,
+    checkOnlineStatus,
     register,
     login,
     logout,
