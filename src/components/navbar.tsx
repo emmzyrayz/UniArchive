@@ -12,7 +12,7 @@ import { useUser } from '@/context/userContext';
 
 // import icons
 import {FaUserCircle, FaSearch} from "react-icons/fa";
-import {FaXmark} from 'react-icons/fa6';
+import {FaChevronDown, FaXmark} from 'react-icons/fa6';
 import {IoMenu} from "react-icons/io5";
 
 
@@ -21,8 +21,10 @@ export const Navbar: React.FC = () => {
   const [isNavbarVisible, setIsNavbarVisible] = useState(true);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [ribbonHeight, setRibbonHeight] = useState(0);
   const navbarRef = useRef<HTMLDivElement>(null);
+  const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastScrollYRef = useRef(0);
   const hideNavbarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -30,7 +32,8 @@ export const Navbar: React.FC = () => {
   const { 
     currentConfig, 
     userItems, 
-    isCurrentRouteAccessible 
+    isCurrentRouteAccessible
+    // breadcrumbs
   } = useNavConfig();
   
   const { 
@@ -83,6 +86,7 @@ export const Navbar: React.FC = () => {
       // Check if scrolling down and not at top
       if (currentScrollY > lastScrollYRef.current && currentScrollY > 70) {
         setIsNavbarVisible(false);
+        setOpenDropdown(null);
         if (hideNavbarTimeoutRef.current) {
           clearTimeout(hideNavbarTimeoutRef.current);
         }
@@ -96,6 +100,7 @@ export const Navbar: React.FC = () => {
         hideNavbarTimeoutRef.current = setTimeout(() => {
           if (window.scrollY > 70) {
             setIsNavbarVisible(false);
+            setOpenDropdown(null);
           }
         }, 3000);
       }
@@ -121,21 +126,40 @@ export const Navbar: React.FC = () => {
     }
   };
 
-  // Handle click outside mobile menu to close it
+  // Handle dropdown interactions
+  const handleDropdownEnter = (categoryName: string) => {
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+    }
+    setOpenDropdown(categoryName);
+  };
+
+  const handleDropdownLeave = () => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setOpenDropdown(null);
+    }, 200); // Small delay to allow moving between dropdown trigger and content
+  };
+
+  // Handle click outside to close dropdowns and mobile menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        isMobileMenuOpen &&
         navbarRef.current &&
         !navbarRef.current.contains(event.target as Node)
       ) {
-        setIsMobileMenuOpen(false);
+        setOpenDropdown(null);
+        if (isMobileMenuOpen) {
+          setIsMobileMenuOpen(false);
+        }
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      if (dropdownTimeoutRef.current) {
+        clearTimeout(dropdownTimeoutRef.current);
+      }
     };
   }, [isMobileMenuOpen]);
 
@@ -187,7 +211,24 @@ export const Navbar: React.FC = () => {
     );
   }
 
- 
+  // Helper function to get all navigation items for mobile menu
+  // const getAllNavItems = () => {
+  //   const allItems = [];
+    
+  //   // Add standalone items
+  //   if (currentConfig.standaloneItems) {
+  //     allItems.push(...currentConfig.standaloneItems);
+  //   }
+    
+  //   // Add items from categories
+  //   if (currentConfig.categories) {
+  //     currentConfig.categories.forEach(category => {
+  //       allItems.push(...category.items);
+  //     });
+  //   }
+    
+  //   return allItems;
+  // };
 
   return (
     <div
@@ -225,9 +266,10 @@ export const Navbar: React.FC = () => {
         <div className="navv-cons flex flex-row items-center justify-end h-full w-[60%] gap-4">
           {/* Navigation Items - Desktop */}
           <div className="nav-con hidden md:flex flex-row items-center justify-center gap-2 h-[40px]">
-            {currentConfig.items.map((item, index) => (
+            {/* Standalone Items */}
+            {currentConfig.standaloneItems?.map((item, index) => (
               <Link
-                key={index}
+                key={`standalone-${index}`}
                 href={item.path}
                 className="flex flex-col items-center justify-center transition-all duration-500 ease-in-out group px-4"
               >
@@ -249,6 +291,51 @@ export const Navbar: React.FC = () => {
                   }`}
                 ></div>
               </Link>
+            ))}
+
+             {/* Dropdown Categories */}
+            {currentConfig.categories?.map((category, index) => (
+              <div
+                key={`category-${index}`}
+                className="relative"
+                onMouseEnter={() => handleDropdownEnter(category.name)}
+                onMouseLeave={handleDropdownLeave}
+              >
+                <button
+                  className="flex items-center gap-1 px-4 py-2 text-[16px] font-semibold text-white/70 hover:text-white transition-all duration-300 group"
+                >
+                  <span>{category.name}</span>
+                  <FaChevronDown 
+                    className={`text-xs transition-transform duration-300 ${
+                      openDropdown === category.name ? 'rotate-180' : ''
+                    }`} 
+                  />
+                </button>
+                
+                {/* Dropdown Menu */}
+                <div
+                  className={`absolute top-full left-0 mt-1 w-48 bg-black/90 backdrop-blur-sm rounded-lg shadow-xl border border-white/10 transition-all duration-300 ${
+                    openDropdown === category.name
+                      ? 'opacity-100 visible translate-y-0'
+                      : 'opacity-0 invisible -translate-y-2'
+                  }`}
+                >
+                  {category.items.map((subItem, subIndex) => (
+                    <Link
+                      key={`sub-${index}-${subIndex}`}
+                      href={subItem.path}
+                      className={`block px-4 py-3 text-sm transition-all duration-200 border-b border-white/5 last:border-b-0 rounded-lg hover:rounded-lg ${
+                        pathname === subItem.path
+                          ? "text-white bg-white/10"
+                          : "text-white/70 hover:text-white hover:bg-white/5"
+                      }`}
+                      onClick={() => setOpenDropdown(null)}
+                    >
+                      {subItem.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
 
@@ -413,10 +500,10 @@ export const Navbar: React.FC = () => {
               </div>
             )}
 
-            {/* Mobile Menu Items */}
-            {currentConfig.items.map((item, index) => (
+            {/* Mobile Menu Items - Organized by Categories */}
+            {currentConfig.standaloneItems?.map((item, index) => (
               <Link
-                key={index}
+                key={`mobile-standalone-${index}`}
                 href={item.path}
                 className={`flex items-center py-4 border-b border-white/10 ${
                   pathname === item.path
@@ -429,10 +516,33 @@ export const Navbar: React.FC = () => {
               </Link>
             ))}
 
+            {/* Mobile Categories */}
+            {currentConfig.categories?.map((category, categoryIndex) => (
+              <div key={`mobile-category-${categoryIndex}`} className="mt-4">
+                <div className="text-white/50 text-sm mb-2 font-semibold">
+                  {category.name}
+                </div>
+                {category.items.map((item, itemIndex) => (
+                  <Link
+                    key={`mobile-category-item-${categoryIndex}-${itemIndex}`}
+                    href={item.path}
+                    className={`flex items-center py-3 pl-4 border-b border-white/10 ${
+                      pathname === item.path
+                        ? "text-white"
+                        : "text-white/70"
+                    }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+            ))}
+
             {/* Mobile User-Specific Items */}
             {userItems && userItems.length > 0 && (
               <>
-                <div className="mt-6 mb-2 text-white/50 text-sm">
+                <div className="mt-6 mb-2 text-white/50 text-sm font-semibold">
                   User Actions
                 </div>
                 {userItems.map((item, index) => (
@@ -451,7 +561,7 @@ export const Navbar: React.FC = () => {
             {/* Mobile Additional Actions */}
             {currentConfig.additionalActions && currentConfig.additionalActions.length > 0 && (
               <>
-                <div className="mt-6 mb-2 text-white/50 text-sm">
+                <div className="mt-6 mb-2 text-white/50 text-sm font-semibold">
                   Additional Actions
                 </div>
                 {currentConfig.additionalActions.map((action, index) => (
