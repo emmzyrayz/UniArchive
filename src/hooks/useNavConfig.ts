@@ -49,8 +49,8 @@ const navConfig: PageNavConfig = {
       {
         name: "Community",
         items: [
-          { name: "Join Us", path: "/auth/signin" },
-          { name: "Sign Up", path: "/auth/signup" },
+          { name: "Sign in", path: "/auth/signin" },
+          { name: "Get Started", path: "/auth/signup" },
         ]
       }
     ],

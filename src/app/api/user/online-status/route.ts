@@ -1,61 +1,155 @@
+// /api/user/online-status/route.ts - Fixed version with proper error handling
+
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/database";
 import SessionCache from "@/models/sessionCacheModel";
-import { IUser } from "@/models/usermodel";
 import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key";
 
 interface JWTPayload {
-  user: IUser;
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    school: string;
+    faculty: string;
+    department: string;
+    uuid: string;
+    upid: string;
+    role: string;
+    isVerified: boolean;
+    profilePhoto?: string;
+    phone?: string;
+    regNumber?: string;
+  };
   sessionToken: string;
   iat?: number;
   exp?: number;
 }
 
-// GET request to check if user is online
+interface UserData {
+  id: string;
+  fullName: string;
+  role: string;
+  school: string;
+  faculty: string;
+  department: string;
+  upid: string;
+  isVerified: boolean;
+  profilePhoto?: string;
+  dob: Date;
+  gender: 'Male' | 'Female' | 'Other';
+  email?: string;
+  phone?: string;
+  regNumber?: string;
+}
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
-    // Get token from Authorization header
+    const cookieStore = await cookies();
+    const sessionUUID = cookieStore.get("sessionId")?.value;
+
+    console.log("Session UUID from cookie:", sessionUUID);
+
+    // Try to get JWT token from Authorization header
+    let token: string | null = null;
     const authorization = request.headers.get('Authorization');
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { message: "No authorization token provided", isOnline: false },
-        { status: 401 }
-      );
+    
+    if (authorization && authorization.startsWith('Bearer ')) {
+      token = authorization.substring(7);
     }
 
-    const token = authorization.substring(7); // Remove 'Bearer ' prefix
-
-    // Verify JWT token
-    let decoded: JWTPayload;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-    } catch {
-      return NextResponse.json(
-        { message: "Invalid token", isOnline: false },
-        { status: 401 }
-      );
-    }
-
-    // Check if session exists and is active in database
-     // Fixed: Using standard Mongoose findOne method
-    const activeSession = await SessionCache.findActiveSession(
-      decoded.sessionToken,
-      'sessionToken'
-    );
-
-    console.log("Active session found:", activeSession ? "Yes" : "No");
-
-
-    if (!activeSession) {
-      console.log("Session not found or expired");
+    if (!token && !sessionUUID) {
       return NextResponse.json(
         { 
-          message: "Session not found or expired", 
+          message: "No authentication provided",
           isOnline: false,
+          hasValidSession: false
+        },
+        { status: 401 }
+      );
+    }
+
+    let decoded: JWTPayload | null = null;
+    
+    // Try to decode JWT if available
+    if (token) {
+      try {
+        decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+        console.log("JWT decoded successfully for user:", decoded.user.email);
+      } catch (jwtError) {
+        console.log("JWT verification failed:", jwtError instanceof Error ? jwtError.message : 'Unknown error');
+        // Continue with UUID-based session check
+      }
+    }
+
+    // Check session using different methods
+    let activeSession = null;
+
+    // Method 1: Try finding by UUID from cookie
+    if (sessionUUID) {
+      console.log("UUID not found, trying sessionToken:", sessionUUID.substring(0, 8) + "...");
+      try {
+        activeSession = await SessionCache.findActiveSession(sessionUUID, 'uuid');
+        if (!activeSession) {
+          console.log("No active session found by UUID, trying as sessionToken");
+          activeSession = await SessionCache.findActiveSession(sessionUUID, 'sessionToken');
+        }
+      } catch (error) {
+        console.log("Error finding session by UUID:", error instanceof Error ? error.message : 'Unknown error');
+      }
+    }
+
+    // Method 2: Try finding by sessionToken from JWT
+    if (!activeSession && decoded?.sessionToken) {
+      console.log("SessionToken not found, trying userId:", decoded.user.id);
+      try {
+        activeSession = await SessionCache.findActiveSession(decoded.sessionToken, 'sessionToken');
+      } catch (error) {
+        console.log("Error finding session by sessionToken:", error instanceof Error ? error.message : 'Unknown error');
+      }
+    }
+
+    // Method 3: Try finding by userId from JWT
+    if (!activeSession && decoded?.user?.id) {
+      try {
+        activeSession = await SessionCache.findActiveSession(decoded.user.id, 'userId');
+      } catch (error) {
+        console.log("Error finding session by userId:", error instanceof Error ? error.message : 'Unknown error');
+      }
+    }
+
+    console.log("Active session found via JWT:", activeSession ? "Yes" : "No");
+
+    if (!activeSession) {
+      return NextResponse.json(
+        {
+          message: "No active session found",
+          isOnline: false,
+          hasValidSession: false
+        },
+        { status: 404 }
+      );
+    }
+
+    // Check if session is still valid
+    const now = new Date();
+    const isSessionValid = activeSession.isActive && 
+                          activeSession.isSignedIn && 
+                          new Date(activeSession.expiresAt) > now;
+
+    console.log("Session is active and valid");
+
+    if (!isSessionValid) {
+      return NextResponse.json(
+        {
+          message: "Session expired or inactive",
+          isOnline: false,
+          hasValidSession: false,
           sessionExpired: true
         },
         { status: 401 }
@@ -63,107 +157,65 @@ export async function GET(request: NextRequest) {
     }
 
     // Update last activity
-     // Fixed: Using standard Mongoose findOneAndUpdate method
-    // Update last activity
-     try {
-      await SessionCache.updateActivity(decoded.sessionToken);
-      console.log("Last activity updated successfully");
-    } catch (updateError) {
-      console.error("Failed to update last activity:", updateError);
-      // Don't fail the request if update fails
-    }
-
-    // Decrypt email for response (if needed)
-    let decryptedEmail;
-    try {
-      decryptedEmail = SessionCache.decryptSensitiveData(activeSession.email);
-    } catch (decryptError) {
-      console.error("Failed to decrypt email:", decryptError);
-      decryptedEmail = "encrypted";
-    }
-
-
-    return NextResponse.json(
-      {
-        message: "User is online",
-        isOnline: true,
-        user: decoded.user,
-        sessionInfo: {
-           signInTime: activeSession.signInTime,
-          lastActivity: activeSession.lastActivity,
-          expiresAt: activeSession.expiresAt,
-          deviceInfo: activeSession.deviceInfo,
-          email: decryptedEmail
-        }
-      },
-      { status: 200 }
-    );
-
-  } catch (error) {
-    console.error("Online status check error:", error);
-    return NextResponse.json(
+    await SessionCache.findOneAndUpdate(
+      { uuid: activeSession.uuid },
       { 
-        message: "Internal server error", 
-        isOnline: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
+        lastActivity: now,
+        updatedAt: now
+      }
     );
-  }
-}
 
-// POST request to check online status for specific user (admin use)
-export async function POST(request: NextRequest) {
-  try {
-    await connectDB();
+    // Prepare user data - handle decryption safely
+    const userData: UserData = {
+      id: activeSession.userId,
+      fullName: activeSession.fullName,
+      role: activeSession.role,
+      school: activeSession.school,
+      faculty: activeSession.faculty,
+      department: activeSession.department,
+      upid: activeSession.upid,
+      isVerified: activeSession.isVerified,
+      profilePhoto: activeSession.profilePhoto,
+      dob: activeSession.dob,
+      gender: activeSession.gender
+    };
 
-    const body = await request.json();
-    const { userId, email, sessionToken } = body;
-
-    if (!userId && !email && !sessionToken) {
-      return NextResponse.json(
-        { message: "userId, email, or sessionToken is required" },
-        { status: 400 }
-      );
-    }
-
-    let activeSession;
-    
-    if (sessionToken) {
-      activeSession = await SessionCache.findActiveSession(sessionToken, 'sessionToken');
-    } else if (userId) {
-      activeSession = await SessionCache.findActiveSession(userId, 'userId');
-    } else if (email) {
-      activeSession = await SessionCache.findActiveSession(email, 'email');
-    }
-
-    if (!activeSession) {
-      return NextResponse.json(
-        {
-          message: "User is not online",
-          isOnline: false
-        },
-        { status: 200 }
-      );
-    }
-
-    // Decrypt sensitive data for response
-    let decryptedEmail;
+    // Safely decrypt sensitive data
     try {
-      decryptedEmail = SessionCache.decryptSensitiveData(activeSession.email);
-    } catch (decryptError) {
-      console.error("Failed to decrypt email:", decryptError);
-      decryptedEmail = "encrypted";
+      if (activeSession.email) {
+        userData.email = SessionCache.decryptSensitiveData(activeSession.email);
+      }
+    } catch (error) {
+      console.log("Failed to decrypt email:", error instanceof Error ? error.message : 'Unknown error');
+      // Don't include email if decryption fails
+    }
+
+    try {
+      if (activeSession.phone) {
+        userData.phone = SessionCache.decryptSensitiveData(activeSession.phone);
+      }
+    } catch (error) {
+      console.log("Failed to decrypt phone:", error instanceof Error ? error.message : 'Unknown error');
+      // Don't include phone if decryption fails
+    }
+
+    try {
+      if (activeSession.regNumber) {
+        userData.regNumber = SessionCache.decryptSensitiveData(activeSession.regNumber);
+      }
+    } catch (error) {
+      console.log("Failed to decrypt regNumber:", error instanceof Error ? error.message : 'Unknown error');
+      // Don't include regNumber if decryption fails
     }
 
     return NextResponse.json(
       {
         message: "User is online",
         isOnline: true,
+        hasValidSession: true,
+        user: userData,
         sessionInfo: {
-          userId: activeSession.userId,
-          email: decryptedEmail,
-          signInTime: activeSession.signInTime,
+          uuid: activeSession.uuid,
           lastActivity: activeSession.lastActivity,
           expiresAt: activeSession.expiresAt,
           deviceInfo: activeSession.deviceInfo,
@@ -175,10 +227,26 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("Online status check error:", error);
+
+    // Handle specific decryption errors
+    if (error instanceof Error && error.message.includes("Invalid initialization vector")) {
+      console.error("Decryption IV error - possibly corrupted session data");
+      return NextResponse.json(
+        {
+          message: "Session data corrupted, please log in again",
+          isOnline: false,
+          hasValidSession: false,
+          sessionCorrupted: true
+        },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
-      { 
-        message: "Internal server error", 
+      {
+        message: "Internal server error",
         isOnline: false,
+        hasValidSession: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

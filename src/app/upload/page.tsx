@@ -2,13 +2,35 @@
 
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {PDFUploader} from '@/components/upload/PDFUploader';
-import {PhotoUploader} from '@/components/upload/PhotoUploader';
-import {VideoUploader} from '@/components/upload/VideoUploader';
-import {TextUploader} from '@/components/upload/TextUploader';
-import {InfoForm} from '@/components/upload/Infoform';
+import { FileUploader } from '@/components/upload/FileUploader';
+import { VideoUploader } from '@/components/upload/VideoUploader';
+import { TextUploader } from '@/components/upload/TextUploader';
+import { InfoForm } from '@/components/upload/Infoform';
 
-// Video types imported from VideoUploader
+// Define material categories and subcategories
+export type MaterialCategory = 
+  | 'LEARNING_AIDS'
+  | 'ACADEMIC_WORK'
+  | 'MEDIA'
+  | 'EXAMS'
+  | 'BOOKS';
+
+export type MaterialSubcategory = 
+  | 'LECTURE_NOTE'
+  | 'PAST_QUESTION'
+  | 'COURSE_MATERIAL'
+  | 'ASSIGNMENT'
+  | 'TUTORIAL'
+  | 'RECORDED_LECTURE'
+  | 'PRESENTATION'
+  | 'PROJECT'
+  | 'LAB_REPORT'
+  | 'EBOOK'
+  | 'TEXTBOOK'  // Added TEXTBOOK here
+  | 'MOCK_EXAM'
+  | 'SYLLABUS';
+
+// Video types
 type VideoPlatform = 'YouTube' | 'Vimeo' | 'Facebook' | 'Instagram' | 'TikTok' | 'Twitter' | 'Twitch' | 'Dailymotion' | 'Other';
 
 interface VideoMetadata {
@@ -30,17 +52,18 @@ type VideoSource = {
   metadata: VideoMetadata;
 };
 
-export type MaterialType = 'PDF' | 'PHOTOS' | 'VIDEO' | 'TEXT';
 export type MaterialInfo = {
   university: string;
   faculty: string;
   department: string;
   course: string;
   topic: string;
-  materialType: MaterialType | null;
+  category: MaterialCategory | null;
+  subcategory: MaterialSubcategory | null;
   files: File[] | null;
   videoSource?: VideoSource | null;
   textContent?: string;
+  metadata?: Record<string, string>; // Additional metadata fields
 };
 
 export default function UploadPage() {
@@ -52,8 +75,10 @@ export default function UploadPage() {
     department: '',
     course: '',
     topic: '',
-    materialType: null,
+    category: null,
+    subcategory: null,
     files: null,
+    metadata: {}
   });
 
   // Handle form field changes
@@ -62,15 +87,28 @@ export default function UploadPage() {
     setMaterialInfo({ ...materialInfo, [name]: value });
   };
 
-  // Set material type
-  const handleMaterialTypeSelect = (type: MaterialType) => {
+  // Handle metadata changes
+  const handleMetadataChange = (name: string, value: string) => {
+    setMaterialInfo(prev => ({
+      ...prev,
+      metadata: {
+        ...prev.metadata,
+        [name]: value
+      }
+    }));
+  };
+
+  // Set material category and subcategory
+  const handleMaterialSelect = (category: MaterialCategory, subcategory: MaterialSubcategory) => {
     setMaterialInfo({ 
       ...materialInfo, 
-      materialType: type,
-      // Clear previous content when switching types
+      category,
+      subcategory,
+      // Clear previous content
       files: null,
       videoSource: null,
-      textContent: undefined
+      textContent: undefined,
+      metadata: {}
     });
     setCurrentStep(2);
   };
@@ -80,27 +118,15 @@ export default function UploadPage() {
     setMaterialInfo({ ...materialInfo, files });
   };
 
-  // Handle video selection - specific for VideoUploader
+  // Handle video selection
   const handleVideoSelected = (videoSource: VideoSource | null) => {
     if (videoSource) {
-      // If the video is a file, also add it to the files array
-      if (videoSource.type === 'file') {
-        const file = videoSource.data as File;
-        setMaterialInfo({
-          ...materialInfo,
-          videoSource,
-          files: file ? [file] : null
-        });
-      } else {
-        // If it's a URL, just store the videoSource
-        setMaterialInfo({
-          ...materialInfo,
-          videoSource,
-          files: null // Clear files array if we have a URL
-        });
-      }
+      setMaterialInfo({
+        ...materialInfo,
+        videoSource,
+        files: videoSource.type === 'file' ? [videoSource.data as File] : null
+      });
     } else {
-      // If videoSource is null, clear both videoSource and files
       setMaterialInfo({
         ...materialInfo,
         videoSource: null,
@@ -109,37 +135,44 @@ export default function UploadPage() {
     }
   };
 
-  // Handle text content - FIXED: Properly wrapped with useCallback and debounced
+  // Handle text content
   const handleTextContent = useCallback((content: string) => {
-    // Use requestAnimationFrame to defer the state update
-   setMaterialInfo(prev => ({ 
-    ...prev, 
-    textContent: content
-  }));
+    setMaterialInfo(prev => ({ ...prev, textContent: content }));
   }, []);
 
-   // Check if the current material type has valid data
+  // Check if the current material has valid data
   const hasValidData = useCallback(() => {
-    switch (materialInfo.materialType) {
-      case 'PDF':
-      case 'PHOTOS':
-        return materialInfo.files && materialInfo.files.length > 0;
-      case 'VIDEO':
-        return materialInfo.videoSource !== null;
-      case 'TEXT':
-        return materialInfo.textContent && materialInfo.textContent.trim() !== '';
+    const { subcategory, files, videoSource, textContent } = materialInfo;
+    
+    if (!subcategory) return false;
+    
+    switch (subcategory) {
+      case 'RECORDED_LECTURE':
+        return videoSource !== null;
+      case 'TEXTBOOK':
+      case 'EBOOK':
+      case 'LECTURE_NOTE':
+      case 'COURSE_MATERIAL':
+      case 'ASSIGNMENT':
+      case 'PROJECT':
+      case 'LAB_REPORT':
+      case 'PAST_QUESTION':
+      case 'MOCK_EXAM':
+      case 'PRESENTATION':
+      case 'SYLLABUS':
+        return files && files.length > 0;
+      case 'TUTORIAL':
+        return textContent && textContent.trim() !== '';
       default:
         return false;
     }
-  }, [materialInfo.materialType, materialInfo.files, materialInfo.videoSource, materialInfo.textContent]);
+  }, [materialInfo]);
 
-
-  // Navigate to preview page
   // Navigate to preview page
   const goToPreview = useCallback(() => {
-    // Save the complete material info to localStorage
     try {
-      localStorage.setItem('materialInfo', JSON.stringify(materialInfo));
+      // Store in memory instead of localStorage for artifact compatibility
+      sessionStorage.setItem('materialInfo', JSON.stringify(materialInfo));
       router.push('/upload/preview');
     } catch (error) {
       console.error('Error saving material info:', error);
@@ -152,46 +185,47 @@ export default function UploadPage() {
   }, []);
 
   return (
-    <div>
+    <div className="max-w-4xl mx-auto p-4">
       {/* Step 1: Basic Information */}
       {currentStep === 1 && (
         <InfoForm 
           materialInfo={materialInfo} 
-          onChange={handleInfoChange} 
-          onSelectMaterialType={handleMaterialTypeSelect} 
+          onChange={handleInfoChange}
+          onMetadataChange={handleMetadataChange}
+          onSelectMaterial={handleMaterialSelect} 
         />
       )}
 
       {/* Step 2: Material Upload */}
-      {currentStep === 2 && materialInfo.materialType && (
-        <div>
-          <h2 className="text-lg font-semibold mb-4">
-            Step 2: Upload {materialInfo.materialType} Material
+      {currentStep === 2 && materialInfo.subcategory && (
+        <div className="mt-6">
+          <h2 className="text-xl font-semibold mb-6">
+            Step 2: Upload Material - {getMaterialLabel(materialInfo.subcategory)}
           </h2>
           
-          {materialInfo.materialType === 'PDF' && (
-            <PDFUploader onFilesSelected={handleFilesSelected} />
-          )}
+          {/* Additional metadata fields */}
+          {renderMetadataFields(materialInfo.subcategory, materialInfo.metadata || {}, handleMetadataChange)}
           
-          {materialInfo.materialType === 'PHOTOS' && (
-            <PhotoUploader onFilesSelected={handleFilesSelected} />
-          )}
-          
-          {materialInfo.materialType === 'VIDEO' && (
+          {/* Upload components */}
+          {materialInfo.subcategory === 'RECORDED_LECTURE' ? (
             <VideoUploader onVideoSelected={handleVideoSelected} maxFileSizeMB={500} />
-          )}
-          
-          {materialInfo.materialType === 'TEXT' && (
+          ) : materialInfo.subcategory === 'TUTORIAL' ? (
             <TextUploader 
               onContentChange={handleTextContent}
               initialContent={materialInfo.textContent}
             />
+          ) : (
+            <FileUploader 
+              onFilesSelected={handleFilesSelected}
+              acceptedTypes={getAcceptedFileTypes(materialInfo.subcategory)}
+              maxFileSizeMB={getMaxFileSize(materialInfo.subcategory)}
+            />
           )}
 
-          <div className="mt-6 flex justify-between">
+          <div className="mt-8 flex justify-between">
             <button 
               onClick={goBackToStep1}
-              className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
             >
               Back
             </button>
@@ -211,5 +245,146 @@ export default function UploadPage() {
       )}
     </div>
   );
+}
 
+// Helper functions
+function getMaterialLabel(subcategory: MaterialSubcategory): string {
+  const labels: Record<MaterialSubcategory, string> = {
+    LECTURE_NOTE: 'Lecture Note',
+    PAST_QUESTION: 'Past Question',
+    COURSE_MATERIAL: 'Course Material',
+    ASSIGNMENT: 'Assignment',
+    TUTORIAL: 'Tutorial',
+    RECORDED_LECTURE: 'Recorded Lecture',
+    PRESENTATION: 'Presentation',
+    PROJECT: 'Project',
+    LAB_REPORT: 'Lab Report',
+    EBOOK: 'E-book',
+    TEXTBOOK: 'Textbook',  // Added TEXTBOOK label
+    MOCK_EXAM: 'Mock Exam',
+    SYLLABUS: 'Syllabus'
+  };
+  return labels[subcategory];
+}
+
+function getAcceptedFileTypes(subcategory: MaterialSubcategory): string {
+  switch (subcategory) {
+    case 'PRESENTATION':
+      return '.pdf,.ppt,.pptx';
+    case 'PROJECT':
+    case 'LAB_REPORT':
+      return '.pdf,.doc,.docx,.zip';
+    default:
+      return '.pdf,.jpg,.jpeg,.png';
+  }
+}
+
+function getMaxFileSize(subcategory: MaterialSubcategory): number {
+  switch (subcategory) {
+    case 'RECORDED_LECTURE':
+      return 500;
+    case 'PRESENTATION':
+    case 'PROJECT':
+      return 100;
+    default:
+      return 50;
+  }
+}
+
+function renderMetadataFields(
+  subcategory: MaterialSubcategory, 
+  metadata: Record<string, string>,
+  onChange: (name: string, value: string) => void
+): React.ReactElement | null {
+  const fields: React.ReactElement[] = [];
+  
+  switch (subcategory) {
+    case 'TEXTBOOK':
+    case 'EBOOK':
+      fields.push(
+        <div key="author" className="mb-4">
+          <label className="block text-sm font-medium mb-1">
+            Author
+          </label>
+          <input
+            type="text"
+            value={metadata.author || ''}
+            onChange={(e) => onChange('author', e.target.value)}
+            className="w-full p-2 border rounded"
+            placeholder="Enter author name"
+          />
+        </div>
+      );
+      fields.push(
+        <div key="isbn" className="mb-4">
+          <label className="block text-sm font-medium mb-1">
+            ISBN
+          </label>
+          <input
+            type="text"
+            value={metadata.isbn || ''}
+            onChange={(e) => onChange('isbn', e.target.value)}
+            className="w-full p-2 border rounded"
+            placeholder="Enter ISBN number"
+          />
+        </div>
+      );
+      break;
+    
+    case 'PAST_QUESTION':
+    case 'MOCK_EXAM':
+      fields.push(
+        <div key="year" className="mb-4">
+          <label className="block text-sm font-medium mb-1">
+            Year
+          </label>
+          <input
+            type="text"
+            value={metadata.year || ''}
+            onChange={(e) => onChange('year', e.target.value)}
+            className="w-full p-2 border rounded"
+            placeholder="e.g., 2023"
+          />
+        </div>
+      );
+      fields.push(
+        <div key="institution" className="mb-4">
+          <label className="block text-sm font-medium mb-1">
+            Institution
+          </label>
+          <input
+            type="text"
+            value={metadata.institution || ''}
+            onChange={(e) => onChange('institution', e.target.value)}
+            className="w-full p-2 border rounded"
+            placeholder="e.g., University of Lagos"
+          />
+        </div>
+      );
+      break;
+    
+    case 'PROJECT':
+      fields.push(
+        <div key="supervisor" className="mb-4">
+          <label className="block text-sm font-medium mb-1">
+            Supervisor
+          </label>
+          <input
+            type="text"
+            value={metadata.supervisor || ''}
+            onChange={(e) => onChange('supervisor', e.target.value)}
+            className="w-full p-2 border rounded"
+            placeholder="Enter supervisor name"
+          />
+        </div>
+      );
+      break;
+  }
+  
+  return fields.length > 0 ? (
+    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+      <h3 className="font-medium mb-3">Additional Information</h3>
+      {fields}
+    </div>
+  ) : null;
 }

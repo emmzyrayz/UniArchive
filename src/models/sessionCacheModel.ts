@@ -1,316 +1,450 @@
+// sessionCacheModel.ts - Fixed version with proper encryption key handling
+
 import mongoose, { Schema, Document, Model } from 'mongoose';
-import CryptoJS from "crypto-js";
+import crypto from 'crypto';
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-secret-encryption-key-32-chars';
+// Encryption configuration
+const ALGORITHM = 'aes-256-cbc';
 
+// Proper encryption key handling
+function getEncryptionKey(): Buffer {
+  const envKey = process.env.ENCRYPTION_KEY;
+  
+  if (envKey) {
+    // If environment key exists, ensure it's the right length
+    if (envKey.length === 64) {
+      // Already a 64-character hex string (32 bytes)
+      return Buffer.from(envKey, 'hex');
+    } else if (envKey.length === 32) {
+      // 32-character string, convert to buffer directly
+      return Buffer.from(envKey);
+    } else {
+      // Hash the provided key to get consistent 32 bytes
+      return crypto.createHash('sha256').update(envKey).digest();
+    }
+  } else {
+    // Generate a consistent key from a default string for development
+    console.warn('ENCRYPTION_KEY not found in environment. Using default key for development.');
+    return crypto.createHash('sha256').update('default-development-encryption-key').digest();
+  }
+}
 
+const KEY_BUFFER = getEncryptionKey();
 
-// Session Cache Interface
 export interface ISessionCache extends Document {
+  uuid: string;
   userId: string;
-  email: string; // Encrypted
-  emailHash: string; // For searching
-  sessionToken: string; // Encrypted
-  sessionTokenHash: string; // For searching
+  sessionToken: string;
+  email: string;
+  emailHash: string;
+  fullName: string;
+  dob: Date;
+  phone?: string;
+  phoneHash?: string;
+  gender: 'Male' | 'Female' | 'Other';
+  profilePhoto?: string;
+  role: 'admin' | 'contributor' | 'student' | 'mod';
+  school: string;
+  faculty: string;
+  department: string;
+  regNumber?: string;
+  regNumberHash?: string;
+  upid: string;
+  isVerified: boolean;
+  isActive: boolean;
   isSignedIn: boolean;
-  signInTime: Date;
   expiresAt: Date;
+  lastActivity: Date;
   deviceInfo?: string;
   ipAddress?: string;
-  lastActivity: Date;
-  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// Static methods interface
-interface ISessionCacheStatics {
-  // Encryption/Decryption methods
+// Interface for user data parameter
+interface IUserData {
+  email: string;
+  fullName: string;
+  dob: Date;
+  phone?: string;
+  gender: 'Male' | 'Female' | 'Other';
+  profilePhoto?: string;
+  role: 'admin' | 'contributor' | 'student' | 'mod';
+  school: string;
+  faculty: string;
+  department: string;
+  regNumber?: string;
+  upid: string;
+  isVerified: boolean;
+}
+
+// Interface for static methods
+interface ISessionCacheModel extends Model<ISessionCache> {
   encryptSensitiveData(data: string): string;
   decryptSensitiveData(encryptedData: string): string;
   hashForSearch(data: string): string;
-  generateSessionToken(userId: string, email: string, signInTime: Date): string;
-  
-  // Session management methods
-  createSession(
+  invalidateSession(sessionToken: string): Promise<boolean>;
+  invalidateAllUserSessions(userId: string): Promise<{ modifiedCount: number }>;
+  updateActivity(sessionToken: string): Promise<ISessionCache | null>;
+  createFullSession(
     userId: string,
-    email: string,
+    userData: IUserData,
     sessionToken: string,
     expirationHours?: number,
     deviceInfo?: string,
     ipAddress?: string
   ): Promise<ISessionCache>;
-  
   findActiveSession(
     identifier: string,
-    type?: 'userId' | 'email' | 'sessionToken'
+    identifierType?: 'userId' | 'sessionToken' | 'uuid'
   ): Promise<ISessionCache | null>;
-  
-  updateActivity(sessionToken: string): Promise<ISessionCache | null>;
-  
-  invalidateSession(sessionToken: string): Promise<ISessionCache | null>;
-  
-  invalidateAllUserSessions(userId: string): Promise<{ modifiedCount: number }>;
-  
+  findByUUID(uuid: string): Promise<ISessionCache | null>;
   cleanupExpiredSessions(): Promise<{ deletedCount: number }>;
 }
 
+const SessionCacheSchema = new Schema<ISessionCache>({
+  uuid: { type: String, required: true }, // Removed unique: true to avoid duplicate index
+  userId: { type: String, required: true },
+  sessionToken: { type: String, required: true }, // Removed unique: true to avoid duplicate index
+  email: { type: String, required: true },
+  emailHash: { type: String, required: true },
+  fullName: { type: String, required: true },
+  dob: { type: Date, required: true },
+  phone: { type: String },
+  phoneHash: { type: String },
+  gender: { type: String, enum: ['Male', 'Female', 'Other'], required: true },
+  profilePhoto: { type: String },
+  role: { type: String, enum: ['admin', 'contributor', 'student', 'mod'], required: true },
+  school: { type: String, required: true },
+  faculty: { type: String, required: true },
+  department: { type: String, required: true },
+  regNumber: { type: String },
+  regNumberHash: { type: String },
+  upid: { type: String, required: true },
+  isVerified: { type: Boolean, required: true },
+  isActive: { type: Boolean, default: true },
+  isSignedIn: { type: Boolean, default: true },
+  expiresAt: { type: Date, required: true },
+  lastActivity: { type: Date, default: Date.now },
+  deviceInfo: { type: String },
+  ipAddress: { type: String },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
 
-// Combined model interface
-interface ISessionCacheModel extends Model<ISessionCache>, ISessionCacheStatics {}
+// Enhanced encryption function with proper key validation
+SessionCacheSchema.statics.encryptSensitiveData = function(data: string): string {
+  try {
+    if (!data || typeof data !== 'string') {
+      throw new Error('Invalid data for encryption');
+    }
 
-// Deterministic encryption function (same as User model)
-const encryptSensitiveData = (data: string): string => {
-  const hash = CryptoJS.SHA256(data + ENCRYPTION_KEY);
-  const iv = CryptoJS.lib.WordArray.create(hash.words.slice(0, 4));
-  
-  const encrypted = CryptoJS.AES.encrypt(data, ENCRYPTION_KEY, {
-    iv: iv,
-    mode: CryptoJS.mode.CBC,
-    padding: CryptoJS.pad.Pkcs7
-  });
-  
-  return encrypted.toString();
+    // Validate key buffer length
+    console.log('Encryption key buffer length:', KEY_BUFFER.length);
+    if (KEY_BUFFER.length !== 32) {
+      throw new Error(`Invalid encryption key length: expected 32 bytes, got ${KEY_BUFFER.length}`);
+    }
+
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv(ALGORITHM, KEY_BUFFER, iv);
+    
+    let encrypted = cipher.update(data, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    
+    // Return IV:encrypted format
+    return iv.toString('hex') + ':' + encrypted;
+  } catch (encryptionError) {
+    console.error('Encryption error:', encryptionError);
+    console.error('Key buffer details:', {
+      length: KEY_BUFFER.length,
+      type: typeof KEY_BUFFER,
+      isBuffer: Buffer.isBuffer(KEY_BUFFER)
+    });
+    throw new Error(`Failed to encrypt sensitive data: ${encryptionError instanceof Error ? encryptionError.message : 'Unknown error'}`);
+  }
 };
 
-// Decryption function (same as User model)
-const decryptSensitiveData = (encryptedData: string): string => {
+// Enhanced decryption function with comprehensive error handling
+SessionCacheSchema.statics.decryptSensitiveData = function(encryptedData: string): string {
   try {
-    const decrypted = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
-    const result = decrypted.toString(CryptoJS.enc.Utf8);
-    
-    if (!result) {
-      throw new Error("Failed to decrypt data - invalid encrypted data or key");
+    if (!encryptedData || typeof encryptedData !== 'string') {
+      throw new Error('Invalid encrypted data provided');
     }
+
+    // Check if data is in the correct format (IV:encrypted)
+    if (!encryptedData.includes(':')) {
+      throw new Error('Invalid encrypted data format - missing IV separator');
+    }
+
+    const parts = encryptedData.split(':');
+    
+    if (parts.length !== 2) {
+      throw new Error(`Invalid encrypted data format - expected 2 parts, got ${parts.length}`);
+    }
+
+    const [ivHex, encrypted] = parts;
+
+    // Validate IV length (should be 32 hex characters for 16 bytes)
+    if (ivHex.length !== 32) {
+      throw new Error(`Invalid IV length: expected 32 hex characters, got ${ivHex.length}`);
+    }
+
+    // Validate encrypted data is not empty
+    if (!encrypted || encrypted.length === 0) {
+      throw new Error('Empty encrypted data');
+    }
+
+    // Validate IV is valid hex
+    if (!/^[0-9a-fA-F]+$/.test(ivHex)) {
+      throw new Error('Invalid IV format - contains non-hex characters');
+    }
+
+    let iv: Buffer;
+    try {
+      iv = Buffer.from(ivHex, 'hex');
+    } catch (error) {
+      throw new Error(`Failed to create IV buffer: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    // Validate IV buffer length
+    if (iv.length !== 16) {
+      throw new Error(`Invalid IV buffer length: expected 16 bytes, got ${iv.length}`);
+    }
+
+    // Validate encryption key
+    if (KEY_BUFFER.length !== 32) {
+      throw new Error(`Invalid encryption key length: expected 32 bytes, got ${KEY_BUFFER.length}`);
+    }
+
+    const decipher = crypto.createDecipheriv(ALGORITHM, KEY_BUFFER, iv);
+    
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    
+    return decrypted;
+  } catch (decryptionError) {
+    console.error('Decryption error details:', {
+      error: decryptionError instanceof Error ? decryptionError.message : 'Unknown error',
+      dataLength: encryptedData?.length,
+      dataPreview: encryptedData?.substring(0, 50) + (encryptedData?.length > 50 ? '...' : ''),
+      hasColon: encryptedData?.includes(':'),
+      parts: encryptedData?.split(':').length
+    });
+    
+    throw new Error(`Failed to decrypt sensitive data: ${decryptionError instanceof Error ? decryptionError.message : 'Unknown error'}`);
+  }
+};
+
+// Hash function for searching
+SessionCacheSchema.statics.hashForSearch = function(data: string): string {
+  return crypto.createHash('sha256').update(data.toLowerCase().trim()).digest('hex');
+};
+
+// Invalidate single session
+SessionCacheSchema.statics.invalidateSession = async function(sessionToken: string): Promise<boolean> {
+  try {
+    const result = await this.findOneAndUpdate(
+      { sessionToken: sessionToken },
+      { 
+        isActive: false,
+        isSignedIn: false,
+        updatedAt: new Date()
+      },
+      { new: true }
+    );
+    
+    return result !== null;
+  } catch (error) {
+    console.error('Error invalidating session:', error);
+    return false;
+  }
+};
+
+// Invalidate all user sessions
+SessionCacheSchema.statics.invalidateAllUserSessions = async function(userId: string): Promise<{ modifiedCount: number }> {
+  try {
+    const result = await this.updateMany(
+      { userId: userId, isSignedIn: true },
+      { 
+        isActive: false,
+        isSignedIn: false,
+        updatedAt: new Date()
+      }
+    );
+    
+    return { modifiedCount: result.modifiedCount || 0 };
+  } catch (error) {
+    console.error('Error invalidating all user sessions:', error);
+    return { modifiedCount: 0 };
+  }
+};
+
+// Update session activity
+SessionCacheSchema.statics.updateActivity = async function(sessionToken: string): Promise<ISessionCache | null> {
+  try {
+    const result = await this.findOneAndUpdate(
+      { sessionToken: sessionToken, isActive: true },
+      { 
+        lastActivity: new Date(),
+        updatedAt: new Date()
+      },
+      { new: true }
+    );
     
     return result;
   } catch (error) {
-    console.error('Decryption error:', error);
-    throw new Error('Invalid encrypted data');
+    console.error('Error updating session activity:', error);
+    return null;
   }
 };
 
-// Hash function for searchable fields (same as User model)
-const hashForSearch = (data: string): string => {
-  return CryptoJS.SHA256(data + ENCRYPTION_KEY + 'search-salt').toString();
-};
-
-// Generate deterministic session token based on user data
-const generateSessionToken = (userId: string, email: string, signInTime: Date): string => {
-  // Create a deterministic token based on user data and signin time
-  const tokenData = `${userId}_${email}_${signInTime.getTime()}`;
-  const hash = CryptoJS.SHA256(tokenData + ENCRYPTION_KEY + 'session-salt');
-  return hash.toString();
-};
-
-// Query interface for type safety
-interface SessionQuery {
-  isSignedIn: boolean;
-  expiresAt: { $gt: Date };
-  userId?: string;
-  email?: string;
-  emailHash?: string;
-  sessionToken?: string;
-  sessionTokenHash?: string;
-  isActive?: boolean;
-}
-
-// Session Cache Schema
-const SessionCacheSchema = new Schema<ISessionCache>({
-  userId: {
-    type: String,
-    required: true,
-    index: true
-  },
-  email: {
-    type: String, // Encrypted
-    required: true
-  },
-  emailHash: {
-    type: String, // For searching
-    required: true,
-    index: true
-  },
-  sessionToken: {
-    type: String, // Encrypted
-    required: true
-  },
-  sessionTokenHash: {
-    type: String, // For searching
-    required: true,
-    unique: true,
-    index: true
-  },
-  isSignedIn: {
-    type: Boolean,
-    required: true,
-    default: true
-  },
-  signInTime: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
-  expiresAt: {
-    type: Date,
-    required: true
-  },
-  deviceInfo: {
-    type: String,
-    required: false
-  },
-  ipAddress: {
-    type: String,
-    required: false
-  },
-  lastActivity: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
-  isActive: {
-    type: Boolean,
-    default: true,
-    index: true
-  }
-}, {
-  timestamps: true
-});
-
-// Compound indexes for efficient queries
-SessionCacheSchema.index({ userId: 1, isSignedIn: 1 });
-SessionCacheSchema.index({ emailHash: 1, isSignedIn: 1 });
-SessionCacheSchema.index({ sessionTokenHash: 1, isActive: 1 });
-SessionCacheSchema.index({ expiresAt: 1, isActive: 1 });
-
-// TTL index for automatic document expiration
-SessionCacheSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-
-// Static methods for encryption
-SessionCacheSchema.statics.encryptSensitiveData = encryptSensitiveData;
-SessionCacheSchema.statics.decryptSensitiveData = decryptSensitiveData;
-SessionCacheSchema.statics.hashForSearch = hashForSearch;
-SessionCacheSchema.statics.generateSessionToken = generateSessionToken;
-
-
-// Static methods for session management
-SessionCacheSchema.statics.createSession = async function(
-  userId: string, 
-  email: string, 
+// Create full session method with better error handling
+SessionCacheSchema.statics.createFullSession = async function(
+  userId: string,
+  userData: IUserData,
   sessionToken: string,
-  expirationHours: number = 24 * 7, // Default 7 days
+  expirationHours: number = 24 * 7,
   deviceInfo?: string,
   ipAddress?: string
-) {
-  const expiresAt = new Date();
-  expiresAt.setHours(expiresAt.getHours() + expirationHours);
+): Promise<ISessionCache> {
+  try {
+    const uuid = crypto.randomUUID();
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + (expirationHours * 60 * 60 * 1000));
 
-  // Encrypt sensitive data
-  const encryptedEmail = encryptSensitiveData(email);
-  const encryptedSessionToken = encryptSensitiveData(sessionToken);
-  
-  // Create hashes for searching
-  const emailHash = hashForSearch(email);
-  const sessionTokenHash = hashForSearch(sessionToken);
+    // Get reference to the model to access static methods
+    const SessionCacheModel = this as ISessionCacheModel;
 
-  // Optional: Remove any existing sessions for this user (for single session per user)
-  // await this.updateMany({ userId }, { isSignedIn: false, isActive: false });
+    console.log('Creating session with encrypted data...');
 
-  const session = new this({
-    userId,
-    email: encryptedEmail,
-    emailHash,
-    sessionToken: encryptedSessionToken,
-    sessionTokenHash,
-    expiresAt,
-    deviceInfo,
-    ipAddress,
-    isSignedIn: true,
-    signInTime: new Date(),
-    lastActivity: new Date(),
-    isActive: true
-  });
-
-  return await session.save();
-};
-
-SessionCacheSchema.statics.findActiveSession = async function(
-  identifier: string, // Can be userId, email, or sessionToken
-  type: 'userId' | 'email' | 'sessionToken' = 'sessionToken'
-) {
-  const query: SessionQuery = {
-    isSignedIn: true,
-    expiresAt: { $gt: new Date() },
-    isActive: true
-  };
-
-  switch (type) {
-    case 'userId':
-      query.userId = identifier;
-      break;
-    case 'email':
-      query.emailHash = hashForSearch(identifier);
-      break;
-    case 'sessionToken':
-      query.sessionTokenHash = hashForSearch(identifier);
-      break;
-  }
-
-  return await this.findOne(query);
-};
-
-SessionCacheSchema.statics.updateActivity = async function(sessionToken: string) {
-  const sessionTokenHash = hashForSearch(sessionToken);
-  
-  return await this.findOneAndUpdate(
-    { 
-      sessionTokenHash, 
+    const sessionData: Partial<ISessionCache> = {
+      uuid,
+      userId,
+      sessionToken,
+      email: SessionCacheModel.encryptSensitiveData(userData.email),
+      emailHash: SessionCacheModel.hashForSearch(userData.email),
+      fullName: userData.fullName,
+      dob: userData.dob,
+      gender: userData.gender,
+      profilePhoto: userData.profilePhoto,
+      role: userData.role,
+      school: userData.school,
+      faculty: userData.faculty,
+      department: userData.department,
+      upid: userData.upid,
+      isVerified: userData.isVerified,
+      isActive: true,
       isSignedIn: true,
-      isActive: true
-    },
-    { lastActivity: new Date() },
-    { new: true }
-  );
-};
+      expiresAt,
+      lastActivity: now,
+      deviceInfo: deviceInfo || 'Unknown',
+      ipAddress: ipAddress || 'unknown',
+      createdAt: now,
+      updatedAt: now
+    };
 
-SessionCacheSchema.statics.invalidateSession = async function(sessionToken: string) {
-  const sessionTokenHash = hashForSearch(sessionToken);
-  
-  return await this.findOneAndUpdate(
-    { sessionTokenHash },
-    { 
-      isSignedIn: false,
-      isActive: false
-    },
-    { new: true }
-  );
-};
-
-SessionCacheSchema.statics.invalidateAllUserSessions = async function(userId: string) {
-  return await this.updateMany(
-    { userId },
-    { 
-      isSignedIn: false,
-      isActive: false
+    if (userData.phone) {
+      sessionData.phone = SessionCacheModel.encryptSensitiveData(userData.phone);
+      sessionData.phoneHash = SessionCacheModel.hashForSearch(userData.phone);
     }
-  );
+
+    if (userData.regNumber) {
+      sessionData.regNumber = SessionCacheModel.encryptSensitiveData(userData.regNumber);
+      sessionData.regNumberHash = SessionCacheModel.hashForSearch(userData.regNumber);
+    }
+
+    console.log('Session data prepared, creating in database...');
+    const createdSession = await this.create(sessionData);
+    console.log('Session created successfully with UUID:', createdSession.uuid);
+    
+    return createdSession;
+  } catch (error) {
+    console.error('Error creating full session:', error);
+    throw new Error(`Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 };
 
-SessionCacheSchema.statics.cleanupExpiredSessions = async function() {
-  return await this.deleteMany({
-    $or: [
-      { expiresAt: { $lt: new Date() } },
-      { 
-        isSignedIn: false, 
-        isActive: false,
-        updatedAt: { $lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Clean up invalidated sessions older than 1 day
-      }
-    ]
-  });
+// Find active session method with better logging
+SessionCacheSchema.statics.findActiveSession = async function(
+  identifier: string, 
+  identifierType: 'userId' | 'sessionToken' | 'uuid' = 'userId'
+): Promise<ISessionCache | null> {
+  try {
+    const now = new Date();
+    const query: Record<string, unknown> = {
+      isActive: true,
+      isSignedIn: true,
+      expiresAt: { $gt: now }
+    };
+
+    switch (identifierType) {
+      case 'userId':
+        query.userId = identifier;
+        break;
+      case 'sessionToken':
+        query.sessionToken = identifier;
+        break;
+      case 'uuid':
+        query.uuid = identifier;
+        break;
+      default:
+        throw new Error('Invalid identifier type');
+    }
+
+    console.log(`Finding active session by ${identifierType}:`, identifier.substring(0, 8) + '...');
+    const session = await this.findOne(query).sort({ lastActivity: -1 });
+    console.log('Active session found:', session ? 'Yes' : 'No');
+    
+    return session;
+  } catch (error) {
+    console.error('Error finding active session:', error);
+    return null;
+  }
 };
 
+// Find by UUID method
+SessionCacheSchema.statics.findByUUID = async function(uuid: string): Promise<ISessionCache | null> {
+  try {
+    return await this.findOne({ uuid });
+  } catch (error) {
+    console.error('Error finding session by UUID:', error);
+    return null;
+  }
+};
+
+// Cleanup expired sessions
+SessionCacheSchema.statics.cleanupExpiredSessions = async function(): Promise<{ deletedCount: number }> {
+  try {
+    const now = new Date();
+    const result = await this.deleteMany({
+      $or: [
+        { expiresAt: { $lt: now } },
+        { isActive: false, updatedAt: { $lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) } }
+      ]
+    });
+    
+    console.log(`Cleaned up ${result.deletedCount} expired sessions`);
+    return { deletedCount: result.deletedCount || 0 };
+  } catch (error) {
+    console.error('Error cleaning up expired sessions:', error);
+    return { deletedCount: 0 };
+  }
+};
+
+// Create indexes for better performance - single index definitions to avoid duplicates
+SessionCacheSchema.index({ uuid: 1 }, { unique: true });
+SessionCacheSchema.index({ sessionToken: 1 }, { unique: true });
+SessionCacheSchema.index({ userId: 1, isActive: 1, isSignedIn: 1 });
+SessionCacheSchema.index({ expiresAt: 1 });
+SessionCacheSchema.index({ emailHash: 1 });
+SessionCacheSchema.index({ phoneHash: 1 });
+SessionCacheSchema.index({ regNumberHash: 1 });
+
+// Compound index for common queries
+SessionCacheSchema.index({ isActive: 1, isSignedIn: 1, expiresAt: 1 });
+
+// Create the model
 const SessionCache = (mongoose.models.SessionCache || 
   mongoose.model<ISessionCache, ISessionCacheModel>('SessionCache', SessionCacheSchema)) as ISessionCacheModel;
 
 export default SessionCache;
-export type { ISessionCacheModel };

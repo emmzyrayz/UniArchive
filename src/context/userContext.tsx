@@ -1,14 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { useAuth } from './authContext';
-import type {User} from './authContext';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 
 // User role type
 type UserRole = "admin" | "contributor" | "student" | "mod";
 
-// Extended user interface for UserContext
-interface UserProfile {
+// User interface - matches your backend JWT payload
+interface User {
   id: string;
   fullName: string;
   email: string;
@@ -20,20 +18,17 @@ interface UserProfile {
   upid: string;
   isVerified: boolean;
   profilePhoto?: string;
-  dob?: string;
   phone?: string;
-  gender?: string;
   regNumber?: string;
 }
 
-type AuthUser = User
-
-// User session information
-interface UserSession {
-  isActive: boolean;
-  loginTime: Date;
-  expiresAt: Date;
+// Session information from backend
+interface SessionInfo {
+  signInTime: Date;
   lastActivity: Date;
+  expiresAt: Date;
+  deviceInfo: string;
+  email: string;
 }
 
 // User preferences and settings
@@ -73,17 +68,31 @@ interface NavItem {
   roles?: UserRole[];
 }
 
-// User context interface
+// User state enum
+enum UserState {
+  INITIALIZING = 'initializing',
+  ACTIVE_SESSION = 'active_session',
+  NO_SESSION = 'no_session',
+  LOADING = 'loading',
+  ERROR = 'error'
+}
+
+// User context interface - INDEPENDENT of auth
 interface UserContextType {
   // User profile and session
-  userProfile: UserProfile | null;
-  userSession: UserSession | null;
+  userProfile: User | null;
+  sessionInfo: SessionInfo | null;
   userPreferences: UserPreferences;
   userPermissions: UserPermissions;
   
   // State management
-  isUserReady: boolean;
   hasActiveSession: boolean;
+  isLoading: boolean;
+  userState: UserState;
+  
+  // User data actions
+  refreshUserData: () => Promise<boolean>;
+  clearUserData: () => void;
   
   // Navigation and UI
   getFilteredNavItems: (items: NavItem[]) => NavItem[];
@@ -91,15 +100,11 @@ interface UserContextType {
   
   // User actions
   updateUserPreferences: (preferences: Partial<UserPreferences>) => void;
-  updateLastActivity: () => void;
-  initializeUserSession: (user: AuthUser) => void;
-  clearUserSession: () => void;
   
   // Utility functions
   getUserDisplayName: () => string;
   getUserInitials: () => string;
   getRoleDisplayName: () => string;
-  isSessionExpired: () => boolean;
 }
 
 // Default user preferences
@@ -160,39 +165,15 @@ const getPermissionsByRole = (role: UserRole): UserPermissions => {
     default:
       return {
         ...basePermissions,
-        canUpload: true, // Students can upload materials
+        canUpload: true,
       };
   }
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// FIXED: Safe date conversion helper
-const safeConvertToISOString = (date: Date | string | undefined): string | undefined => {
-  if (!date) return undefined;
-  
-  try {
-    if (typeof date === 'string') {
-      // If it's already a string, validate it's a valid date
-      const parsedDate = new Date(date);
-      return isNaN(parsedDate.getTime()) ? undefined : parsedDate.toISOString();
-    } else if (date instanceof Date) {
-      return isNaN(date.getTime()) ? undefined : date.toISOString();
-    }
-  } catch (error) {
-    console.error('Date conversion error:', error);
-  }
-  
-  return undefined;
-};
-
-
-
-// Storage utilities for user preferences
-
-// Storage utilities for user preferences (in-memory for Claude artifacts)
+// Storage abstraction for preferences (in-memory)
 const userPreferencesStorage: { [key: string]: UserPreferences } = {};
-
 
 const getUserPreferencesFromStorage = (): UserPreferences => {
   try {
@@ -214,99 +195,200 @@ const saveUserPreferencesToStorage = (preferences: UserPreferences): void => {
   }
 };
 
-// User Provider Component
+// Token storage abstraction
+class TokenStorage {
+  private inMemoryStorage: { [key: string]: string } = {};
+
+  getItem(key: string): string | null {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem(key);
+      } catch (error) {
+        console.warn('localStorage access failed, using in-memory storage:', error);
+        return this.inMemoryStorage[key] || null;
+      }
+    }
+    return this.inMemoryStorage[key] || null;
+  }
+
+  setItem(key: string, value: string): void {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(key, value);
+        return;
+      } catch (error) {
+        console.warn('localStorage write failed, using in-memory storage:', error);
+      }
+    }
+    this.inMemoryStorage[key] = value;
+  }
+
+  removeItem(key: string): void {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(key);
+      } catch (error) {
+        console.warn('localStorage remove failed:', error);
+      }
+    }
+    delete this.inMemoryStorage[key];
+  }
+}
+
+const tokenStorage = new TokenStorage();
+
+// User Provider Component - INDEPENDENT OF AUTH
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [userSession, setUserSession] = useState<UserSession | null>(null);
+  const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(defaultPreferences);
   const [userPermissions, setUserPermissions] = useState<UserPermissions>(getPermissionsByRole('student'));
-  const [isUserReady, setIsUserReady] = useState(false);
+  const [hasActiveSession, setHasActiveSession] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userState, setUserState] = useState<UserState>(UserState.INITIALIZING);
 
-  // Initialize user session
-  const initializeUserSession = (authUser: AuthUser) => {
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
-    
-    const profile: UserProfile = {
-      id: authUser.id,
-      fullName: authUser.fullName,
-      email: authUser.email,
-      role: authUser.role,
-      school: authUser.school,
-      faculty: authUser.faculty,
-      department: authUser.department,
-      uuid: authUser.uuid,
-      upid: authUser.upid,
-      isVerified: authUser.isVerified,
-      profilePhoto: authUser.profilePhoto,
-      dob: safeConvertToISOString(authUser.dob),
-      phone: authUser.phone,
-      gender: authUser.gender,
-      regNumber: authUser.regNumber,
+  // Refs to prevent race conditions
+  const mountedRef = useRef(true);
+  const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
     };
-
-    const session: UserSession = {
-      isActive: true,
-      loginTime: now,
-      expiresAt,
-      lastActivity: now,
-    };
-
-    setUserProfile(profile);
-    setUserSession(session);
-    setUserPermissions(getPermissionsByRole(profile.role));
-    setIsUserReady(true);
-  };
-
-  // Clear user session
-  const clearUserSession = () => {
-    setUserProfile(null);
-    setUserSession(null);
-    setUserPermissions(getPermissionsByRole('student'));
-    setIsUserReady(false);
-  };
-
-  // Update last activity - wrapped in useCallback to prevent re-renders
-  const updateLastActivity = useCallback(() => {
-    setUserSession(prev => prev ? {
-      ...prev,
-      lastActivity: new Date()
-    } : null);
   }, []);
 
-  // Check if session is expired
-  const isSessionExpired = (): boolean => {
-    if (!userSession) return true;
-    return new Date() > userSession.expiresAt;
-  };
-
-  // Check if user has active session
-  const hasActiveSession = userSession?.isActive && !isSessionExpired();
-
-  // Initialize user context when auth user changes
-  useEffect(() => {
-    if (isAuthenticated && user && !isLoading) {
-      initializeUserSession(user);
-    } else if (!isAuthenticated && !isLoading) {
-      clearUserSession();
+  // Safe state updates
+  const safeSetState = useCallback((updater: () => void) => {
+    if (mountedRef.current) {
+      updater();
     }
-  }, [user, isAuthenticated, isLoading]);
+  }, []);
 
-  // Load user preferences on mount
+  // Clear user data
+  const clearUserData = useCallback(() => {
+    safeSetState(() => {
+      setUserProfile(null);
+      setSessionInfo(null);
+      setUserPermissions(getPermissionsByRole('student'));
+      setHasActiveSession(false);
+      setUserState(UserState.NO_SESSION);
+      setIsLoading(false);
+    });
+  }, [safeSetState]);
+
+  // Refresh user data from SessionCache via online-status
+  const refreshUserData = useCallback(async (): Promise<boolean> => {
+    // Return existing promise if one is already running
+    if (refreshPromiseRef.current) {
+      return refreshPromiseRef.current;
+    }
+
+    const token = tokenStorage.getItem('authToken');
+    if (!token) {
+      console.log('No auth token found');
+      clearUserData();
+      return false;
+    }
+
+    // Create new promise and store it
+    const refreshPromise = (async (): Promise<boolean> => {
+      try {
+        safeSetState(() => {
+          setUserState(UserState.LOADING);
+          setIsLoading(true);
+        });
+
+        console.log('Fetching user session data...');
+        
+        const response = await fetch('/api/user/online-status', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          console.log('Online status check failed:', response.status);
+          if (response.status === 401) {
+            console.log("Session expired, clearing user data");
+            clearUserData();
+          }
+          return false;
+        }
+
+        const data = await response.json();
+        console.log('Online status response:', data);
+
+        if (data.isOnline && data.user && data.sessionInfo) {
+          // Update user data from SessionCache
+          safeSetState(() => {
+            setUserProfile(data.user);
+            setSessionInfo({
+              ...data.sessionInfo,
+              signInTime: new Date(data.sessionInfo.signInTime),
+              lastActivity: new Date(data.sessionInfo.lastActivity),
+              expiresAt: new Date(data.sessionInfo.expiresAt),
+            });
+            setUserPermissions(getPermissionsByRole(data.user.role));
+            setHasActiveSession(true);
+            setUserState(UserState.ACTIVE_SESSION);
+            setIsLoading(false);
+          });
+          return true;
+        } else {
+          console.log('No active session found');
+          if (data.sessionExpired) {
+            console.log("Session expired from server");
+          }
+          clearUserData();
+          return false;
+        }
+      } catch (error) {
+        console.error('Failed to refresh user data:', error);
+        safeSetState(() => {
+          setUserState(UserState.ERROR);
+          setIsLoading(false);
+        });
+        return false;
+      } finally {
+        refreshPromiseRef.current = null;
+      }
+    })();
+
+    refreshPromiseRef.current = refreshPromise;
+    return refreshPromise;
+  }, [clearUserData, safeSetState]);
+
+  // Initialize user data on mount
+  useEffect(() => {
+    console.log('Initializing UserContext...');
+    refreshUserData();
+  }, [refreshUserData]);
+
+  // Load preferences on mount
   useEffect(() => {
     const preferences = getUserPreferencesFromStorage();
     setUserPreferences(preferences);
   }, []);
 
-  // Session activity tracker
+  // Periodic session validation - only if we have an active session
   useEffect(() => {
-    if (hasActiveSession) {
-      const activityInterval = setInterval(updateLastActivity, 60000); // Update every minute
-      return () => clearInterval(activityInterval);
-    }
-  }, [hasActiveSession, updateLastActivity]);
+    if (userState !== UserState.ACTIVE_SESSION) return;
+
+    const interval = setInterval(async () => {
+      if (!refreshPromiseRef.current) {
+        console.log('Periodic session validation...');
+        const isStillActive = await refreshUserData();
+        if (!isStillActive && mountedRef.current) {
+          console.log("Session validation failed");
+        }
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [userState, refreshUserData]);
 
   // Update user preferences
   const updateUserPreferences = (newPreferences: Partial<UserPreferences>) => {
@@ -317,35 +399,28 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Filter navigation items based on user permissions
   const getFilteredNavItems = (items: NavItem[]): NavItem[] => {
-    if (!isAuthenticated || !userProfile) {
-      // Return items that don't require authentication
+    if (!hasActiveSession || !userProfile) {
       return items.filter(item => !item.requiresAuth);
     }
 
     return items.filter(item => {
-      // If item doesn't require auth, show it
       if (!item.requiresAuth) return true;
       
-      // If item has role restrictions, check user role
       if (item.roles && item.roles.length > 0) {
         return item.roles.includes(userProfile.role);
       }
       
-      // If item requires auth but no specific roles, show it
       return true;
     });
   };
 
-  // Check if user can access a specific route
+  // Check route access
   const canAccessRoute = (path: string, requiredRoles?: UserRole[]): boolean => {
-    // Public routes
     const publicRoutes = ['/', '/schools', '/about', '/contact', '/auth'];
     if (publicRoutes.some(route => path.startsWith(route))) return true;
 
-    // Require authentication for other routes
-    if (!isAuthenticated || !userProfile) return false;
+    if (!hasActiveSession || !userProfile) return false;
 
-    // Check role-specific access
     if (requiredRoles && requiredRoles.length > 0) {
       return requiredRoles.includes(userProfile.role);
     }
@@ -353,13 +428,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return true;
   };
 
-  // Get user display name
+  // Utility functions
   const getUserDisplayName = (): string => {
     if (!userProfile) return 'Guest';
     return userProfile.fullName || 'User';
   };
 
-  // Get user initials
   const getUserInitials = (): string => {
     if (!userProfile?.fullName) return 'GU';
     return userProfile.fullName
@@ -370,7 +444,6 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       .slice(0, 2);
   };
 
-  // Get role display name
   const getRoleDisplayName = (): string => {
     if (!userProfile) return 'Guest';
     
@@ -386,21 +459,20 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const value: UserContextType = {
     userProfile,
-    userSession,
+    sessionInfo,
     userPreferences,
     userPermissions,
-    isUserReady,
-    hasActiveSession: !!hasActiveSession,
+    hasActiveSession,
+    isLoading,
+    userState,
+    refreshUserData,
+    clearUserData,
     getFilteredNavItems,
     canAccessRoute,
     updateUserPreferences,
-    updateLastActivity,
-    initializeUserSession,
-    clearUserSession,
     getUserDisplayName,
     getUserInitials,
     getRoleDisplayName,
-    isSessionExpired,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
