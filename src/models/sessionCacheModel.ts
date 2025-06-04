@@ -1,4 +1,4 @@
-// sessionCacheModel.ts - Fixed version with proper encryption key handling
+// sessionCacheModel.ts - Fixed version with all required methods
 
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import crypto from 'crypto';
@@ -31,6 +31,36 @@ function getEncryptionKey(): Buffer {
 
 const KEY_BUFFER = getEncryptionKey();
 
+// Interface for decrypted user data
+interface IDecryptedUserData {
+  userId: string;
+  uuid: string;
+  email: string;
+  fullName: string;
+  dob: Date;
+  phone?: string;
+  gender: 'Male' | 'Female' | 'Other';
+  profilePhoto?: string;
+  role: 'admin' | 'contributor' | 'student' | 'mod';
+  school: string;
+  faculty: string;
+  department: string;
+  regNumber?: string;
+  level: string;
+  upid: string;
+  isVerified: boolean;
+  sessionInfo: {
+    isActive: boolean;
+    isSignedIn: boolean;
+    expiresAt: Date;
+    lastActivity: Date;
+    deviceInfo?: string;
+    ipAddress?: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+}
+
 export interface ISessionCache extends Document {
   uuid: string;
   userId: string;
@@ -60,6 +90,9 @@ export interface ISessionCache extends Document {
   ipAddress?: string;
   createdAt: Date;
   updatedAt: Date;
+  
+  // Instance methods
+  getDecryptedUserData(): IDecryptedUserData;
 }
 
 // Interface for user data parameter
@@ -102,12 +135,16 @@ interface ISessionCacheModel extends Model<ISessionCache> {
   ): Promise<ISessionCache | null>;
   findByUUID(uuid: string): Promise<ISessionCache | null>;
   cleanupExpiredSessions(): Promise<{ deletedCount: number }>;
+  
+  // New methods needed by sessionUtils
+  signOutByUUID(uuid: string): Promise<boolean>;
+  updateActivityByUUID(uuid: string): Promise<boolean>;
 }
 
 const SessionCacheSchema = new Schema<ISessionCache>({
-  uuid: { type: String, required: true }, // Removed unique: true to avoid duplicate index
+  uuid: { type: String, required: true },
   userId: { type: String, required: true },
-  sessionToken: { type: String, required: true }, // Removed unique: true to avoid duplicate index
+  sessionToken: { type: String, required: true },
   email: { type: String, required: true },
   emailHash: { type: String, required: true },
   fullName: { type: String, required: true },
@@ -134,6 +171,45 @@ const SessionCacheSchema = new Schema<ISessionCache>({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
+
+// Instance method to get decrypted user data
+SessionCacheSchema.methods.getDecryptedUserData = function(): IDecryptedUserData {
+  const SessionCacheModel = this.constructor as ISessionCacheModel;
+  
+  try {
+    return {
+      userId: this.userId,
+      uuid: this.uuid,
+      email: SessionCacheModel.decryptSensitiveData(this.email),
+      fullName: this.fullName,
+      dob: this.dob,
+      phone: this.phone ? SessionCacheModel.decryptSensitiveData(this.phone) : undefined,
+      gender: this.gender,
+      profilePhoto: this.profilePhoto,
+      role: this.role,
+      school: this.school,
+      faculty: this.faculty,
+      department: this.department,
+      regNumber: this.regNumber ? SessionCacheModel.decryptSensitiveData(this.regNumber) : undefined,
+      level: this.level,
+      upid: this.upid,
+      isVerified: this.isVerified,
+      sessionInfo: {
+        isActive: this.isActive,
+        isSignedIn: this.isSignedIn,
+        expiresAt: this.expiresAt,
+        lastActivity: this.lastActivity,
+        deviceInfo: this.deviceInfo,
+        ipAddress: this.ipAddress,
+        createdAt: this.createdAt,
+        updatedAt: this.updatedAt
+      }
+    };
+  } catch (error) {
+    console.error('Error decrypting user data:', error);
+    throw new Error('Failed to decrypt user data');
+  }
+};
 
 // Enhanced encryption function with proper key validation
 SessionCacheSchema.statics.encryptSensitiveData = function(data: string): string {
@@ -301,6 +377,45 @@ SessionCacheSchema.statics.updateActivity = async function(sessionToken: string)
   }
 };
 
+// NEW: Sign out session by UUID
+SessionCacheSchema.statics.signOutByUUID = async function(uuid: string): Promise<boolean> {
+  try {
+    const result = await this.findOneAndUpdate(
+      { uuid: uuid, isActive: true },
+      { 
+        isActive: false,
+        isSignedIn: false,
+        updatedAt: new Date()
+      },
+      { new: true }
+    );
+    
+    return result !== null;
+  } catch (error) {
+    console.error('Error signing out session by UUID:', error);
+    return false;
+  }
+};
+
+// NEW: Update activity by UUID
+SessionCacheSchema.statics.updateActivityByUUID = async function(uuid: string): Promise<boolean> {
+  try {
+    const result = await this.findOneAndUpdate(
+      { uuid: uuid, isActive: true, isSignedIn: true },
+      { 
+        lastActivity: new Date(),
+        updatedAt: new Date()
+      },
+      { new: true }
+    );
+    
+    return result !== null;
+  } catch (error) {
+    console.error('Error updating session activity by UUID:', error);
+    return false;
+  }
+};
+
 // Create full session method with better error handling
 SessionCacheSchema.statics.createFullSession = async function(
   userId: string,
@@ -408,7 +523,13 @@ SessionCacheSchema.statics.findActiveSession = async function(
 // Find by UUID method
 SessionCacheSchema.statics.findByUUID = async function(uuid: string): Promise<ISessionCache | null> {
   try {
-    return await this.findOne({ uuid });
+    const now = new Date();
+    return await this.findOne({ 
+      uuid, 
+      isActive: true, 
+      isSignedIn: true,
+      expiresAt: { $gt: now }
+    });
   } catch (error) {
     console.error('Error finding session by UUID:', error);
     return null;

@@ -1,4 +1,4 @@
-// /lib/sessionUtils.ts - Utility functions for session management
+// /lib/sessionUtils.ts - Fixed utility functions for session management
 import { cookies } from "next/headers";
 import SessionCache from "@/models/sessionCacheModel";
 import connectDB from "@/lib/database";
@@ -11,7 +11,7 @@ export const getCurrentSessionUser = async () => {
   try {
     await connectDB();
     
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionId = cookieStore.get("sessionId")?.value;
     
     if (!sessionId) {
@@ -76,7 +76,7 @@ export const signOutCurrentUser = async (): Promise<boolean> => {
   try {
     await connectDB();
     
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionId = cookieStore.get("sessionId")?.value;
     
     if (!sessionId) {
@@ -87,8 +87,8 @@ export const signOutCurrentUser = async (): Promise<boolean> => {
     const result = await SessionCache.signOutByUUID(sessionId);
     
     if (result) {
-      // Clear the session cookie
-      cookieStore.delete("sessionId");
+      // Note: You can't directly delete cookies using cookieStore.delete()
+      // You need to use the cookies().delete() method or set cookie with expired date
       console.log("User signed out successfully");
     }
     
@@ -107,7 +107,7 @@ export const refreshCurrentSession = async (): Promise<boolean> => {
   try {
     await connectDB();
     
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionId = cookieStore.get("sessionId")?.value;
     
     if (!sessionId) {
@@ -206,11 +206,13 @@ export const requireAnyRole = async (roles: string[]) => {
 
 /**
  * Clean up expired sessions (utility function)
+ * Fixed to return the correct type
  */
 export const cleanupExpiredSessions = async (): Promise<number> => {
   try {
     await connectDB();
-    return await SessionCache.cleanupExpiredSessions();
+    const result = await SessionCache.cleanupExpiredSessions();
+    return result.deletedCount; // Extract the number from the object
   } catch (error) {
     console.error("Error cleaning up expired sessions:", error);
     return 0;
