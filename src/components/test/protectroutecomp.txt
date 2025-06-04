@@ -1,0 +1,380 @@
+// // components/ProtectedRoute.tsx - Component-level route protection
+// "use client";
+
+// import React from 'react';
+// import { useRouter } from 'next/navigation';
+// import { useUser } from '@/context/userContext';
+// import { type UserRole } from '@/config/routeProtection';
+// import { Loading } from './reuse/loading';
+
+// interface ProtectedRouteProps {
+//   children: React.ReactNode;
+  
+//   // Protection requirements
+//   requiresAuth?: boolean;
+//   requiredRoles?: UserRole[];
+  
+//   // Fallback options
+//   fallbackPath?: string;
+//   showAccessDenied?: boolean;
+  
+//   // Custom loading and error components
+//   loadingComponent?: React.ReactNode;
+//   accessDeniedComponent?: React.ReactNode;
+//   notAuthenticatedComponent?: React.ReactNode;
+  
+//   // Callback for access decisions
+//   onAccessGranted?: () => void;
+//   onAccessDenied?: (reason: 'not_authenticated' | 'insufficient_role') => void;
+// }
+
+// /**
+//  * Component-level route protection that works with the updated userContext
+//  * Can be used to wrap individual components or pages for granular access control
+//  */
+// const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+//   children,
+//   requiresAuth = true,
+//   requiredRoles = [],
+//   fallbackPath,
+//   showAccessDenied = true,
+//   loadingComponent,
+//   accessDeniedComponent,
+//   notAuthenticatedComponent,
+//   onAccessGranted,
+//   onAccessDenied
+// }) => {
+//   const router = useRouter();
+//   const {
+//     userProfile,
+//     hasActiveSession,
+//     isLoading,
+//     userState
+//   } = useUser();
+
+//   // Still loading user data
+//   if (isLoading || userState === 'initializing' || userState === 'loading') {
+//     return <>{loadingComponent || <Loading />}</>;
+//   }
+
+//   // Check authentication requirement
+//   if (requiresAuth && !hasActiveSession) {
+//     onAccessDenied?.('not_authenticated');
+    
+//     if (fallbackPath) {
+//       router.push(fallbackPath);
+//       return <>{loadingComponent || <Loading />}</>;
+//     }
+    
+//     if (notAuthenticatedComponent) {
+//       return <>{notAuthenticatedComponent}</>;
+//     }
+    
+//     if (!showAccessDenied) {
+//       return null;
+//     }
+    
+//     return (
+//       <div className="min-h-screen flex items-center justify-center bg-gray-50">
+//         <div className="text-center max-w-md mx-auto p-6">
+//           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+//             <div className="text-yellow-600 text-6xl mb-4">🔐</div>
+//             <h2 className="text-xl font-semibold text-yellow-800 mb-2">Authentication Required</h2>
+//             <p className="text-yellow-600 mb-4">
+//               You need to sign in to access this content.
+//             </p>
+//             <button
+//               onClick={() => router.push('/auth/signin')}
+//               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+//             >
+//               Sign In
+//             </button>
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   // Check role requirements
+//   if (requiredRoles.length > 0 && hasActiveSession) {
+//     if (!userProfile) {
+//       // Active session but profile not loaded (shouldn't happen normally)
+//       return <>{loadingComponent || <Loading />}</>;
+//     }
+    
+//     if (!requiredRoles.includes(userProfile.role)) {
+//       onAccessDenied?.('insufficient_role');
+      
+//       if (fallbackPath) {
+//         router.push(fallbackPath);
+//         return <>{loadingComponent || <Loading />}</>;
+//       }
+      
+//       if (accessDeniedComponent) {
+//         return <>{accessDeniedComponent}</>;
+//       }
+      
+//       if (!showAccessDenied) {
+//         return null;
+//       }
+      
+//       return (
+//         <div className="min-h-screen flex items-center justify-center bg-gray-50">
+//           <div className="text-center max-w-md mx-auto p-6">
+//             <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+//               <div className="text-red-600 text-6xl mb-4">🚫</div>
+//               <h2 className="text-xl font-semibold text-red-800 mb-2">Access Denied</h2>
+//               <p className="text-red-600 mb-2">
+//                 You need <strong>{requiredRoles.join(' or ')}</strong> role to access this content.
+//               </p>
+//               <p className="text-sm text-red-500 mb-4">
+//                 Your current role: <strong>{userProfile.role}</strong>
+//               </p>
+//               <div className="space-x-2">
+//                 <button
+//                   onClick={() => router.back()}
+//                   className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
+//                 >
+//                   Go Back
+//                 </button>
+//                 <button
+//                   onClick={() => router.push('/dashboard')}
+//                   className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+//                 >
+//                   Go to Dashboard
+//                 </button>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       );
+//     }
+//   }
+
+//   // Access granted
+//   onAccessGranted?.();
+//   return <>{children}</>;
+// };
+
+// export default ProtectedRoute;
+
+// // Higher-order component version for class components or complex wrapping
+// export const withProtection = (
+//   WrappedComponent: React.ComponentType<any>,
+//   protectionOptions: Omit<ProtectedRouteProps, 'children'>
+// ) => {
+//   return function ProtectedComponent(props: any) {
+//     return (
+//       <ProtectedRoute {...protectionOptions}>
+//         <WrappedComponent {...props} />
+//       </ProtectedRoute>
+//     );
+//   };
+// };
+
+// // Convenience components for common use cases
+// export const AdminOnly: React.FC<{ children: React.ReactNode; fallbackPath?: string }> = ({ 
+//   children, 
+//   fallbackPath = '/unauthorized' 
+// }) => (
+//   <ProtectedRoute requiredRoles={['admin']} fallbackPath={fallbackPath}>
+//     {children}
+//   </ProtectedRoute>
+// );
+
+// export const ContributorAndUp: React.FC<{ children: React.ReactNode; fallbackPath?: string }> = ({ 
+//   children, 
+//   fallbackPath = '/unauthorized' 
+// }) => (
+//   <ProtectedRoute requiredRoles={['admin', 'contributor']} fallbackPath={fallbackPath}>
+//     {children}
+//   </ProtectedRoute>
+// );
+
+// export const ModeratorAndUp: React.FC<{ children: React.ReactNode; fallbackPath?: string }> = ({ 
+//   children, 
+//   fallbackPath = '/unauthorized' 
+// }) => (
+//   <ProtectedRoute requiredRoles={['admin', 'mod']} fallbackPath={fallbackPath}>
+//     {children}
+//   </ProtectedRoute>
+// );
+
+// export const AuthenticatedOnly: React.FC<{ children: React.ReactNode; fallbackPath?: string }> = ({ 
+//   children, 
+//   fallbackPath = '/auth/signin' 
+// }) => (
+//   <ProtectedRoute requiresAuth={true} requiredRoles={[]} fallbackPath={fallbackPath}>
+//     {children}
+//   </ProtectedRoute>
+// );
+
+
+
+// Example usage of the updated route protection system
+
+// 1. In your root layout (app/layout.tsx)
+import { UserProvider } from '@/context/userContext';
+import RouteProtectionProvider from '@/components/RouteProtectionProvider';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <UserProvider>
+          <RouteProtectionProvider>
+            {children}
+          </RouteProtectionProvider>
+        </UserProvider>
+      </body>
+    </html>
+  );
+}
+
+// 2. Using the hook in a component
+import { useRouteProtection, useCanAccessRoute } from '@/hooks/useRouteProtection';
+
+export default function NavigationComponent() {
+  const { canAccess, userRole, accessDenialReason } = useRouteProtection();
+  const canAccessAdmin = useCanAccessRoute('/admin');
+  
+  return (
+    <nav>
+      {canAccessAdmin && (
+        <a href="/admin">Admin Panel</a>
+      )}
+      
+      {canAccess ? (
+        <span>Welcome, {userRole}</span>
+      ) : (
+        <span>Access denied: {accessDenialReason}</span>
+      )}
+    </nav>
+  );
+}
+
+// 3. Using ProtectedRoute component for granular control
+import ProtectedRoute, { AdminOnly, ContributorAndUp } from '@/components/ProtectedRoute';
+
+export default function DashboardPage() {
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      
+      {/* Anyone authenticated can see this */}
+      <ProtectedRoute requiresAuth={true} requiredRoles={[]}>
+        <div>Basic user content</div>
+      </ProtectedRoute>
+      
+      {/* Only contributors and admins */}
+      <ContributorAndUp>
+        <div>Contributor features</div>
+      </ContributorAndUp>
+      
+      {/* Only admins */}
+      <AdminOnly>
+        <div>Admin-only features</div>
+      </AdminOnly>
+      
+      {/* Custom protection with callbacks */}
+      <ProtectedRoute
+        requiredRoles={['mod', 'admin']}
+        onAccessGranted={() => console.log('Moderator access granted')}
+        onAccessDenied={(reason) => console.log('Access denied:', reason)}
+        fallbackPath="/unauthorized"
+      >
+        <div>Moderation tools</div>
+      </ProtectedRoute>
+    </div>
+  );
+}
+
+// 4. Using withProtection HOC
+import { withProtection } from '@/components/ProtectedRoute';
+
+const AdminSettings = () => {
+  return <div>Admin Settings Content</div>;
+};
+
+export default withProtection(AdminSettings, {
+  requiredRoles: ['admin'],
+  fallbackPath: '/unauthorized'
+});
+
+// 5. Programmatic navigation with protection
+import { useRouter } from 'next/navigation';
+import { useUser } from '@/context/userContext';
+import { canUserAccessRoute } from '@/config/routeProtection';
+
+export default function NavigationButton() {
+  const router = useRouter();
+  const { userProfile, hasActiveSession } = useUser();
+  
+  const handleNavigateToAdmin = () => {
+    if (canUserAccessRoute('/admin', userProfile?.role, hasActiveSession)) {
+      router.push('/admin');
+    } else {
+      router.push('/unauthorized');
+    }
+  };
+  
+  return (
+    <button 
+      onClick={handleNavigateToAdmin}
+      disabled={!canUserAccessRoute('/admin', userProfile?.role, hasActiveSession)}
+    >
+      Go to Admin
+    </button>
+  );
+}
+
+// 6. Using accessible routes hook for dynamic menus
+import { useAccessibleRoutes } from '@/hooks/useRouteProtection';
+
+export default function DynamicMenu() {
+  const allRoutes = ['/dashboard', '/admin', '/moderation', '/profile'];
+  const accessibleRoutes = useAccessibleRoutes(allRoutes);
+  
+  return (
+    <ul>
+      {accessibleRoutes.map(route => (
+        <li key={route}>
+          <a href={route}>{route}</a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// 7. Conditional rendering based on user context
+import { useUser } from '@/context/userContext';
+
+export default function ConditionalContent() {
+  const { userProfile, hasActiveSession, userPermissions } = useUser();
+  
+  if (!hasActiveSession) {
+    return <div>Please sign in</div>;
+  }
+  
+  return (
+    <div>
+      <h1>Welcome, {userProfile?.fullName}</h1>
+      
+      {userPermissions.canUpload && (
+        <button>Upload Files</button>
+      )}
+      
+      {userPermissions.canModerate && (
+        <button>Moderate Content</button>
+      )}
+      
+      {userPermissions.canAccessAdmin && (
+        <a href="/admin">Admin Panel</a>
+      )}
+    </div>
+  );
+}

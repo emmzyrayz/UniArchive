@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
       faculty: user.faculty,
       department: user.department,
       regNumber: decryptedRegNumber,
+      level: user.level,
       upid: user.upid,
       isVerified: user.isVerified,
     };

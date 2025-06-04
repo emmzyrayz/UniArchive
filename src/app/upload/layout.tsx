@@ -1,5 +1,6 @@
 'use client';
 
+import { Loading } from '@/components/reuse/loading';
 import React, { useState, useEffect, createContext, useContext } from 'react';
 
 interface UploadLayoutProps {
@@ -75,14 +76,7 @@ export default function UploadLayout({ children }: UploadLayoutProps) {
 
   // Show loading state during device detection
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <Loading />;
   }
 
   // Show mobile restriction message

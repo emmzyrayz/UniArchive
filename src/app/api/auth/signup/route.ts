@@ -26,12 +26,26 @@ export async function POST(request: NextRequest) {
       university: school,
       faculty,
       department,
-      regnumber
+      regnumber,
+      level
     } = body;
 
 
     // Validate required fields
-    if (!fullName || !email || !password || !dob || !phone || !gender || !school || !faculty || !department || !regnumber) {
+    if (!fullName || !email || !password || !dob || !phone || !gender || !school || !faculty || !department || !regnumber || !level) {
+      console.log('Missing fields:', {
+        fullName: !!fullName,
+        email: !!email,
+        password: !!password,
+        dob: !!dob,
+        phone: !!phone,
+        gender: !!gender,
+        school: !!school,
+        faculty: !!faculty,
+        department: !!department,
+        regnumber: !!regnumber,
+        level: !!level
+      });
       return NextResponse.json(
         { message: 'All required fields must be provided' },
         { status: 400 }
@@ -118,6 +132,7 @@ export async function POST(request: NextRequest) {
       department,
       regNumber: encryptedRegNumber, // Store encrypted
       regNumberHash: regNumberHash, // Store hash for searching
+      level,
       uuid: finalUuid,
       upid: finalUpid,
       verificationCode,

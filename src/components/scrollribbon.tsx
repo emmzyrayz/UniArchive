@@ -138,10 +138,13 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
   };
 
   useEffect(() => {
+    // Capture the current ref value at the start of the effect
+    const currentRibbon = ribbonRef.current;
+
     const updateRibbonHeight = () => {
-      if (ribbonRef.current) {
+      if (currentRibbon) {
         // Instead of storing height in state, just use it directly
-        const height = ribbonRef.current.offsetHeight;
+        const height = currentRibbon.offsetHeight;
 
         // Dispatch custom event for Navbar to detect height change
         const ribbonHeightEvent = new CustomEvent("ribbonHeightChanged", {
@@ -168,14 +171,16 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
       updateRibbonHeight();
     });
 
-    if (ribbonRef.current) {
-      resizeObserver.observe(ribbonRef.current);
+    if (currentRibbon) {
+      resizeObserver.observe(currentRibbon);
     }
 
     return () => {
-      if (ribbonRef.current) {
-        resizeObserver.disconnect();
+      // Use the captured ref value in cleanup
+      if (currentRibbon) {
+        resizeObserver.unobserve(currentRibbon);
       }
+      resizeObserver.disconnect();
     };
   }, [isScrolled, isVisible]);
 

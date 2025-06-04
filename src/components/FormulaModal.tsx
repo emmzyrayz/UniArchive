@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useState, useCallback} from "react";
 import katex from "katex";
 
 type FormulaModalProps = {
@@ -220,19 +220,8 @@ export const FormulaModal: React.FC<FormulaModalProps> = ({
     }
   };
 
-  // Update the formula input and preview
-  // Update the formula input and preview
-  const updateFormula = (newFormula: string) => {
-    setFormula(newFormula);
-    renderPreview(newFormula);
-    // Clear selected template when manually editing formula
-    if (selectedTemplate && newFormula !== selectedTemplate) {
-      setSelectedTemplate(null);
-    }
-  };
-
   // Separate function to render the preview
-  const renderPreview = (formulaText: string) => {
+  const renderPreview = useCallback((formulaText: string) => {
     if (!formulaText) {
       setPreview("");
       return;
@@ -248,8 +237,17 @@ export const FormulaModal: React.FC<FormulaModalProps> = ({
       console.error("KaTeX rendering error:", error);
       setPreview(`<span class="text-red-500">Error rendering formula</span>`);
     }
-  };
+  }, []);
 
+  // Update the formula input and preview
+  const updateFormula = useCallback((newFormula: string) => {
+    setFormula(newFormula);
+    renderPreview(newFormula);
+    // Clear selected template when manually editing formula
+    if (selectedTemplate && newFormula !== selectedTemplate) {
+      setSelectedTemplate(null);
+    }
+  }, [renderPreview, selectedTemplate]);
 
    // Initialize the preview when component mounts or initialFormula changes
   useEffect(() => {
@@ -266,7 +264,6 @@ export const FormulaModal: React.FC<FormulaModalProps> = ({
     updateFormula(formula + symbol);
   };
 
-  // Use a template formula
   // Use a template formula
   const applyTemplate = (template: {label: string, latex: string}) => {
     updateFormula(template.latex);

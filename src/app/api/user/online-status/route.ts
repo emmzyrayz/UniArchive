@@ -23,6 +23,7 @@ interface JWTPayload {
     profilePhoto?: string;
     phone?: string;
     regNumber?: string;
+    level: string;
   };
   sessionToken: string;
   iat?: number;
@@ -44,6 +45,7 @@ interface UserData {
   email?: string;
   phone?: string;
   regNumber?: string;
+  level: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -177,7 +179,8 @@ export async function GET(request: NextRequest) {
       isVerified: activeSession.isVerified,
       profilePhoto: activeSession.profilePhoto,
       dob: activeSession.dob,
-      gender: activeSession.gender
+      gender: activeSession.gender,
+      level: activeSession.level
     };
 
     // Safely decrypt sensitive data

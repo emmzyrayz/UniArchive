@@ -9,15 +9,14 @@ import {TextPreview} from '@/components/preview/TextPreview';
 import type { MaterialInfo } from '@/app/upload/page';
 import { DebugPanel } from '@/components/test/debugDataFlow';
 
-
 export default function PreviewPage() {
   const router = useRouter();
   const [materialInfo, setMaterialInfo] = useState<MaterialInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Retrieve material info from localStorage
-    const savedMaterialInfo = localStorage.getItem('materialInfo');
+    // Retrieve material info from sessionStorage (changed from localStorage)
+    const savedMaterialInfo = sessionStorage.getItem('materialInfo');
     
     if (savedMaterialInfo) {
       try {
@@ -35,17 +34,58 @@ export default function PreviewPage() {
     // Here you would typically send the data to your API
     alert('Material submitted successfully!');
     
-    // Clear localStorage
-    localStorage.removeItem('materialInfo');
+    // Clear sessionStorage
+    sessionStorage.removeItem('materialInfo');
     
     // Redirect to confirmation or dashboard page
     router.push('/dashboard');
   };
 
-  const renderPreviewComponent = () => {
-    if (!materialInfo || !materialInfo.materialType) return null;
+  // Helper function to determine material type based on subcategory
+  const getMaterialType = (materialInfo: MaterialInfo): 'PDF' | 'PHOTOS' | 'VIDEO' | 'TEXT' | null => {
+    if (!materialInfo.subcategory) return null;
 
-    switch (materialInfo.materialType) {
+    // Video materials
+    if (materialInfo.subcategory === 'RECORDED_LECTURE') {
+      return 'VIDEO';
+    }
+
+    // Text materials
+    if (materialInfo.subcategory === 'TUTORIAL') {
+      return 'TEXT';
+    }
+
+    // File-based materials - determine by file type
+    if (materialInfo.files && materialInfo.files.length > 0) {
+      const firstFile = materialInfo.files[0];
+      const fileType = firstFile.type.toLowerCase();
+      
+      if (fileType.includes('pdf')) {
+        return 'PDF';
+      } else if (fileType.includes('image')) {
+        return 'PHOTOS';
+      } else if (fileType.includes('video')) {
+        return 'VIDEO';
+      }
+    }
+
+    // Default to PDF for document-based materials
+    if (['LECTURE_NOTE', 'PAST_QUESTION', 'COURSE_MATERIAL', 'ASSIGNMENT', 
+         'PRESENTATION', 'PROJECT', 'LAB_REPORT', 'EBOOK', 'TEXTBOOK', 
+         'MOCK_EXAM', 'SYLLABUS'].includes(materialInfo.subcategory)) {
+      return 'PDF';
+    }
+
+    return null;
+  };
+
+  const renderPreviewComponent = () => {
+    if (!materialInfo || !materialInfo.subcategory) return null;
+
+    const materialType = getMaterialType(materialInfo);
+    if (!materialType) return <div>Unable to determine material type</div>;
+
+    switch (materialType) {
       case 'PDF':
         return <PDFPreview materialInfo={materialInfo} />;
       case 'PHOTOS':
@@ -57,6 +97,26 @@ export default function PreviewPage() {
       default:
         return <div>Unsupported material type</div>;
     }
+  };
+
+  // Helper function to get subcategory label
+  const getSubcategoryLabel = (subcategory: string): string => {
+    const labels: Record<string, string> = {
+      LECTURE_NOTE: 'Lecture Note',
+      PAST_QUESTION: 'Past Question',
+      COURSE_MATERIAL: 'Course Material',
+      ASSIGNMENT: 'Assignment',
+      TUTORIAL: 'Tutorial',
+      RECORDED_LECTURE: 'Recorded Lecture',
+      PRESENTATION: 'Presentation',
+      PROJECT: 'Project',
+      LAB_REPORT: 'Lab Report',
+      EBOOK: 'E-book',
+      TEXTBOOK: 'Textbook',
+      MOCK_EXAM: 'Mock Exam',
+      SYLLABUS: 'Syllabus'
+    };
+    return labels[subcategory] || subcategory;
   };
 
   if (isLoading) {
@@ -109,8 +169,18 @@ export default function PreviewPage() {
               <span className="text-gray-500">Topic:</span> {materialInfo.topic}
             </div>
             <div>
-              <span className="text-gray-500">Material Type:</span> {materialInfo.materialType}
+              <span className="text-gray-500">Material Type:</span> {
+                materialInfo.subcategory ? getSubcategoryLabel(materialInfo.subcategory) : 'Not specified'
+              }
             </div>
+            {/* Display additional metadata */}
+            {materialInfo.metadata && Object.entries(materialInfo.metadata).map(([key, value]) => 
+              value && (
+                <div key={key}>
+                  <span className="text-gray-500 capitalize">{key}:</span> {value}
+                </div>
+              )
+            )}
           </div>
         </div>
       </div>
@@ -134,9 +204,9 @@ export default function PreviewPage() {
         >
           Submit Material
         </button>
-
-        <DebugPanel materialInfo={materialInfo} />
       </div>
+
+      <DebugPanel materialInfo={materialInfo} />
     </div>
   );
 }

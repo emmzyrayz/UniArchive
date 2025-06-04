@@ -49,6 +49,7 @@ export interface ISessionCache extends Document {
   department: string;
   regNumber?: string;
   regNumberHash?: string;
+  level: string;
   upid: string;
   isVerified: boolean;
   isActive: boolean;
@@ -74,6 +75,7 @@ interface IUserData {
   faculty: string;
   department: string;
   regNumber?: string;
+  level: string;
   upid: string;
   isVerified: boolean;
 }
@@ -118,6 +120,7 @@ const SessionCacheSchema = new Schema<ISessionCache>({
   school: { type: String, required: true },
   faculty: { type: String, required: true },
   department: { type: String, required: true },
+  level: { type: String, required: true },
   regNumber: { type: String },
   regNumberHash: { type: String },
   upid: { type: String, required: true },

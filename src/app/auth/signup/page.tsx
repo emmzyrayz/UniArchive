@@ -16,11 +16,14 @@ export default function SignUp() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showCustomLevel, setShowCustomLevel] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     gender: "",
+    level: "",
+    customLevel: "",
     dob: "",
     phone: "",
     university: "",
@@ -48,7 +51,20 @@ export default function SignUp() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    
+    // Handle level selection change
+    if (name === "level") {
+      if (value === "Other") {
+        setShowCustomLevel(true);
+        setFormData({ ...formData, [name]: value, customLevel: "" });
+      } else {
+        setShowCustomLevel(false);
+        setFormData({ ...formData, [name]: value, customLevel: "" });
+      }
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
+    
     setError(""); // Clear error when user starts typing
   };
 
@@ -67,8 +83,13 @@ export default function SignUp() {
         }
         break;
       case 1:
-        if (!formData.university || !formData.faculty || !formData.department || !formData.regnumber) {
+        if (!formData.university || !formData.faculty || !formData.department || !formData.regnumber || !formData.level) {
           setError("Please fill in all university information");
+          return false;
+        }
+        // Validate custom level if "Other" is selected
+        if (formData.level === "Other" && !formData.customLevel.trim()) {
+          setError("Please specify your level/year");
           return false;
         }
         break;
@@ -115,7 +136,13 @@ export default function SignUp() {
     setError("");
     
     try {
-      const result = await register(formData);
+      // Prepare form data with the correct level value
+      const submitData = {
+        ...formData,
+        level: formData.level === "Other" ? formData.customLevel : formData.level
+      };
+      
+      const result = await register(submitData);
       
       if (result.success) {
         setSuccess("Registration successful! Please check your email for verification code.");
@@ -300,6 +327,46 @@ export default function SignUp() {
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
               required
             />
+            <select
+              name="level"
+              value={formData.level}
+              onChange={handleChange}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+              required
+            >
+              <option value="">Select your Level/Year*</option>
+              <option value="100L">100 Level/Year 1</option>
+              <option value="200L">200 Level/Year 2</option>
+              <option value="300L">300 Level/Year 3</option>
+              <option value="400L">400 Level/Year 4</option>
+              <option value="500L">500 Level/Year 5</option>
+              <option value="600L">600 Level/Year 6</option>
+              <option value="700L">700 Level/Year 7</option>
+              <option value="Other">Other (Specify)</option>
+            </select>
+            
+            {/* Custom Level Input - Shows when "Other" is selected */}
+            {showCustomLevel && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <input
+                  name="customLevel"
+                  placeholder="Enter your level/year (e.g., Year 8, 800L, etc.)*"
+                  value={formData.customLevel}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                  required
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Please specify your current level or year of study
+                </p>
+              </motion.div>
+            )}
+            
             <input
               name="regnumber"
               placeholder="Registration Number*"
@@ -382,6 +449,7 @@ export default function SignUp() {
               <p><span className="font-semibold">University:</span> {formData.university}</p>
               <p><span className="font-semibold">Faculty:</span> {formData.faculty}</p>
               <p><span className="font-semibold">Department:</span> {formData.department}</p>
+              <p><span className="font-semibold">Level:</span> {formData.level === "Other" ? formData.customLevel : formData.level}</p>
               <p><span className="font-semibold">Registration Number:</span> {formData.regnumber}</p>
             </div>
           </div>

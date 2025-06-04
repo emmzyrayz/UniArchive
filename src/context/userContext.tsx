@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 // User role type
 type UserRole = "admin" | "contributor" | "student" | "mod";
 
-// User interface - matches your backend JWT payload
+// Enhanced User interface - matches SessionCache data structure
 interface User {
   id: string;
   fullName: string;
@@ -20,15 +20,20 @@ interface User {
   profilePhoto?: string;
   phone?: string;
   regNumber?: string;
+  // Additional fields from SessionCache
+  dob: Date;
+  gender: 'Male' | 'Female' | 'Other';
+  level: string;
 }
 
-// Session information from backend
+// Enhanced Session information from SessionCache
 interface SessionInfo {
-  signInTime: Date;
+  uuid: string;
   lastActivity: Date;
   expiresAt: Date;
   deviceInfo: string;
-  email: string;
+  ipAddress: string;
+  signInTime: Date; // We'll derive this from the session creation
 }
 
 // User preferences and settings
@@ -77,7 +82,7 @@ enum UserState {
   ERROR = 'error'
 }
 
-// User context interface - INDEPENDENT of auth
+// Enhanced User context interface
 interface UserContextType {
   // User profile and session
   userProfile: User | null;
@@ -105,6 +110,9 @@ interface UserContextType {
   getUserDisplayName: () => string;
   getUserInitials: () => string;
   getRoleDisplayName: () => string;
+  getFormattedDateOfBirth: () => string;
+  getAgeFromDOB: () => number | null;
+  getGenderDisplayName: () => string;
 }
 
 // Default user preferences
@@ -237,7 +245,23 @@ class TokenStorage {
 
 const tokenStorage = new TokenStorage();
 
-// User Provider Component - INDEPENDENT OF AUTH
+// Helper function to safely parse dates
+const safeParseDate = (dateValue: string | Date | undefined): Date => {
+  if (!dateValue) return new Date();
+  
+  if (dateValue instanceof Date) {
+    return dateValue;
+  }
+  
+  try {
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+  } catch {
+    return new Date();
+  }
+};
+
+// User Provider Component
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
@@ -286,7 +310,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const token = tokenStorage.getItem('authToken');
     if (!token) {
-      console.log('No auth token found');
+      console.log('UserContext: No auth token found');
       clearUserData();
       return false;
     }
@@ -299,7 +323,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setIsLoading(true);
         });
 
-        console.log('Fetching user session data...');
+        console.log('UserContext: Fetching comprehensive user session data...');
         
         const response = await fetch('/api/user/online-status', {
           method: 'GET',
@@ -310,43 +334,80 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         });
 
         if (!response.ok) {
-          console.log('Online status check failed:', response.status);
+          console.log('UserContext: Online status check failed:', response.status);
           if (response.status === 401) {
-            console.log("Session expired, clearing user data");
+            console.log("UserContext: Session expired, clearing user data");
             clearUserData();
           }
           return false;
         }
 
         const data = await response.json();
-        console.log('Online status response:', data);
+        console.log('UserContext: Online status response received');
+        console.log('UserContext: User data includes level:', data.user?.level);
 
         if (data.isOnline && data.user && data.sessionInfo) {
-          // Update user data from SessionCache
+          // Parse and validate the comprehensive user data from SessionCache
+          const sessionUser = data.user;
+          
+          // Create comprehensive user profile from SessionCache data
+          const userProfileData: User = {
+            id: sessionUser.id,
+            fullName: sessionUser.fullName,
+            email: sessionUser.email || '',
+            role: sessionUser.role as UserRole,
+            school: sessionUser.school,
+            faculty: sessionUser.faculty,
+            department: sessionUser.department,
+            uuid: sessionUser.uuid || '',
+            upid: sessionUser.upid,
+            isVerified: sessionUser.isVerified,
+            profilePhoto: sessionUser.profilePhoto,
+            phone: sessionUser.phone,
+            regNumber: sessionUser.regNumber,
+            // Additional SessionCache fields
+            dob: safeParseDate(sessionUser.dob),
+            gender: sessionUser.gender || 'Other',
+            level: sessionUser.level || '',
+          };
+
+          // Create comprehensive session info
+          const sessionInfoData: SessionInfo = {
+            uuid: data.sessionInfo.uuid,
+            lastActivity: safeParseDate(data.sessionInfo.lastActivity),
+            expiresAt: safeParseDate(data.sessionInfo.expiresAt),
+            deviceInfo: data.sessionInfo.deviceInfo || 'Unknown Device',
+            ipAddress: data.sessionInfo.ipAddress || 'Unknown IP',
+            // Derive sign-in time (we can use lastActivity as a proxy if signInTime isn't available)
+            signInTime: safeParseDate(data.sessionInfo.signInTime || data.sessionInfo.lastActivity),
+          };
+
+          console.log('UserContext: Setting comprehensive user data');
+          console.log('UserContext: User level:', userProfileData.level);
+          console.log('UserContext: User DOB:', userProfileData.dob);
+          console.log('UserContext: User gender:', userProfileData.gender);
+
+          // Update state with comprehensive data
           safeSetState(() => {
-            setUserProfile(data.user);
-            setSessionInfo({
-              ...data.sessionInfo,
-              signInTime: new Date(data.sessionInfo.signInTime),
-              lastActivity: new Date(data.sessionInfo.lastActivity),
-              expiresAt: new Date(data.sessionInfo.expiresAt),
-            });
-            setUserPermissions(getPermissionsByRole(data.user.role));
+            setUserProfile(userProfileData);
+            setSessionInfo(sessionInfoData);
+            setUserPermissions(getPermissionsByRole(userProfileData.role));
             setHasActiveSession(true);
             setUserState(UserState.ACTIVE_SESSION);
             setIsLoading(false);
           });
+          
           return true;
         } else {
-          console.log('No active session found');
+          console.log('UserContext: No active session found');
           if (data.sessionExpired) {
-            console.log("Session expired from server");
+            console.log("UserContext: Session expired from server");
           }
           clearUserData();
           return false;
         }
       } catch (error) {
-        console.error('Failed to refresh user data:', error);
+        console.error('UserContext: Failed to refresh user data:', error);
         safeSetState(() => {
           setUserState(UserState.ERROR);
           setIsLoading(false);
@@ -363,7 +424,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Initialize user data on mount
   useEffect(() => {
-    console.log('Initializing UserContext...');
+    console.log('UserContext: Initializing...');
     refreshUserData();
   }, [refreshUserData]);
 
@@ -379,10 +440,10 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const interval = setInterval(async () => {
       if (!refreshPromiseRef.current) {
-        console.log('Periodic session validation...');
+        console.log('UserContext: Periodic session validation...');
         const isStillActive = await refreshUserData();
         if (!isStillActive && mountedRef.current) {
-          console.log("Session validation failed");
+          console.log("UserContext: Session validation failed");
         }
       }
     }, 5 * 60 * 1000); // 5 minutes
@@ -428,7 +489,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return true;
   };
 
-  // Utility functions
+  // Enhanced utility functions
   const getUserDisplayName = (): string => {
     if (!userProfile) return 'Guest';
     return userProfile.fullName || 'User';
@@ -457,6 +518,45 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return roleNames[userProfile.role] || 'User';
   };
 
+  // New utility functions for additional SessionCache data
+  const getFormattedDateOfBirth = (): string => {
+    if (!userProfile?.dob) return 'Not provided';
+    
+    try {
+      return userProfile.dob.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return 'Invalid date';
+    }
+  };
+
+  const getAgeFromDOB = (): number | null => {
+    if (!userProfile?.dob) return null;
+    
+    try {
+      const today = new Date();
+      const birthDate = new Date(userProfile.dob);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      return age >= 0 ? age : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getGenderDisplayName = (): string => {
+    if (!userProfile?.gender) return 'Not specified';
+    return userProfile.gender;
+  };
+
   const value: UserContextType = {
     userProfile,
     sessionInfo,
@@ -473,6 +573,9 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     getUserDisplayName,
     getUserInitials,
     getRoleDisplayName,
+    getFormattedDateOfBirth,
+    getAgeFromDOB,
+    getGenderDisplayName,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

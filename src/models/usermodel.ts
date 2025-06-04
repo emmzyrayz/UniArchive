@@ -14,6 +14,7 @@ export interface IUser extends Document {
   phone: string;
   phoneHash: string; // For searching
   gender: "Male" | "Female" | "Other";
+  level: string; // Added level field for student year/level
   profilePhoto?: string;
   school: string;
   faculty: string;
@@ -88,6 +89,7 @@ const UserSchema: Schema = new Schema<IUser>(
     phone: { type: String, required: true }, // Encrypted version
     phoneHash: { type: String, required: true }, // For searching
     gender: { type: String, enum: ["Male", "Female", "Other"], required: true },
+    level: { type: String, required: true }, // Added level field for student year/level
     profilePhoto: { type: String },
     role: {
       type: String,

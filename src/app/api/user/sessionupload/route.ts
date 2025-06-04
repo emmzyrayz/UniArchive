@@ -17,6 +17,7 @@ interface UserData {
   faculty: string;
   department: string;
   regNumber: string;
+  level: string;
   upid: string;
   isVerified: boolean;
   profilePhoto?: string;
@@ -51,6 +52,7 @@ interface SessionUpdateData {
   phoneHash?: string;
   regNumber?: string;
   regNumberHash?: string;
+  level: string;
 }
 
 // Helper function to extract device/browser info from user agent
@@ -82,7 +84,7 @@ function getClientIP(request: NextRequest): string {
 function validateUserData(userData: UserData): { isValid: boolean; missingFields: string[] } {
   const requiredFields: (keyof UserData)[] = [
     'fullName', 'email', 'dob', 'phone', 'gender', 'role', 
-    'school', 'faculty', 'department', 'regNumber', 'upid', 'isVerified'
+    'school', 'faculty', 'department', 'regNumber', 'level', 'upid', 'isVerified'
   ];
   
   const missingFields: string[] = [];
@@ -110,6 +112,7 @@ export async function POST(request: NextRequest) {
     const { userId, email, userData, sessionToken, deviceInfo: providedDeviceInfo, ipAddress: providedIpAddress } = body;
 
     console.log("SessionUpload: Received data for userId:", userId);
+    console.log("SessionUpload: User level received:", userData.level);
 
     // Validate required fields
     if (!userId || !email || !userData || !sessionToken) {
@@ -191,6 +194,7 @@ export async function POST(request: NextRequest) {
             department: userData.department,
             upid: userData.upid,
             isVerified: userData.isVerified,
+            level: userData.level,
           };
           
           // Update encrypted fields if they've changed
@@ -240,6 +244,7 @@ export async function POST(request: NextRequest) {
           profilePhoto: userData.profilePhoto,
           role: userData.role,
           isVerified: userData.isVerified,
+          level: userData.level,
         };
         
         await SessionCache.findOneAndUpdate(
@@ -270,7 +275,8 @@ export async function POST(request: NextRequest) {
       // Convert dob to Date if it's a string
       const processedUserData = {
         ...userData,
-        dob: typeof userData.dob === 'string' ? new Date(userData.dob) : userData.dob
+        dob: typeof userData.dob === 'string' ? new Date(userData.dob) : userData.dob,
+        level: userData.level
       };
 
       const newSession = await SessionCache.createFullSession(
@@ -376,7 +382,8 @@ export async function GET(request: NextRequest) {
           isActive: session.isActive,
           expiresAt: session.expiresAt,
           lastActivity: session.lastActivity,
-          deviceInfo: session.deviceInfo
+          deviceInfo: session.deviceInfo,
+          level: session.level
         }
       },
       { status: 200 }

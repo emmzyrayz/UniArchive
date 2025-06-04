@@ -15,6 +15,7 @@ interface SignupFormData {
   faculty: string;
   department: string;
   regnumber: string;
+  level: string;
   confirmpassword: string;
 }
 
@@ -358,10 +359,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { success: false, message: 'Passwords do not match' };
       }
 
+      // Map frontend form data to backend expected format
+      const backendData = {
+        name: formData.name,           // Frontend: name -> Backend: name
+        email: formData.email,
+        password: formData.password,
+        confirmpassword: formData.confirmpassword,
+        gender: formData.gender,
+        dob: formData.dob,
+        phone: formData.phone,
+        university: formData.university,
+        faculty: formData.faculty,
+        department: formData.department,
+        regnumber: formData.regnumber,  
+        level: formData.level            // This should now work properly
+      };
+
+      console.log('Sending registration data:', backendData); // Debug log
+
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(backendData),
       });
 
       const data = await response.json();
