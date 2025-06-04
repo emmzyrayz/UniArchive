@@ -33,6 +33,47 @@ export const DebugPanel = ({ materialInfo }: DebugPanelProps) => {
     );
   }
 
+  // Helper function to determine material type based on subcategory
+  const getMaterialType = (materialInfo: MaterialInfo): 'PDF' | 'PHOTOS' | 'VIDEO' | 'TEXT' | null => {
+    if (!materialInfo.subcategory) return null;
+
+    // Video materials
+    if (materialInfo.subcategory === 'RECORDED_LECTURE') {
+      return 'VIDEO';
+    }
+
+    // Text materials
+    if (materialInfo.subcategory === 'TUTORIAL') {
+      return 'TEXT';
+    }
+
+    // File-based materials - determine by file type
+    if (materialInfo.files && materialInfo.files.length > 0) {
+      const firstFile = materialInfo.files[0];
+      const fileType = firstFile.type.toLowerCase();
+      
+      if (fileType.includes('pdf')) {
+        return 'PDF';
+      } else if (fileType.includes('image')) {
+        return 'PHOTOS';
+      } else if (fileType.includes('video')) {
+        return 'VIDEO';
+      }
+    }
+
+    // Default to PDF for document-based materials
+    if (['LECTURE_NOTE', 'PAST_QUESTION', 'COURSE_MATERIAL', 'ASSIGNMENT', 
+         'PRESENTATION', 'PROJECT', 'LAB_REPORT', 'EBOOK', 'TEXTBOOK', 
+         'MOCK_EXAM', 'SYLLABUS'].includes(materialInfo.subcategory)) {
+      return 'PDF';
+    }
+
+    return null;
+  };
+
+  // Calculate the material type for display
+  const calculatedMaterialType = getMaterialType(materialInfo);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg max-w-4xl max-h-96 overflow-auto">
@@ -64,7 +105,9 @@ export const DebugPanel = ({ materialInfo }: DebugPanelProps) => {
           <div>
             <h4 className="font-semibold text-purple-600">Key Checks:</h4>
             <ul className="list-disc list-inside space-y-1 text-sm">
-              <li>Material Type: <strong>{materialInfo.materialType || 'None'}</strong></li>
+              <li>Category: <strong>{materialInfo.category || 'None'}</strong></li>
+              <li>Subcategory: <strong>{materialInfo.subcategory || 'None'}</strong></li>
+              <li>Calculated Material Type: <strong>{calculatedMaterialType || 'None'}</strong></li>
               <li>Has textContent: <strong>{materialInfo.textContent ? 'Yes' : 'No'}</strong></li>
               <li>textContent length: <strong>{materialInfo.textContent?.length || 0}</strong></li>
               <li>Has files: <strong>{materialInfo.files?.length ? `Yes (${materialInfo.files.length})` : 'No'}</strong></li>
@@ -79,6 +122,31 @@ export const DebugPanel = ({ materialInfo }: DebugPanelProps) => {
                 {materialInfo.textContent.substring(0, 500)}
                 {materialInfo.textContent.length > 500 ? '...' : ''}
               </pre>
+            </div>
+          )}
+
+          {materialInfo.files && materialInfo.files.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-indigo-600">Files Info:</h4>
+              <ul className="text-sm space-y-1">
+                {materialInfo.files.map((file, index) => (
+                  <li key={index}>
+                    <strong>{file.name}</strong> - {file.type} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {materialInfo.videoSource && (
+            <div>
+              <h4 className="font-semibold text-red-600">Video Source Info:</h4>
+              <ul className="text-sm space-y-1">
+                <li>Type: <strong>{materialInfo.videoSource.type}</strong></li>
+                <li>Platform: <strong>{materialInfo.videoSource.metadata.platform || 'N/A'}</strong></li>
+                <li>Title: <strong>{materialInfo.videoSource.metadata.title || 'N/A'}</strong></li>
+                <li>Duration: <strong>{materialInfo.videoSource.metadata.duration || 'N/A'}</strong></li>
+              </ul>
             </div>
           )}
         </div>
