@@ -6,6 +6,7 @@ import User from "@/models/usermodel";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { Types } from "mongoose";
+import { cookies } from 'next/headers';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key";
 
@@ -175,8 +176,24 @@ export async function POST(request: NextRequest) {
       if (sessionUUID) {
         console.log("Setting session UUID cookie:", sessionUUID);
         
-        // Create response first, then set cookie
-        const response = NextResponse.json(
+        // Set cookie using the cookies() API (Next.js 15+ async method)
+        const cookieStore = await cookies();
+        cookieStore.set("sessionId", sessionUUID, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          maxAge: 60 * 60 * 24 * 7, // 7 days in seconds
+          sameSite: "lax",
+          path: "/"
+        });
+
+        console.log("Session UUID cookie set successfully");
+
+        // Update last login
+        user.updatedAt = new Date();
+        await user.save();
+
+        // Return response
+        return NextResponse.json(
           {
             message: "Login successful",
             token,
@@ -187,23 +204,6 @@ export async function POST(request: NextRequest) {
           },
           { status: 200 }
         );
-
-        // Set the cookie on the response
-        response.cookies.set("sessionId", sessionUUID, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          maxAge: 60 * 60 * 24 * 7, // 7 days in seconds
-          sameSite: "strict",
-          path: "/"
-        });
-
-        console.log("Session UUID cookie set successfully");
-
-        // Update last login
-        user.updatedAt = new Date();
-        await user.save();
-
-        return response;
       } else {
         console.error("No session UUID returned from sessionUpload");
         console.error("SessionUpload result:", JSON.stringify(sessionUploadResult, null, 2));

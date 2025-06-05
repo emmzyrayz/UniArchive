@@ -11,6 +11,7 @@ import { NavigationWrapper } from "@/context/navigationWrapper";
 import { AuthProvider } from "@/context/authContext";
 import { UserProvider } from "@/context/userContext";
 import RouteProtectionProvider from "@/components/protectedRoute";
+import DebugUserContext from "@/utils/DebugUserContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -50,6 +51,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  console.log('Layout: Providers initializing...');
+
   return (
     <html
       lang="en"
@@ -69,7 +72,7 @@ export default function RootLayout({
           <UserProvider>
             <RouteProtectionProvider>
               <ClientWrapper>
-                <NavigationWrapper>{children}</NavigationWrapper>
+                <NavigationWrapper><DebugUserContext /> {children}</NavigationWrapper>
               </ClientWrapper>
             </RouteProtectionProvider>
           </UserProvider>

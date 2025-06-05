@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import Logo from "@/assets/img/logo/uniarchive.png";
 import { useAuth } from "@/context/authContext";
+import { useAuthFlow } from "@/hooks/useAuthFlow"; // You'll need to create this file
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -12,8 +12,8 @@ export default function Login() {
   const [showVerification, setShowVerification] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   
-  const { login, isLoading, verifyEmail, resendVerification } = useAuth();
-  const router = useRouter();
+  const { resendVerification } = useAuth();
+  const { signInWithRedirect, verifyEmailWithRedirect, isLoading } = useAuthFlow();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,19 +25,18 @@ export default function Login() {
     }
 
     try {
-      const result = await login(formData.email, formData.password);
+      const result = await signInWithRedirect(formData.email, formData.password);
       
-      if (result.success) {
-        // Redirect to dashboard or home page after successful login
-        router.push("/dashboard"); // Change this to your desired redirect path
-      } else {
+      if (!result.success) {
         // Check if the error is about email verification
         if (result.message.includes("verify your email")) {
           setShowVerification(true);
         }
         setError(result.message);
       }
-    } catch {
+      // If successful, the hook handles the redirect
+    } catch (err) {
+      console.error("Login error:", err);
       setError("An unexpected error occurred. Please try again.");
     }
   };
@@ -52,15 +51,14 @@ export default function Login() {
     }
 
     try {
-      const result = await verifyEmail(formData.email, verificationCode);
+      const result = await verifyEmailWithRedirect(formData.email, verificationCode);
       
-      if (result.success) {
-        // Redirect after successful verification
-        router.push("/dashboard"); // Change this to your desired redirect path
-      } else {
+      if (!result.success) {
         setError(result.message);
       }
-    } catch {
+      // If successful, the hook handles the redirect
+    } catch (err) {
+      console.error("Verification error:", err);
       setError("An unexpected error occurred. Please try again.");
     }
   };
@@ -73,12 +71,12 @@ export default function Login() {
       
       if (result.success) {
         setError(""); // Clear any existing errors
-        // You might want to show a success message instead
         alert("Verification code sent to your email!");
       } else {
         setError(result.message);
       }
-    } catch {
+    } catch (err) {
+      console.error("Resend verification error:", err);
       setError("Failed to resend verification code. Please try again.");
     }
   };

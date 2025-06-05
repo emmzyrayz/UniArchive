@@ -73,16 +73,16 @@ interface NavItem {
   roles?: UserRole[];
 }
 
-// User state enum
-enum UserState {
+// User state enum - FIXED: Using string values that match your RouteProtection expectations
+export enum UserState {
   INITIALIZING = 'initializing',
-  ACTIVE_SESSION = 'active_session',
+  ACTIVE_SESSION = 'active_session', 
   NO_SESSION = 'no_session',
   LOADING = 'loading',
   ERROR = 'error'
 }
 
-// Enhanced User context interface
+// Enhanced User context interface - FIXED: userState type matches the enum
 interface UserContextType {
   // User profile and session
   userProfile: User | null;
@@ -93,7 +93,7 @@ interface UserContextType {
   // State management
   hasActiveSession: boolean;
   isLoading: boolean;
-  userState: UserState;
+  userState: UserState; // This now properly matches the enum
   
   // User data actions
   refreshUserData: () => Promise<boolean>;
@@ -274,6 +274,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Refs to prevent race conditions
   const mountedRef = useRef(true);
   const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
+  const initializationCompleteRef = useRef(false);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -289,16 +290,20 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  // Clear user data
+  // Clear user data - FIXED: Using enum values
   const clearUserData = useCallback(() => {
+    console.log('UserContext: Clearing user data and setting NO_SESSION state');
     safeSetState(() => {
       setUserProfile(null);
       setSessionInfo(null);
       setUserPermissions(getPermissionsByRole('student'));
       setHasActiveSession(false);
-      setUserState(UserState.NO_SESSION);
+      setUserState(UserState.NO_SESSION); // FIXED: Using enum value
       setIsLoading(false);
     });
+    
+    // Also clear the auth token
+    tokenStorage.removeItem('authToken');
   }, [safeSetState]);
 
   // Refresh user data from SessionCache via online-status
@@ -319,11 +324,15 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const refreshPromise = (async (): Promise<boolean> => {
       try {
         safeSetState(() => {
-          setUserState(UserState.LOADING);
+          setUserState(UserState.LOADING); // FIXED: Using enum value
           setIsLoading(true);
         });
 
         console.log('UserContext: Fetching comprehensive user session data...');
+
+         // FIXED: Reduced timeout for faster response
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
         
         const response = await fetch('/api/user/online-status', {
           method: 'GET',
@@ -331,13 +340,22 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           console.log('UserContext: Online status check failed:', response.status);
           if (response.status === 401) {
             console.log("UserContext: Session expired, clearing user data");
             clearUserData();
+          } else {
+            // For other errors, set error state but don't clear user data immediately
+            safeSetState(() => {
+              setUserState(UserState.ERROR);
+              setIsLoading(false);
+            });
           }
           return false;
         }
@@ -384,22 +402,23 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           console.log('UserContext: Setting comprehensive user data');
           console.log('UserContext: User level:', userProfileData.level);
-          console.log('UserContext: User DOB:', userProfileData.dob);
-          console.log('UserContext: User gender:', userProfileData.gender);
+          console.log('UserContext: User role:', userProfileData.role);
 
-          // Update state with comprehensive data
+          // Update state with comprehensive data - FIXED: Using enum value
           safeSetState(() => {
             setUserProfile(userProfileData);
             setSessionInfo(sessionInfoData);
             setUserPermissions(getPermissionsByRole(userProfileData.role));
             setHasActiveSession(true);
-            setUserState(UserState.ACTIVE_SESSION);
+            setUserState(UserState.ACTIVE_SESSION); // FIXED: Using enum value
             setIsLoading(false);
           });
           
+          console.log('UserContext: User state set to ACTIVE_SESSION');
+          initializationCompleteRef.current = true;
           return true;
         } else {
-          console.log('UserContext: No active session found');
+          console.log('UserContext: No active session found in server response');
           if (data.sessionExpired) {
             console.log("UserContext: Session expired from server");
           }
@@ -408,10 +427,14 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (error) {
         console.error('UserContext: Failed to refresh user data:', error);
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('UserContext: Request timed out');
+        }
         safeSetState(() => {
-          setUserState(UserState.ERROR);
+          setUserState(UserState.ERROR); // FIXED: Using enum value
           setIsLoading(false);
         });
+        initializationCompleteRef.current = true;
         return false;
       } finally {
         refreshPromiseRef.current = null;
@@ -422,10 +445,32 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return refreshPromise;
   }, [clearUserData, safeSetState]);
 
+  // FIXED: Only trigger refresh if we haven't initialized and there's a token
+  useEffect(() => {
+    if (initializationCompleteRef.current) return;
+    
+    const token = tokenStorage.getItem('authToken');
+    console.log("UserContext: Initial check - Token exists?", !!token);
+    
+    if (token) {
+      console.log("UserContext: Token found, refreshing user data");
+      refreshUserData();
+    } else {
+      console.log("UserContext: No token found, setting NO_SESSION state");
+      clearUserData();
+    }
+  }, [refreshUserData, clearUserData]);
+
   // Initialize user data on mount
   useEffect(() => {
     console.log('UserContext: Initializing...');
-    refreshUserData();
+    const initializeUser = async () => {
+      // Small delay to ensure proper mounting
+      await new Promise(resolve => setTimeout(resolve, 50));
+      await refreshUserData();
+    };
+    
+    initializeUser();
   }, [refreshUserData]);
 
   // Load preferences on mount
@@ -435,6 +480,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   // Periodic session validation - only if we have an active session
+  // FIXED: More reasonable periodic session validation - only if we have an active session
   useEffect(() => {
     if (userState !== UserState.ACTIVE_SESSION) return;
 
@@ -446,7 +492,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log("UserContext: Session validation failed");
         }
       }
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 10 * 60 * 1000); // FIXED: Increased to 10 minutes for less frequent checks
 
     return () => clearInterval(interval);
   }, [userState, refreshUserData]);
@@ -556,6 +602,18 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!userProfile?.gender) return 'Not specified';
     return userProfile.gender;
   };
+
+ // Debug logging for state changes
+  useEffect(() => {
+    console.log('UserContext State Update:', {
+      userState,
+      hasActiveSession,
+      isLoading,
+      userRole: userProfile?.role,
+      userName: userProfile?.fullName,
+      initializationComplete: initializationCompleteRef.current
+    });
+  }, [userState, hasActiveSession, isLoading, userProfile]);
 
   const value: UserContextType = {
     userProfile,

@@ -437,10 +437,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setIsLoading(false);
         });
 
-        return { success: true, message: 'Login successful!' };
+        // Wait for state to be fully updated
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      console.log('Auth state updated successfully');
+      return { success: true, message: 'Login successful!' };
       } else {
         safeSetState(() => {
           setAuthState(AuthState.UNAUTHENTICATED);
+        setIsLoading(false);
         });
         return { success: false, message: data.message || 'Login failed' };
       }
@@ -448,6 +453,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error('Login error:', error);
       safeSetState(() => {
         setAuthState(AuthState.ERROR);
+      setIsLoading(false);
       });
       return { success: false, message: 'Network error. Please try again.' };
     } finally {
@@ -461,41 +467,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Verify email function
-  const verifyEmail = async (email: string, code: string): Promise<{ success: boolean; message: string }> => {
-    try {
-      safeSetState(() => setIsLoading(true));
+  // Enhanced verifyEmail function
+const verifyEmail = async (email: string, code: string): Promise<{ success: boolean; message: string }> => {
+  try {
+    safeSetState(() => setIsLoading(true));
 
-      const response = await fetch('/api/auth/verifyemail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code }),
+    const response = await fetch('/api/auth/verifyemail', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      const { token, sessionToken: returnedSessionToken } = data;
+      
+      // Store tokens synchronously
+      storage.setItem('authToken', token);
+      if (returnedSessionToken) {
+        storage.setItem('sessionToken', returnedSessionToken);
+      }
+      
+      // Update state
+      safeSetState(() => {
+        setSessionToken(returnedSessionToken);
+        setIsAuthenticated(true);
+        setAuthState(AuthState.AUTHENTICATED);
+        setIsLoading(false);
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        const { token, sessionToken: returnedSessionToken } = data;
-        storage.setItem('authToken', token);
-        if (returnedSessionToken) {
-          storage.setItem('sessionToken', returnedSessionToken);
-        }
-        
-        safeSetState(() => {
-          setSessionToken(returnedSessionToken);
-          setIsAuthenticated(true);
-          setAuthState(AuthState.AUTHENTICATED);
-        });
-        return { success: true, message: 'Email verified successfully!' };
-      } else {
-        return { success: false, message: data.message || 'Verification failed' };
-      }
-    } catch (error) {
-      console.error('Verification error:', error);
-      return { success: false, message: 'Network error. Please try again.' };
-    } finally {
+      // Wait for state to be fully updated
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      console.log('Email verification successful, auth state updated');
+      return { success: true, message: 'Email verified successfully!' };
+    } else {
       safeSetState(() => setIsLoading(false));
+      return { success: false, message: data.message || 'Verification failed' };
     }
-  };
+  } catch (error) {
+    console.error('Verification error:', error);
+    safeSetState(() => setIsLoading(false));
+    return { success: false, message: 'Network error. Please try again.' };
+  }
+};
 
   // Forgot password function
   const forgotPassword = async (email: string): Promise<{ success: boolean; message: string }> => {

@@ -1,4 +1,4 @@
-// /api/user/online-status/route.ts - Fixed version with proper error handling
+// /api/user/online-status/route.ts - Updated version with async cookies API
 
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/database";
@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
+    // Use async cookies API
     const cookieStore = await cookies();
     const sessionUUID = cookieStore.get("sessionId")?.value;
 
@@ -92,9 +93,14 @@ export async function GET(request: NextRequest) {
     // Check session using different methods
     let activeSession = null;
 
+    console.log("OnlineStatus: Headers received", {
+      authHeader: request.headers.get('Authorization'),
+      cookieHeader: request.headers.get('Cookie')
+    });
+
     // Method 1: Try finding by UUID from cookie
     if (sessionUUID) {
-      console.log("UUID not found, trying sessionToken:", sessionUUID.substring(0, 8) + "...");
+      console.log("UUID found, searching for session:", sessionUUID.substring(0, 8) + "...");
       try {
         activeSession = await SessionCache.findActiveSession(sessionUUID, 'uuid');
         if (!activeSession) {
@@ -108,7 +114,7 @@ export async function GET(request: NextRequest) {
 
     // Method 2: Try finding by sessionToken from JWT
     if (!activeSession && decoded?.sessionToken) {
-      console.log("SessionToken not found, trying userId:", decoded.user.id);
+      console.log("Trying to find session by sessionToken from JWT");
       try {
         activeSession = await SessionCache.findActiveSession(decoded.sessionToken, 'sessionToken');
       } catch (error) {
@@ -118,6 +124,7 @@ export async function GET(request: NextRequest) {
 
     // Method 3: Try finding by userId from JWT
     if (!activeSession && decoded?.user?.id) {
+      console.log("Trying to find session by userId:", decoded.user.id);
       try {
         activeSession = await SessionCache.findActiveSession(decoded.user.id, 'userId');
       } catch (error) {
@@ -125,7 +132,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log("Active session found via JWT:", activeSession ? "Yes" : "No");
+    console.log("Active session found:", activeSession ? "Yes" : "No");
 
     if (!activeSession) {
       return NextResponse.json(
@@ -144,7 +151,7 @@ export async function GET(request: NextRequest) {
                           activeSession.isSignedIn && 
                           new Date(activeSession.expiresAt) > now;
 
-    console.log("Session is active and valid");
+    console.log("Session is active and valid:", isSessionValid);
 
     if (!isSessionValid) {
       return NextResponse.json(
