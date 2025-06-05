@@ -10,9 +10,12 @@ interface AdminContextType {
   isLoading: boolean;
   error: string | null;
   isAdmin: boolean;
+  uploadProgress: number;
   uploadUniversity: (universityData: UniversityInput) => Promise<boolean>;
+  uploadImage: (file: File) => Promise<string | null>;
   fetchUniversities: () => Promise<void>;
   deleteUniversity: (universityId: string) => Promise<boolean>;
+  updateUniversity: (universityId: string, universityData: Partial<UniversityInput>) => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -34,6 +37,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
   const [universities, setUniversities] = useState<UniversityInput[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { userProfile, hasActiveSession, userState } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -61,6 +65,54 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     return true;
   }, [userState, hasActiveSession, userProfile]);
 
+  // Helper function to get auth token
+  const getAuthToken = useCallback((): string | null => {
+    return typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+  }, []);
+
+  // Upload image to Cloudinary
+  const uploadImage = useCallback(async (file: File): Promise<string | null> => {
+    if (!checkAdminPrivileges()) {
+      return null;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = getAuthToken();
+      const response = await fetch('/api/admin/upload-image', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to upload image');
+      }
+
+      const result = await response.json();
+      setUploadProgress(100);
+      
+      return result.imageUrl || result.url; // Handle different response formats
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Image upload failed';
+      setError(errorMessage);
+      console.error('Upload image error:', err);
+      return null;
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setUploadProgress(0), 1000);
+    }
+  }, [checkAdminPrivileges, getAuthToken]);
+
   const uploadUniversity = useCallback(async (universityData: UniversityInput): Promise<boolean> => {
     if (!checkAdminPrivileges()) {
       return false;
@@ -70,8 +122,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      // Get token from storage (you may need to adjust this based on your token storage implementation)
-      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      const token = getAuthToken();
       
       const response = await fetch('/api/admin/school/upload', {
         method: 'POST',
@@ -100,7 +151,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [checkAdminPrivileges]);
+  }, [checkAdminPrivileges, getAuthToken]);
 
   const fetchUniversities = useCallback(async (): Promise<void> => {
     if (!checkAdminPrivileges()) {
@@ -111,11 +162,12 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      const token = getAuthToken();
       
       const response = await fetch('/api/admin/school/view', {
         method: 'GET',
         headers: {
+          'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
       });
@@ -126,7 +178,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
         throw new Error(result.message || 'Failed to fetch universities');
       }
 
-      setUniversities(result.universities || []);
+      setUniversities(result.universities || result.schools || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
@@ -134,7 +186,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [checkAdminPrivileges]);
+  }, [checkAdminPrivileges, getAuthToken]);
 
   const deleteUniversity = useCallback(async (universityId: string): Promise<boolean> => {
     if (!checkAdminPrivileges()) {
@@ -145,11 +197,12 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      const token = getAuthToken();
       
       const response = await fetch(`/api/admin/school/delete/${universityId}`, {
         method: 'DELETE',
         headers: {
+          'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
       });
@@ -172,16 +225,65 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [checkAdminPrivileges]);
+  }, [checkAdminPrivileges, getAuthToken]);
+
+  const updateUniversity = useCallback(async (universityId: string, universityData: Partial<UniversityInput>): Promise<boolean> => {
+    if (!checkAdminPrivileges()) {
+      return false;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const token = getAuthToken();
+      
+      const response = await fetch(`/api/admin/school/update/${universityId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify(universityData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to update university');
+      }
+
+      // Update the university in local state
+      setUniversities(prev => 
+        prev.map(uni => 
+          uni.id === universityId 
+            ? { ...uni, ...universityData }
+            : uni
+        )
+      );
+      
+      return true;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('Update university error:', err);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [checkAdminPrivileges, getAuthToken]);
 
   const value: AdminContextType = {
     universities,
     isLoading,
     error,
     isAdmin,
+    uploadProgress,
     uploadUniversity,
+    uploadImage,
     fetchUniversities,
     deleteUniversity,
+    updateUniversity,
     clearError,
   };
 

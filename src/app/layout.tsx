@@ -10,6 +10,7 @@ import ClientWrapper from "@/components/clientWrapper";
 import { NavigationWrapper } from "@/context/navigationWrapper";
 import { AuthProvider } from "@/context/authContext";
 import { UserProvider } from "@/context/userContext";
+import { AdminProvider } from "@/context/adminContext";
 import RouteProtectionProvider from "@/components/protectedRoute";
 import DebugUserContext from "@/utils/DebugUserContext";
 
@@ -51,7 +52,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  console.log('Layout: Providers initializing...');
+  console.log("Layout: Providers initializing...");
 
   return (
     <html
@@ -71,9 +72,12 @@ export default function RootLayout({
         <AuthProvider>
           <UserProvider>
             <RouteProtectionProvider>
-              <ClientWrapper>
-                <NavigationWrapper><DebugUserContext /> {children}</NavigationWrapper>
-              </ClientWrapper>
+              <DebugUserContext />
+              <AdminProvider>
+                <ClientWrapper>
+                  <NavigationWrapper> {children}</NavigationWrapper>
+                </ClientWrapper>
+              </AdminProvider>
             </RouteProtectionProvider>
           </UserProvider>
         </AuthProvider>

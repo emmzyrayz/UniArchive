@@ -3,6 +3,13 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 type Ownership = "public" | "private";
 
+interface ICampus extends Document {
+  id: string;
+  name: string;
+  location: string;
+  type: 'main' | 'branch' | 'satellite';
+}
+
 interface IDepartment extends Document {
   id: string;
   name: string;
@@ -27,12 +34,39 @@ interface ISchool extends Document {
   updatedAt: Date;
   status: 'active' | 'inactive' | 'pending';
   createdBy?: string; // Admin user ID who created this entry
-  // New fields
+  // Existing fields
   membership: Ownership;
   level?: "federal" | "state";
   usid: string; // Unique School ID
   psid: string; // Platform School ID (human-readable)
+  // New fields
+  motto?: string;
+  chancellor?: string;
+  viceChancellor?: string;
+  campuses: ICampus[];
 }
+
+const CampusSchema = new Schema<ICampus>({
+  id: {
+    type: String,
+    required: true,
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  location: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  type: {
+    type: String,
+    enum: ['main', 'branch', 'satellite'],
+    default: 'main',
+  },
+});
 
 const DepartmentSchema = new Schema<IDepartment>({
   id: {
@@ -108,7 +142,7 @@ const SchoolSchema = new Schema<ISchool>({
     type: String,
     trim: true,
   },
-  // New fields
+  // Existing fields
   membership: {
     type: String,
     enum: ['public', 'private'],
@@ -133,6 +167,20 @@ const SchoolSchema = new Schema<ISchool>({
     unique: true,
     index: true,
   },
+  // New fields
+  motto: {
+    type: String,
+    trim: true,
+  },
+  chancellor: {
+    type: String,
+    trim: true,
+  },
+  viceChancellor: {
+    type: String,
+    trim: true,
+  },
+  campuses: [CampusSchema],
 }, {
   timestamps: true,
   collection: 'schools', // Explicitly set collection name
@@ -145,7 +193,7 @@ SchoolSchema.index({ 'faculties.departments.name': 1 });
 SchoolSchema.index({ membership: 1, level: 1 }); // Compound index for filtering
 SchoolSchema.index({ membership: 1, status: 1 });
 SchoolSchema.index({ level: 1, status: 1 });
-
+SchoolSchema.index({ 'campuses.location': 1 });
 
 // Define query interface for type safety
 interface SchoolQuery {
@@ -153,6 +201,7 @@ interface SchoolQuery {
   status: 'active' | 'inactive' | 'pending';
   level?: "federal" | "state";
 }
+
 // Static methods
 SchoolSchema.statics.findByLocation = function(location: string) {
   return this.find({ 
@@ -205,7 +254,9 @@ SchoolSchema.statics.searchSchools = function(query: string) {
           { location: { $regex: query, $options: 'i' } },
           { description: { $regex: query, $options: 'i' } },
           { 'faculties.name': { $regex: query, $options: 'i' } },
-          { 'faculties.departments.name': { $regex: query, $options: 'i' } }
+          { 'faculties.departments.name': { $regex: query, $options: 'i' } },
+          { 'campuses.name': { $regex: query, $options: 'i' } },
+          { 'campuses.location': { $regex: query, $options: 'i' } }
         ]
       }
     ]
@@ -232,6 +283,9 @@ SchoolSchema.statics.getStatistics = function() {
         },
         activeSchools: {
           $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] }
+        },
+        totalCampuses: {
+          $sum: { $size: '$campuses' }
         }
       }
     }
@@ -242,4 +296,4 @@ SchoolSchema.statics.getStatistics = function() {
 const School = mongoose.models.School || mongoose.model<ISchool>('School', SchoolSchema);
 
 export default School;
-export type { ISchool, IFaculty, IDepartment, Ownership };
+export type { ISchool, IFaculty, IDepartment, ICampus, Ownership };

@@ -233,7 +233,7 @@ export const Navbar: React.FC = () => {
   return (
     <div
       ref={navbarRef}
-      className={`fixed z-90 flex items-center justify-center w-full transition-all duration-500 rounded-b-xl
+      className={`fixed z-50 flex items-center justify-center w-full transition-all duration-500 rounded-b-xl
         ${isScrolled ? "bg-black/50 shadow-xl" : "bg-black/60"} 
         ${
           isNavbarVisible
