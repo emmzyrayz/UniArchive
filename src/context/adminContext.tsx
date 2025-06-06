@@ -65,12 +65,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     return true;
   }, [userState, hasActiveSession, userProfile]);
 
-  // Helper function to get auth token
-  const getAuthToken = useCallback((): string | null => {
-    return typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-  }, []);
-
-  // Upload image to Cloudinary
+  // Upload image to Cloudinary - FIXED: Remove Authorization header since we're using cookie-based auth
   const uploadImage = useCallback(async (file: File): Promise<string | null> => {
     if (!checkAdminPrivileges()) {
       return null;
@@ -84,13 +79,12 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const token = getAuthToken();
+      // FIXED: Remove Authorization header - the API route will use cookie-based auth
       const response = await fetch('/api/admin/upload-image', {
         method: 'POST',
         body: formData,
-        headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
+        // Credentials are automatically included for same-origin requests
+        credentials: 'include', // Ensure cookies are sent
       });
 
       if (!response.ok) {
@@ -111,7 +105,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
       setIsLoading(false);
       setTimeout(() => setUploadProgress(0), 1000);
     }
-  }, [checkAdminPrivileges, getAuthToken]);
+  }, [checkAdminPrivileges]);
 
   const uploadUniversity = useCallback(async (universityData: UniversityInput): Promise<boolean> => {
     if (!checkAdminPrivileges()) {
@@ -122,15 +116,14 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      const token = getAuthToken();
-      
+      // FIXED: Remove Authorization header - use cookie-based auth
       const response = await fetch('/api/admin/school/upload', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: JSON.stringify(universityData),
+        credentials: 'include', // Ensure cookies are sent
       });
 
       const result = await response.json();
@@ -151,7 +144,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [checkAdminPrivileges, getAuthToken]);
+  }, [checkAdminPrivileges]);
 
   const fetchUniversities = useCallback(async (): Promise<void> => {
     if (!checkAdminPrivileges()) {
@@ -162,14 +155,13 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      const token = getAuthToken();
-      
+      // FIXED: Remove Authorization header - use cookie-based auth
       const response = await fetch('/api/admin/school/view', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
+        credentials: 'include', // Ensure cookies are sent
       });
 
       const result = await response.json();
@@ -186,7 +178,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [checkAdminPrivileges, getAuthToken]);
+  }, [checkAdminPrivileges]);
 
   const deleteUniversity = useCallback(async (universityId: string): Promise<boolean> => {
     if (!checkAdminPrivileges()) {
@@ -197,14 +189,13 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      const token = getAuthToken();
-      
+      // FIXED: Remove Authorization header - use cookie-based auth
       const response = await fetch(`/api/admin/school/delete/${universityId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
+        credentials: 'include', // Ensure cookies are sent
       });
 
       const result = await response.json();
@@ -225,7 +216,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [checkAdminPrivileges, getAuthToken]);
+  }, [checkAdminPrivileges]);
 
   const updateUniversity = useCallback(async (universityId: string, universityData: Partial<UniversityInput>): Promise<boolean> => {
     if (!checkAdminPrivileges()) {
@@ -236,15 +227,14 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      const token = getAuthToken();
-      
+      // FIXED: Remove Authorization header - use cookie-based auth
       const response = await fetch(`/api/admin/school/update/${universityId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: JSON.stringify(universityData),
+        credentials: 'include', // Ensure cookies are sent
       });
 
       const result = await response.json();
@@ -271,7 +261,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [checkAdminPrivileges, getAuthToken]);
+  }, [checkAdminPrivileges]);
 
   const value: AdminContextType = {
     universities,

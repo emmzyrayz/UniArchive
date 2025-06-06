@@ -3,17 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSchoolDBConnection } from '@/lib/database';
 import School from "@/models/schoolModel";
 import SessionCache from "@/models/sessionCacheModel";
-import { IUser } from "@/models/usermodel";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key";
-
-interface JWTPayload {
-  user: IUser;
-  sessionToken: string;
-  iat?: number;
-  exp?: number;
-}
 
 // Define Faculty interface for type safety
 interface Faculty {
@@ -27,37 +16,75 @@ interface Department {
   name: string;
 }
 
-// Verify admin authorization
+// Verify admin authorization using session-based auth (matching your pattern)
 async function verifyAdminAuth(request: NextRequest) {
-  const authorization = request.headers.get('Authorization');
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    return { error: "No authorization token provided", status: 401 };
-  }
-
-  const token = authorization.substring(7);
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+  await getSchoolDBConnection();
+  
+  // Try to get session from cookie first (matching your online-status pattern)
+  const sessionId = request.cookies.get('sessionId')?.value;
+  
+  if (sessionId) {
+    console.log('School Upload: Checking session from cookie:', sessionId.substring(0, 8) + '...');
     
-    // Check if session exists and is active
-    const activeSession = await SessionCache.findActiveSession(
-      decoded.sessionToken,
-      'sessionToken'
-    );
-
-    if (!activeSession) {
-      return { error: "Session not found or expired", status: 401 };
+    const activeSession = await SessionCache.findActiveSession(sessionId, 'uuid');
+    
+    if (activeSession) {
+      console.log('School Upload: Active session found via cookie');
+      
+      // Check if user has admin privileges
+      if (activeSession.role !== 'admin' && activeSession.role !== 'mod') {
+        return { error: "Insufficient privileges. Admin access required", status: 403 };
+      }
+      
+       // Return the session data with user info extracted
+      return { 
+        user: {
+          _id: activeSession.userId,
+          id: activeSession.userId,
+          email: activeSession.getDecryptedUserData().email,
+          role: activeSession.role,
+          fullName: activeSession.fullName
+        }, 
+        session: activeSession 
+      };
     }
-
-    // Check if user has admin privileges - Fixed: Include 'admin' and 'superadmin' in the allowed roles
-    if (decoded.user.role !== 'admin') {
-      return { error: "Insufficient privileges. Admin access required", status: 403 };
-    }
-
-    return { user: decoded.user, session: activeSession };
-  } catch {
-    return { error: "Invalid token", status: 401 };
   }
+  
+  // Fallback to Bearer token if no cookie session
+  const authorization = request.headers.get('Authorization');
+  if (authorization && authorization.startsWith('Bearer ')) {
+    const token = authorization.substring(7);
+    
+    try {
+      // Try to find session by token
+      const activeSession = await SessionCache.findActiveSession(token, 'sessionToken');
+      
+      if (activeSession) {
+        console.log('School Upload: Active session found via Bearer token');
+        
+        // Check if user has admin privileges
+        if (activeSession.role !== 'admin' && activeSession.role !== 'mod') {
+          return { error: "Insufficient privileges. Admin access required", status: 403 };
+        }
+        
+         // Return the session data with user info extracted
+        return { 
+          user: {
+            _id: activeSession.userId,
+            id: activeSession.userId,
+            email: activeSession.getDecryptedUserData().email,
+            role: activeSession.role,
+            fullName: activeSession.fullName
+          }, 
+          session: activeSession 
+        };
+      }
+    } catch (error) {
+      console.error('School Upload: Error checking Bearer token:', error);
+    }
+  }
+  
+  return { error: "No valid session found", status: 401 };
 }
 
 // POST request to upload university data
@@ -68,6 +95,7 @@ export async function POST(request: NextRequest) {
     // Verify admin authentication
     const authResult = await verifyAdminAuth(request);
     if ('error' in authResult) {
+      console.log('School Upload: Auth failed:', authResult.error);
       return NextResponse.json(
         { message: authResult.error },
         { status: authResult.status }
@@ -75,6 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { user } = authResult;
+    console.log('School Upload: Auth successful for user:', user.email);
 
     // Parse request body
     const universityData = await request.json();

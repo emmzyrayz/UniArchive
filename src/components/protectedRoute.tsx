@@ -1,4 +1,4 @@
-// components/RouteProtectionProvider.tsx - Debug version with enhanced logging
+// components/RouteProtectionProvider.tsx - Updated with URL mapping and no periodic checks
 "use client";
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
@@ -11,6 +11,66 @@ import { UserState } from '@/context/userContext';
 interface RouteProtectionProviderProps {
   children: React.ReactNode;
 }
+
+// Extend Window interface to include our custom property
+declare global {
+  interface Window {
+    handleAuthSuccessRedirect?: () => boolean;
+  }
+}
+
+// URL mapping storage (in-memory)
+class URLMappingStorage {
+  private inMemoryStorage: { [key: string]: string } = {};
+
+  getItem(key: string): string | null {
+    if (typeof window !== 'undefined') {
+      try {
+        return sessionStorage.getItem(key);
+      } catch (error) {
+        console.warn('sessionStorage access failed, using in-memory storage:', error);
+        return this.inMemoryStorage[key] || null;
+      }
+    }
+    return this.inMemoryStorage[key] || null;
+  }
+
+  setItem(key: string, value: string): void {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(key, value);
+        return;
+      } catch (error) {
+        console.warn('sessionStorage write failed, using in-memory storage:', error);
+      }
+    }
+    this.inMemoryStorage[key] = value;
+  }
+
+  removeItem(key: string): void {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem(key);
+      } catch (error) {
+        console.warn('sessionStorage remove failed:', error);
+      }
+    }
+    delete this.inMemoryStorage[key];
+  }
+
+  clear(): void {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.clear();
+      } catch (error) {
+        console.warn('sessionStorage clear failed:', error);
+      }
+    }
+    this.inMemoryStorage = {};
+  }
+}
+
+const urlMappingStorage = new URLMappingStorage();
 
 const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ children }) => {
   const pathname = usePathname();
@@ -70,6 +130,42 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
            userState === UserState.INITIALIZING;
   }, [userLoading, isInitializing, userState, isPublicRoute]);
 
+  // URL mapping functions
+  const saveIntendedURL = useCallback((url: string) => {
+    console.log(`RouteProtection: Saving intended URL: ${url}`);
+    urlMappingStorage.setItem('intendedURL', url);
+  }, []);
+
+  const getIntendedURL = useCallback((): string | null => {
+    return urlMappingStorage.getItem('intendedURL');
+  }, []);
+
+  const clearIntendedURL = useCallback(() => {
+    urlMappingStorage.removeItem('intendedURL');
+  }, []);
+
+  // Function to redirect to signin with URL mapping
+  const redirectToSignin = useCallback((currentPath: string) => {
+    // Don't save auth routes as intended URLs
+    if (!isAuthRoute && currentPath !== '/auth/signin') {
+      saveIntendedURL(currentPath);
+    }
+    console.log(`RouteProtection: Redirecting to signin from ${currentPath}`);
+    router.push('/auth/signin');
+  }, [isAuthRoute, saveIntendedURL, router]);
+
+  // Function to handle successful authentication redirect
+  const handleAuthSuccessRedirect = useCallback(() => {
+    const intendedURL = getIntendedURL();
+    if (intendedURL && intendedURL !== pathname) {
+      console.log(`RouteProtection: Redirecting to intended URL: ${intendedURL}`);
+      clearIntendedURL();
+      router.push(intendedURL);
+      return true;
+    }
+    return false;
+  }, [getIntendedURL, clearIntendedURL, router, pathname]);
+
   // Initialize route protection
   useEffect(() => {
     const initializeProtection = async () => {
@@ -119,8 +215,12 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
       routeRequiresAuth: routeProtection?.requiresAuth,
       requiredRoles: routeProtection?.requiredRoles
     });
+    console.log('🔗 URL Mapping:', {
+      intendedURL: getIntendedURL(),
+      currentPath: pathname
+    });
     console.log('================================================');
-  }, [pathname, routeProtection, userLoading, isInitializing, isLoading, hasCheckedRoute, shouldShowLoading, isAuthRoute, isPublicRoute]);
+  }, [pathname, routeProtection, userLoading, isInitializing, isLoading, hasCheckedRoute, shouldShowLoading, isAuthRoute, isPublicRoute, getIntendedURL]);
 
   // Main route protection logic with improved state handling
   const checkRouteAccess = useCallback(async () => {
@@ -167,9 +267,9 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
         redirectPath = '/auth/signin';
       }
       
-      // If we have a session but no user profile yet, try refreshing
+      // If we have a session but no user profile yet, try refreshing ONCE
       else if (hasActiveSessionRef.current && !userProfileRef.current) {
-        console.log('🔄 Active session without profile, attempting refresh...');
+        console.log('🔄 Active session without profile, attempting single refresh...');
         try {
           const refreshed = await refreshUserData();
           if (!refreshed) {
@@ -197,10 +297,10 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
         hasActiveSessionRef.current && 
         userProfileRef.current) {
       
-          const currentUserProfile = userProfileRef.current;
+      const currentUserProfile = userProfileRef.current;
       console.log('🎭 Checking role requirements...');
       console.log('🔍 Role Check Details:', {
-       userRole: currentUserProfile.role,
+        userRole: currentUserProfile.role,
         userRoleType: typeof currentUserProfile.role,
         requiredRoles: routeProtection.requiredRoles,
         requiredRolesTypes: routeProtection.requiredRoles.map(r => typeof r),
@@ -221,10 +321,14 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
       }
     }
 
-    // Perform redirect if needed
+    // Perform redirect if needed with URL mapping
     if (shouldRedirect) {
       console.log(`🚀 Redirecting to ${redirectPath}`);
-      router.push(redirectPath);
+      if (redirectPath === '/auth/signin') {
+        redirectToSignin(pathname);
+      } else {
+        router.push(redirectPath);
+      }
       return;
     }
 
@@ -233,7 +337,7 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
     setHasCheckedRoute(true);
     setShouldShowLoading(false);
     routeCheckedRef.current = true;
-  }, [hasCheckedRoute, isAuthRoute, isLoading, routeProtection, router, refreshUserData, logDetailedState]);
+  }, [hasCheckedRoute, isAuthRoute, isLoading, routeProtection, refreshUserData, logDetailedState, redirectToSignin, pathname, router]);
 
   // Run route check when dependencies change
   useEffect(() => {
@@ -243,29 +347,48 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
   // Handle specific user state transitions
   useEffect(() => {
     if (userState === UserState.ACTIVE_SESSION && !hasCheckedRoute && !isAuthRoute) {
-      console.log('🔄 User session became active, rechecking route');
-      // Small delay to ensure state has propagated
-      setTimeout(() => {
-        checkRouteAccess();
-      }, 100);
+      console.log('🔄 User session became active, rechecking route and checking for redirects');
+      
+      // Check if we need to redirect to intended URL
+      const redirected = handleAuthSuccessRedirect();
+      
+      if (!redirected) {
+        // Small delay to ensure state has propagated
+        setTimeout(() => {
+          checkRouteAccess();
+        }, 100);
+      }
     }
-  }, [userState, hasCheckedRoute, isAuthRoute, checkRouteAccess]);
+  }, [userState, hasCheckedRoute, isAuthRoute, checkRouteAccess, handleAuthSuccessRedirect]);
 
   // Handle session state changes and errors
   const handleSessionStateChange = useCallback(async () => {
     if (userState === UserState.ERROR && routeProtection?.requiresAuth && !isAuthRoute) {
-      console.log('💥 User state error on protected route, attempting refresh');
+      console.log('💥 User state error on protected route, attempting single refresh');
       const refreshed = await refreshUserData();
       if (!refreshed) {
         console.log('❌ Refresh failed, redirecting to signin');
-        router.push('/auth/signin');
+        redirectToSignin(pathname);
       }
     }
-  }, [userState, routeProtection, refreshUserData, router, isAuthRoute]);
+  }, [userState, routeProtection, refreshUserData, isAuthRoute, redirectToSignin, pathname]);
 
   useEffect(() => {
     handleSessionStateChange();
   }, [handleSessionStateChange]);
+
+  // Expose redirect function globally for auth components
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.handleAuthSuccessRedirect = handleAuthSuccessRedirect;
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete window.handleAuthSuccessRedirect;
+      }
+    };
+  }, [handleAuthSuccessRedirect]);
 
   // Early return for auth routes - they handle their own logic
   if (isAuthRoute) {
@@ -301,7 +424,7 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
             <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
             <p className="mb-4">Please sign in to access this page.</p>
             <button 
-              onClick={() => router.push('/auth/signin')}
+              onClick={() => redirectToSignin(pathname)}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
               Sign In

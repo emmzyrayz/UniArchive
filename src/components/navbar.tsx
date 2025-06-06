@@ -265,7 +265,7 @@ export const Navbar: React.FC = () => {
 
         <div className="navv-cons flex flex-row items-center justify-end h-full w-[60%] gap-4">
           {/* Navigation Items - Desktop */}
-          <div className="nav-con hidden md:flex flex-row items-center justify-center gap-2 h-[40px]">
+          <div className="nav-con hidden xl:flex flex-row items-center justify-center gap-2 h-[40px]">
             {/* Standalone Items */}
             {currentConfig.standaloneItems?.map((item, index) => (
               <Link
@@ -341,7 +341,7 @@ export const Navbar: React.FC = () => {
 
           {/* Additional Actions - Desktop */}
           {currentConfig.additionalActions && currentConfig.additionalActions.length > 0 && (
-            <div className="additional-actions hidden md:flex flex-row items-center justify-center gap-2 h-[40px]">
+            <div className="additional-actions hidden xl:flex flex-row items-center justify-center gap-2 h-[40px]">
               {currentConfig.additionalActions.map((action, index) => (
                 <Link
                   key={`action-${index}`}
@@ -409,7 +409,7 @@ export const Navbar: React.FC = () => {
           )}
 
           {/* User Icon - Desktop */}
-          <div className="user-con hidden md:flex items-center justify-center h-full">
+          <div className="user-con hidden xl:flex items-center justify-center h-full">
             {hasActiveSession && userProfile ? (
               <div className="user-profile flex items-center gap-2">
                 {userProfile.profilePhoto ? (
@@ -442,7 +442,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="mobile-menu-btn flex md:hidden">
+          <div className="mobile-menu-btn flex xl:hidden">
             <IoMenu
               className="text-white/50 hover:text-white hover:scale-105 cursor-pointer transition-all duration-500 ease-in-out text-[18px]"
               onClick={() => setIsMobileMenuOpen(true)}

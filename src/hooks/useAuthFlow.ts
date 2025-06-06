@@ -122,7 +122,7 @@ export const useAuthFlow = () => {
   const verifyEmailWithRedirect = useCallback(async (
     email: string, 
     code: string, 
-    redirectPath: string = "/dashboard"
+    redirectPath: string = "/"
   ) => {
     try {
       console.log("AuthFlow: Starting email verification flow...");

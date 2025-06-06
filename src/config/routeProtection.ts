@@ -12,19 +12,19 @@ export const PROTECTED_ROUTES: RouteProtection[] = [
     path: '/admin',
     requiresAuth: true,
     requiredRoles: ['admin'],
-    fallbackPath: '/unauthorized'
+    fallbackPath: '/'
   },
   {
     path: '/admin/users',
     requiresAuth: true,
     requiredRoles: ['admin'],
-    fallbackPath: '/unauthorized'
+    fallbackPath: '/'
   },
   {
     path: '/admin/settings',
     requiresAuth: true,
     requiredRoles: ['admin'],
-    fallbackPath: '/unauthorized'
+    fallbackPath: '/'
   },
   
   // Contributor and Admin routes
@@ -38,7 +38,7 @@ export const PROTECTED_ROUTES: RouteProtection[] = [
     path: '/content/create',
     requiresAuth: true,
     requiredRoles: ['admin', 'contributor'],
-    fallbackPath: '/unauthorized'
+    fallbackPath: '/'
   },
   
   // Student and above routes
@@ -60,7 +60,7 @@ export const PROTECTED_ROUTES: RouteProtection[] = [
     path: '/moderation',
     requiresAuth: true,
     requiredRoles: ['admin', 'mod'],
-    fallbackPath: '/unauthorized'
+    fallbackPath: '/'
   },
   
   // Public routes that require auth but no specific role

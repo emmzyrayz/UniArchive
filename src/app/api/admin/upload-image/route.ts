@@ -1,18 +1,15 @@
 // /app/api/admin/upload-image/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { cloudinary } from '@/lib/cloudinary.config';
+import { v2 as cloudinary } from 'cloudinary';
 import SessionCache from "@/models/sessionCacheModel";
-import { IUser } from "@/models/usermodel";
-import jwt from "jsonwebtoken";
+import { getSchoolDBConnection } from '@/lib/database';
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key";
-
-interface JWTPayload {
-  user: IUser;
-  sessionToken: string;
-  iat?: number;
-  exp?: number;
-}
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // Cloudinary upload options interface
 interface CloudinaryUploadOptions {
@@ -42,37 +39,76 @@ interface CloudinaryUploadResult {
   resource_type: string;
 }
 
-// Verify admin authorization
+// Verify admin authorization using session-based auth (matching AdminContext pattern)
 async function verifyAdminAuth(request: NextRequest) {
-  const authorization = request.headers.get('Authorization');
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    return { error: "No authorization token provided", status: 401 };
-  }
-
-  const token = authorization.substring(7);
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+  await getSchoolDBConnection();
+  
+  console.log('Upload Image: Starting auth verification');
+  
+  // Try to get session from cookie first (matching your AdminContext pattern)
+  const sessionId = request.cookies.get('sessionId')?.value;
+  
+  if (sessionId) {
+    console.log('Upload Image: Checking session from cookie:', sessionId.substring(0, 8) + '...');
     
-    // Check if session exists and is active
-    const activeSession = await SessionCache.findActiveSession(
-      decoded.sessionToken,
-      'sessionToken'
-    );
-
-    if (!activeSession) {
-      return { error: "Session not found or expired", status: 401 };
+    const activeSession = await SessionCache.findActiveSession(sessionId, 'uuid');
+    
+    if (activeSession) {
+      console.log('Upload Image: Active session found via cookie');
+      
+      // Check if user has admin privileges
+      if (activeSession.role !== 'admin' && activeSession.role !== 'mod') {
+        return { error: "Insufficient privileges. Admin access required", status: 403 };
+      }
+      
+       return { 
+          user: {
+            _id: activeSession.userId,
+            id: activeSession.userId,
+            email: activeSession.getDecryptedUserData().email,
+            role: activeSession.role,
+            fullName: activeSession.fullName
+          }, 
+          session: activeSession 
+        };
     }
-
-    // Check if user has admin privileges
-    if (decoded.user.role !== 'admin' && decoded.user.role !== 'mod') {
-      return { error: "Insufficient privileges. Admin access required", status: 403 };
-    }
-
-    return { user: decoded.user, session: activeSession };
-  } catch {
-    return { error: "Invalid token", status: 401 };
   }
+  
+  // Fallback to Bearer token if no cookie session (for API compatibility)
+  const authorization = request.headers.get('Authorization');
+  if (authorization && authorization.startsWith('Bearer ')) {
+    const token = authorization.substring(7);
+    
+    try {
+      console.log('Upload Image: Checking Bearer token as fallback');
+      // Try to find session by token
+      const activeSession = await SessionCache.findActiveSession(token, 'sessionToken');
+      
+      if (activeSession) {
+        console.log('Upload Image: Active session found via Bearer token');
+        
+        // Check if user has admin privileges
+        if (activeSession.role !== 'admin' && activeSession.role !== 'mod') {
+          return { error: "Insufficient privileges. Admin access required", status: 403 };
+        }
+        
+         return { 
+          user: {
+            _id: activeSession.userId,
+            id: activeSession.userId,
+            email: activeSession.getDecryptedUserData().email,
+            role: activeSession.role,
+            fullName: activeSession.fullName
+          }, 
+          session: activeSession 
+        };
+      }
+    } catch (error) {
+      console.error('Upload Image: Error checking Bearer token:', error);
+    }
+  }
+  
+  return { error: "No valid session found", status: 401 };
 }
 
 // Helper function to convert File to buffer
@@ -88,8 +124,10 @@ function uploadToCloudinary(buffer: Buffer, options: CloudinaryUploadOptions): P
       options,
       (error, result) => {
         if (error) {
+          console.error('Cloudinary upload error:', error);
           reject(error);
         } else {
+          console.log('Cloudinary upload successful:', result?.public_id);
           resolve(result as CloudinaryUploadResult);
         }
       }
@@ -99,9 +137,12 @@ function uploadToCloudinary(buffer: Buffer, options: CloudinaryUploadOptions): P
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Upload Image: Starting image upload process');
+    
     // Verify admin authentication
     const authResult = await verifyAdminAuth(request);
     if ('error' in authResult) {
+      console.log('Upload Image: Auth failed:', authResult.error);
       return NextResponse.json(
         { message: authResult.error },
         { status: authResult.status }
@@ -109,6 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { user } = authResult;
+    console.log('Upload Image: Auth successful for user:', user.email);
 
     // Parse form data
     const formData = await request.formData();
@@ -139,6 +181,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('Upload Image: File validation passed, uploading to Cloudinary');
+
     // Convert file to buffer
     const buffer = await fileToBuffer(file);
 
@@ -151,7 +195,7 @@ export async function POST(request: NextRequest) {
       quality: 'auto:good', // Optimize quality
       format: 'auto', // Auto format selection
       transformation: [
-        { width: 500, height: 500, crop: 'limit' }, // Resize large images
+        { width: 800, height: 600, crop: 'limit' }, // Resize large images
         { quality: 'auto:good' }
       ]
     };

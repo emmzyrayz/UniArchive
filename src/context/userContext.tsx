@@ -479,23 +479,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUserPreferences(preferences);
   }, []);
 
-  // Periodic session validation - only if we have an active session
-  // FIXED: More reasonable periodic session validation - only if we have an active session
-  useEffect(() => {
-    if (userState !== UserState.ACTIVE_SESSION) return;
-
-    const interval = setInterval(async () => {
-      if (!refreshPromiseRef.current) {
-        console.log('UserContext: Periodic session validation...');
-        const isStillActive = await refreshUserData();
-        if (!isStillActive && mountedRef.current) {
-          console.log("UserContext: Session validation failed");
-        }
-      }
-    }, 10 * 60 * 1000); // FIXED: Increased to 10 minutes for less frequent checks
-
-    return () => clearInterval(interval);
-  }, [userState, refreshUserData]);
+  // REMOVED: Periodic session validation that was causing logouts
+  // The useEffect that ran every 10 minutes has been completely removed
 
   // Update user preferences
   const updateUserPreferences = (newPreferences: Partial<UserPreferences>) => {
