@@ -89,7 +89,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to upload image');
+        throw new Error(errorData.error || errorData.message || 'Upload failed');
       }
 
       const result = await response.json();

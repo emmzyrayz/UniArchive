@@ -16,7 +16,7 @@ export const useAuthFlow = () => {
   const signInWithRedirect = useCallback(async (
     email: string, 
     password: string, 
-    redirectPath: string = "/dashboard"
+    redirectPath: string = "/"
   ) => {
     try {
       console.log("AuthFlow: Starting sign-in flow...");

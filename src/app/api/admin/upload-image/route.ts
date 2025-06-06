@@ -193,10 +193,12 @@ export async function POST(request: NextRequest) {
       overwrite: true,
       resource_type: 'auto',
       quality: 'auto:good', // Optimize quality
-      format: 'auto', // Auto format selection
       transformation: [
-        { width: 800, height: 600, crop: 'limit' }, // Resize large images
-        { quality: 'auto:good' }
+       { 
+          width: 800, 
+          height: 600, 
+          crop: 'limit',
+        }
       ]
     };
 
@@ -220,6 +222,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("Image upload error:", error);
+
     
     // Handle specific Cloudinary errors
     if (error instanceof Error) {
@@ -245,12 +248,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { 
-        message: "Failed to upload image", 
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    { 
+      message: "Failed to upload image", 
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    },
+    { status: 500 }
+  );
   }
 }
