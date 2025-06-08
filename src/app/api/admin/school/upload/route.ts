@@ -16,11 +16,11 @@ interface Department {
   name: string;
 }
 
-// Verify admin authorization using session-based auth (matching your pattern)
+// Updated auth function to handle both cookie and Bearer token (consistent with your pattern)
 async function verifyAdminAuth(request: NextRequest) {
   await getSchoolDBConnection();
   
-  // Try to get session from cookie first (matching your online-status pattern)
+  // Try to get session from cookie first (matching your adminContext pattern)
   const sessionId = request.cookies.get('sessionId')?.value;
   
   if (sessionId) {
@@ -36,7 +36,7 @@ async function verifyAdminAuth(request: NextRequest) {
         return { error: "Insufficient privileges. Admin access required", status: 403 };
       }
       
-       // Return the session data with user info extracted
+      // Return the session data with user info extracted
       return { 
         user: {
           _id: activeSession.userId,
@@ -67,7 +67,7 @@ async function verifyAdminAuth(request: NextRequest) {
           return { error: "Insufficient privileges. Admin access required", status: 403 };
         }
         
-         // Return the session data with user info extracted
+        // Return the session data with user info extracted
         return { 
           user: {
             _id: activeSession.userId,
@@ -184,7 +184,6 @@ export async function POST(request: NextRequest) {
           location: savedSchool.location,
           createdAt: savedSchool.createdAt,
           facultiesCount: savedSchool.faculties.length,
-          // Fixed: Added explicit types for reduce parameters
           departmentsCount: savedSchool.faculties.reduce((total: number, faculty: Faculty) => 
             total + faculty.departments.length, 0
           )

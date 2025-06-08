@@ -1,6 +1,9 @@
 // /lib/universitySchema.ts
 
 export type Ownership = "public" | "private";
+export type UniversityStatus = "active" | "inactive" | "pending" | "suspended";
+export type UniversityMembership = "public" | "private" | "federal" | "state";
+export type UniversityLevel = "federal" | "state";
 
 export interface DepartmentInput {
   id: string;
@@ -30,6 +33,7 @@ export interface UniversityInput {
   foundingYear?: number;
   faculties: FacultyInput[];
   campuses: CampusInput[];
+  status?: UniversityStatus;
   // New fields
   membership: Ownership;
   level?: "federal" | "state";
@@ -40,9 +44,16 @@ export interface UniversityInput {
   viceChancellor?: string;
 }
 
+// Extended interface for update operations that allows partial updates
+export type UniversityUpdateInput = Partial<Omit<UniversityInput, 'id' | 'usid' | 'psid'>>
+
 // Utility functions for validation
 export const validateOwnership = (ownership: string): ownership is Ownership => {
   return ownership === 'public' || ownership === 'private';
+};
+
+export const validateStatus = (status: string): status is UniversityStatus => {
+  return ['active', 'inactive', 'pending', 'suspended'].includes(status);
 };
 
 export const validateLevel = (level: string): level is "federal" | "state" => {
@@ -64,6 +75,7 @@ export const isValidUniversityInput = (data: unknown): data is UniversityInput =
     typeof (data as Record<string, unknown>).location === 'string' &&
     typeof (data as Record<string, unknown>).website === 'string' &&
     typeof (data as Record<string, unknown>).logoUrl === 'string' &&
+     validateStatus((data as Record<string, unknown>).status as string) &&
     validateOwnership((data as Record<string, unknown>).membership as string) &&
     typeof (data as Record<string, unknown>).usid === 'string' &&
     typeof (data as Record<string, unknown>).psid === 'string' &&

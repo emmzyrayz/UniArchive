@@ -1,25 +1,14 @@
 // /app/api/admin/school/view/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import {getSchoolDBConnection} from "@/lib/database";
+import { getSchoolDBConnection } from "@/lib/database";
 import School from "@/models/schoolModel";
 import SessionCache from "@/models/sessionCacheModel";
-import { IUser } from "@/models/usermodel";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key";
 
 // Define proper types
 type UserRole = 'admin' | 'superadmin' | 'contributor' | 'student' | 'mod';
-type Ownership = 'public' | 'private' | 'federal' | 'state'; // Adjust based on your actual ownership types
+type Ownership = 'public' | 'private' | 'federal' | 'state';
 type SchoolLevel = "federal" | "state";
-type SchoolStatus = 'active' | 'inactive' | 'pending' | 'suspended'; // Adjust based on your actual status types
-
-interface JWTPayload {
-  user: IUser;
-  sessionToken: string;
-  iat?: number;
-  exp?: number;
-}
+type SchoolStatus = 'active' | 'inactive' | 'pending' | 'suspended';
 
 interface Faculty {
   id: string;
@@ -66,38 +55,75 @@ interface SortOptions {
   [key: string]: 1 | -1;
 }
 
-// Verify admin authorization
+// Updated auth function to match the upload route pattern
 async function verifyAdminAuth(request: NextRequest) {
-  const authorization = request.headers.get('Authorization');
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    return { error: "No authorization token provided", status: 401 };
-  }
-
-  const token = authorization.substring(7);
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+  await getSchoolDBConnection();
+  
+  // Try to get session from cookie first (matching your adminContext pattern)
+  const sessionId = request.cookies.get('sessionId')?.value;
+  
+  if (sessionId) {
+    console.log('School View: Checking session from cookie:', sessionId.substring(0, 8) + '...');
     
-    // Check if session exists and is active
-    const activeSession = await SessionCache.findActiveSession(
-      decoded.sessionToken,
-      'sessionToken'
-    );
-
-    if (!activeSession) {
-      return { error: "Session not found or expired", status: 401 };
+    const activeSession = await SessionCache.findActiveSession(sessionId, 'uuid');
+    
+    if (activeSession) {
+      console.log('School View: Active session found via cookie');
+      
+      // Check if user has admin privileges
+      if (activeSession.role !== 'admin' && activeSession.role !== 'mod') {
+        return { error: "Insufficient privileges. Admin access required", status: 403 };
+      }
+      
+      // Return the session data with user info extracted
+      return { 
+        user: {
+          _id: activeSession.userId,
+          id: activeSession.userId,
+          email: activeSession.getDecryptedUserData().email,
+          role: activeSession.role as UserRole,
+          fullName: activeSession.fullName
+        }, 
+        session: activeSession 
+      };
     }
-
-    // Check if user has admin privileges - Fixed type comparison
-    const userRole = decoded.user.role as UserRole;
-    if (userRole !== 'admin' && userRole !== 'superadmin') {
-      return { error: "Insufficient privileges. Admin access required", status: 403 };
-    }
-
-    return { user: decoded.user, session: activeSession };
-  } catch {
-    return { error: "Invalid token", status: 401 };
   }
+  
+  // Fallback to Bearer token if no cookie session
+  const authorization = request.headers.get('Authorization');
+  if (authorization && authorization.startsWith('Bearer ')) {
+    const token = authorization.substring(7);
+    
+    try {
+      // Try to find session by token
+      const activeSession = await SessionCache.findActiveSession(token, 'sessionToken');
+      
+      if (activeSession) {
+        console.log('School View: Active session found via Bearer token');
+        
+        // Check if user has admin privileges
+        if (activeSession.role !== 'admin' && activeSession.role !== 'mod') {
+          return { error: "Insufficient privileges. Admin access required", status: 403 };
+        }
+        
+        // Return the session data with user info extracted
+        return { 
+          user: {
+            _id: activeSession.userId,
+            id: activeSession.userId,
+            email: activeSession.getDecryptedUserData().email,
+            role: activeSession.role as UserRole,
+            fullName: activeSession.fullName
+          }, 
+          session: activeSession 
+        };
+      }
+    } catch (error) {
+      console.error('School View: Error checking Bearer token:', error);
+    }
+  }
+  
+  return { error: "No valid session found", status: 401 };
 }
 
 // GET request to fetch universities
@@ -108,11 +134,15 @@ export async function GET(request: NextRequest) {
     // Verify admin authentication
     const authResult = await verifyAdminAuth(request);
     if ('error' in authResult) {
+      console.log('School View: Auth failed:', authResult.error);
       return NextResponse.json(
         { message: authResult.error },
         { status: authResult.status }
       );
     }
+
+    const { user } = authResult;
+    console.log('School View: Auth successful for user:', user.email);
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -216,6 +246,8 @@ export async function GET(request: NextRequest) {
       logoUrl: uni.logoUrl,
       foundingYear: uni.foundingYear,
       status: uni.status,
+      membership: uni.membership,
+      level: uni.level,
       createdAt: uni.createdAt,
       updatedAt: uni.updatedAt,
       createdBy: uni.createdBy,
@@ -232,6 +264,8 @@ export async function GET(request: NextRequest) {
     }));
 
     const totalPages = Math.ceil(totalCount / limit);
+
+    console.log(`School View: Returning ${transformedUniversities.length} universities`);
 
     return NextResponse.json(
       {
@@ -279,11 +313,15 @@ export async function POST(request: NextRequest) {
     // Verify admin authentication
     const authResult = await verifyAdminAuth(request);
     if ('error' in authResult) {
+      console.log('School View POST: Auth failed:', authResult.error);
       return NextResponse.json(
         { message: authResult.error },
         { status: authResult.status }
       );
     }
+
+    const { user } = authResult;
+    console.log('School View POST: Auth successful for user:', user.email);
 
     const body = await request.json();
     const {

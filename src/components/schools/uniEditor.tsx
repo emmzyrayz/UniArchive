@@ -1,7 +1,7 @@
 // /components/schools/UniversityEditor.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { generateUniversityId, generateFacultyId, generateDepartmentId, generateUSID, generatePSID } from '@/utils/generateId';
 import { UniversityInput } from '@/models/universitySchema';
@@ -10,11 +10,13 @@ import { useAdmin } from '@/context/adminContext';
 export type Ownership = "public" | "private";
 
 interface FormFaculty {
+  id?: string;
   name: string;
-  departments: { name: string }[];
+  departments: { id?: string; name: string }[];
 }
 
 interface FormCampus {
+  id?: string;
   name: string;
   location: string;
   type: 'main' | 'branch' | 'satellite';
@@ -48,22 +50,75 @@ interface UniversityEditorProps {
     website: string;
   };
   onSave: (data: UniversityInput) => void;
-   isLoading?: boolean;  // Add this
-  isSaved?: boolean;    // Add this
+  onUpdate?: (data: UniversityInput) => void;
+  isLoading?: boolean;
+  isSaved?: boolean;
+  existingUniversity?: UniversityInput | null;
+  mode?: 'create' | 'edit';
 }
 
 export default function UniversityEditor({
    initialData, 
    onSave,
-  //  isLoading = false,  
-  isSaved = false     // Default value
+   onUpdate,
+   isLoading = false,  
+   isSaved = false,
+   existingUniversity = null,
+   mode = 'create'
   }: UniversityEditorProps) {
-  const { uploadImage, isLoading, uploadProgress } = useAdmin();
+  const { uploadImage, isLoading: contextLoading, uploadProgress, error: contextError,
+  clearError  } = useAdmin();
+
+   // Helper function to convert UniversityInput to FormUniversity - MOVED BEFORE useState
+  const convertToFormUniversity = (uni: UniversityInput): FormUniversity => {
+    return {
+      id: uni.id,
+      name: uni.name,
+      description: uni.description,
+      location: uni.location,
+      website: uni.website,
+      logoUrl: uni.logoUrl,
+      foundingYear: uni.foundingYear,
+      faculties: uni.faculties?.map(faculty => ({
+        id: faculty.id,
+        name: faculty.name,
+        departments: faculty.departments?.map(dept => ({
+          id: dept.id,
+          name: dept.name
+        })) || [{ name: '' }]
+      })) || [],
+      campuses: uni.campuses?.map(campus => ({
+        id: campus.id,
+        name: campus.name,
+        location: campus.location,
+        type: campus.type
+      })) || [{
+        name: `${uni.name} Main Campus`,
+        location: uni.location,
+        type: 'main'
+      }],
+      membership: uni.membership,
+      level: uni.level,
+      usid: uni.usid,
+      psid: uni.psid,
+      motto: uni.motto || '',
+      chancellor: uni.chancellor || '',
+      viceChancellor: uni.viceChancellor || '',
+    };
+  };
   
   const [formData, setFormData] = useState<FormUniversity>(() => {
     const location = [initialData.city, initialData.state].filter(Boolean).join(', ');
+    const universityId = generateUniversityId(initialData.abbreviation);
+
+    if (existingUniversity && mode === 'edit') {
+      return convertToFormUniversity(existingUniversity);
+    }
+    
+    
+    // Default new university form
     return {
-      id: generateUniversityId(initialData.abbreviation),
+      id: universityId,
       name: initialData.name,
       description: '',
       location: location,
@@ -86,9 +141,65 @@ export default function UniversityEditor({
     };
   });
 
+   // Reset form when existingUniversity changes
+  useEffect(() => {
+    if (mode === 'edit' && existingUniversity) {
+      setFormData(convertToFormUniversity(existingUniversity));
+      if (existingUniversity.logoUrl) {
+        setLogoPreview(existingUniversity.logoUrl);
+      }
+    }
+  }, [existingUniversity, mode]);
+
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [isModified, setIsModified] = useState(false);
+
+  // Set logo preview on mount if editing existing university
+  useEffect(() => {
+    if (mode === 'edit' && existingUniversity?.logoUrl) {
+      setLogoPreview(existingUniversity.logoUrl);
+    }
+  }, [mode, existingUniversity]);
+
+  // Track form modifications for edit mode
+  useEffect(() => {
+    if (mode === 'edit' && existingUniversity) {
+      // Compare current form data with original data to detect changes
+      const hasChanges = JSON.stringify(formData) !== JSON.stringify({
+        id: existingUniversity.id,
+        name: existingUniversity.name,
+        description: existingUniversity.description,
+        location: existingUniversity.location,
+        website: existingUniversity.website,
+        logoUrl: existingUniversity.logoUrl,
+        foundingYear: existingUniversity.foundingYear,
+        faculties: existingUniversity.faculties?.map(faculty => ({
+          id: faculty.id,
+          name: faculty.name,
+          departments: faculty.departments?.map(dept => ({
+            id: dept.id,
+            name: dept.name
+          })) || []
+        })) || [],
+        campuses: existingUniversity.campuses?.map(campus => ({
+          id: campus.id,
+          name: campus.name,
+          location: campus.location,
+          type: campus.type
+        })) || [],
+        membership: existingUniversity.membership,
+        level: existingUniversity.level,
+        usid: existingUniversity.usid,
+        psid: existingUniversity.psid,
+        motto: existingUniversity.motto || '',
+        chancellor: existingUniversity.chancellor || '',
+        viceChancellor: existingUniversity.viceChancellor || '',
+      });
+      setIsModified(hasChanges);
+    }
+  }, [formData, mode, existingUniversity]);
 
   const handleInputChange = (field: keyof FormUniversity, value: string | number | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -158,7 +269,10 @@ export default function UniversityEditor({
 
   const handleDepartmentChange = (facultyIndex: number, deptIndex: number, value: string) => {
     const updatedFaculties = [...formData.faculties];
-    updatedFaculties[facultyIndex].departments[deptIndex] = { name: value };
+    updatedFaculties[facultyIndex].departments[deptIndex] = { 
+      ...updatedFaculties[facultyIndex].departments[deptIndex],
+      name: value 
+    };
     setFormData(prev => ({ ...prev, faculties: updatedFaculties }));
   };
 
@@ -213,6 +327,32 @@ export default function UniversityEditor({
   };
 
   const handleSubmit = () => {
+    console.log('Form data before processing:', JSON.stringify(formData, null, 2));
+    
+    // Process campuses
+    const processedCampuses = formData.campuses
+      .map((campus, index) => {
+        const campusName = campus.name.trim() || `${formData.name} ${campus.type === 'main' ? 'Main' : 'Branch'} Campus`;
+        const campusLocation = campus.location.trim() || formData.location;
+        
+        return {
+          id: campus.id || `${formData.id}_campus_${index + 1}`,
+          name: campusName,
+          location: campusLocation,
+          type: campus.type
+        };
+      });
+
+    // Ensure at least one campus exists
+    if (processedCampuses.length === 0) {
+      processedCampuses.push({
+        id: `${formData.id}_campus_1`,
+        name: `${formData.name} Main Campus`,
+        location: formData.location,
+        type: 'main' as const
+      });
+    }
+
     const universityData: UniversityInput = {
       id: formData.id,
       name: formData.name,
@@ -224,23 +364,17 @@ export default function UniversityEditor({
       faculties: formData.faculties
         .filter(faculty => faculty.name.trim())
         .map(faculty => ({
-          id: generateFacultyId(formData.id, faculty.name),
+          id: faculty.id || generateFacultyId(formData.id, faculty.name),
           name: faculty.name,
           departments: faculty.departments
             .filter(dept => dept.name.trim())
             .map(dept => ({
-              id: generateDepartmentId(generateFacultyId(formData.id, faculty.name), dept.name),
+              id: dept.id || generateDepartmentId(faculty.id || generateFacultyId(formData.id, faculty.name), dept.name),
               name: dept.name
             }))
         })),
-      campuses: formData.campuses
-        .filter(campus => campus.name.trim() && campus.location.trim())
-        .map((campus, index) => ({
-          id: `${formData.id}_campus_${index + 1}`,
-          name: campus.name,
-          location: campus.location,
-          type: campus.type
-        })),
+      campuses: processedCampuses,
+      // status: formData.status,
       membership: formData.membership,
       level: formData.membership === 'public' ? formData.level : undefined,
       usid: formData.usid,
@@ -249,23 +383,50 @@ export default function UniversityEditor({
       chancellor: formData.chancellor || undefined,
       viceChancellor: formData.viceChancellor || undefined,
     };
-    onSave(universityData);
+
+    console.log('Final university data:', JSON.stringify(universityData, null, 2));
+    
+    if (mode === 'edit' && onUpdate) {
+      onUpdate(universityData);
+    } else {
+      onSave(universityData);
+    }
   };
 
   const isRequiredMissing = !formData.name || !formData.location || !formData.logoUrl;
+  const currentlyLoading = isLoading || contextLoading;
 
   return (
     <div className="border rounded-lg p-6 mb-6 bg-white shadow-sm">
       <div className="flex justify-between items-start mb-4">
-        <h3 className="text-xl font-bold">{formData.name || 'Unnamed University'}</h3>
-        <span className={`px-2 py-1 text-xs rounded ${
-    isSaved ? 'bg-green-100 text-green-800' : 
-    isRequiredMissing ? 'bg-red-100 text-red-800' : 
-    'bg-yellow-100 text-yellow-800'
-  }`}>
-    {isSaved ? 'Saved' : isRequiredMissing ? 'Missing Data' : 'Complete'}
-  </span>
+        <div>
+          <h3 className="text-xl font-bold">{formData.name || 'Unnamed University'}</h3>
+          {mode === 'edit' && (
+            <p className="text-sm text-gray-500">Editing existing university</p>
+          )}
+        </div>
+        <div className="flex flex-col items-end space-y-1">
+          <span className={`px-2 py-1 text-xs rounded ${
+            isSaved ? 'bg-green-100 text-green-800' : 
+            isRequiredMissing ? 'bg-red-100 text-red-800' : 
+            'bg-yellow-100 text-yellow-800'
+          }`}>
+            {isSaved ? 'Saved' : isRequiredMissing ? 'Missing Data' : 'Complete'}
+          </span>
+          {mode === 'edit' && isModified && (
+            <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
+              Modified
+            </span>
+          )}
+        </div>
       </div>
+
+      {contextError && (
+  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700">
+    {contextError}
+    <button onClick={clearError} className="ml-2 text-red-500">×</button>
+  </div>
+)}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
@@ -412,7 +573,7 @@ export default function UniversityEditor({
             <button
               type="button"
               onClick={uploadLogo}
-              disabled={uploading || isLoading}
+              disabled={uploading || currentlyLoading}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded text-sm"
             >
               {uploading ? 'Uploading...' : 'Upload Logo'}
@@ -463,7 +624,7 @@ export default function UniversityEditor({
       {/* Campuses Section */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-3">
-          <h4 className="font-medium">Campuses</h4>
+          <h4 className="font-medium">Campuses (Current: {formData.campuses.length})</h4>
           <button 
             type="button" 
             onClick={addCampus}
@@ -484,7 +645,7 @@ export default function UniversityEditor({
                     className="w-full p-2 border border-gray-300 rounded"
                     value={campus.name}
                     onChange={(e) => handleCampusChange(index, 'name', e.target.value)}
-                    placeholder="Main Campus"
+                    placeholder={`${formData.name} ${campus.type === 'main' ? 'Main' : 'Branch'} Campus`}
                   />
                 </div>
                 <div>
@@ -494,7 +655,7 @@ export default function UniversityEditor({
                     className="w-full p-2 border border-gray-300 rounded"
                     value={campus.location}
                     onChange={(e) => handleCampusChange(index, 'location', e.target.value)}
-                    placeholder="City, State"
+                    placeholder={formData.location || "City, State"}
                   />
                 </div>
                 <div>
@@ -519,6 +680,9 @@ export default function UniversityEditor({
                   Remove
                 </button>
               )}
+            </div>
+            <div className="text-xs text-gray-500">
+              Preview: {campus.name || `${formData.name} ${campus.type === 'main' ? 'Main' : 'Branch'} Campus`} - {campus.location || formData.location}
             </div>
           </div>
         ))}
@@ -560,7 +724,7 @@ export default function UniversityEditor({
             </div>
             
             <div className="text-xs text-gray-500 mb-3">
-              ID: {generateFacultyId(formData.id, faculty.name) || 'generated when named'}
+              ID: {faculty.id || generateFacultyId(formData.id, faculty.name) || 'generated when named'}
             </div>
 
             <div className="ml-4">
@@ -602,14 +766,18 @@ export default function UniversityEditor({
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={isRequiredMissing || isLoading || isSaved}
+          disabled={isRequiredMissing || currentlyLoading || (isSaved && !isModified)}
           className={`px-4 py-2 rounded ${
-            isRequiredMissing || isLoading || isSaved
+            isRequiredMissing || currentlyLoading || (isSaved && !isModified)
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
               : 'bg-blue-600 hover:bg-blue-700 text-white'
           }`}
         >
-          {isSaved ? 'Saved' : isLoading ? 'Saving...' : 'Save University'}
+          {mode === 'edit' ? (
+            isModified ? (currentlyLoading ? 'Updating...' : 'Update University') : 'No Changes'
+          ) : (
+            isSaved ? 'Saved' : currentlyLoading ? 'Saving...' : 'Save University'
+          )}
         </button>
         
         <button
