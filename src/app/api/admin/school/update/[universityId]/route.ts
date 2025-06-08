@@ -74,10 +74,10 @@ async function verifyAdminAuth(request: NextRequest) {
   return { error: "No valid session found", status: 401 };
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { universityId: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ universityId: string }> }) {
   try {
     await getSchoolDBConnection();
-    const universityId = params.universityId;
+    const universityId = (await params).universityId;
 
     console.log('PUT request received for university:', universityId);
 
