@@ -21,6 +21,13 @@ interface Department {
   name: string;
 }
 
+interface Campus{
+   id: string;
+  name: string;
+  location: string;
+  type: 'main' | 'branch' | 'satellite';
+}
+
 interface SchoolDocument {
   id: string;
   name: string;
@@ -32,10 +39,18 @@ interface SchoolDocument {
   status: SchoolStatus;
   membership: Ownership;
   level: SchoolLevel;
+  usid: string; // Unique School ID
+  psid: string; // Platform School ID (human-readable)
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
+  campuses: Campus[];
   faculties: Faculty[];
+  facultiesCount: number;
+  departmentsCount: number;
+  motto?: string;
+  chancellor?: string;
+  viceChancellor?: string;
 }
 
 interface QueryFilter {
@@ -260,7 +275,10 @@ export async function GET(request: NextRequest) {
         name: faculty.name,
         departmentsCount: faculty.departments.length,
         departments: faculty.departments
-      }))
+      })),
+       motto: uni.motto ,
+      chancellor: uni.chancellor,
+      viceChancellor: uni.viceChancellor
     }));
 
     const totalPages = Math.ceil(totalCount / limit);

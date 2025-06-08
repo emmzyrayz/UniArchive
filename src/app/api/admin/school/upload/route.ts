@@ -161,11 +161,15 @@ export async function POST(request: NextRequest) {
       logoUrl: universityData.logoUrl,
       foundingYear: universityData.foundingYear,
       faculties: universityData.faculties || [],
+      campuses: universityData.campuses,
       status: 'active',
       membership: universityData.membership,
       level: universityData.level,
       usid: universityData.usid,
       psid: universityData.psid,
+      motto: universityData.motto ,
+      chancellor: universityData.chancellor,
+      viceChancellor: universityData.viceChancellor,
       createdBy: user._id || user.id,
     });
 
