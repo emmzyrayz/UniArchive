@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     const ipAddress = getClientIP(request);
 
     // Use correct URL path for sessionupload
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const sessionUploadUrl = `${baseUrl}/api/user/sessionupload`;
 
     console.log("Creating session via sessionUpload...");

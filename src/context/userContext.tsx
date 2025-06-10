@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 
 // User role type
-type UserRole = "admin" | "contributor" | "student" | "mod";
+type UserRole = "admin" | "contributor" | "student" | "mod" | "devsupport";
 
 // Enhanced User interface - matches SessionCache data structure
 interface User {
@@ -544,6 +544,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       contributor: 'Contributor',
       student: 'Student',
       mod: 'Moderator',
+      devsupport: 'Dev Support',
     };
     
     return roleNames[userProfile.role] || 'User';
