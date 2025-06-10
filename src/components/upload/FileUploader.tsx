@@ -1,23 +1,90 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { MaterialSubcategory } from '@/app/upload/page';
+
+interface TableOfContentsItem {
+  id: string;
+  title: string;
+  chapter?: string;
+  pageNumber?: string;
+}
 
 type FileUploaderProps = {
   onFilesSelected: (files: File[] | null) => void;
+  onTopicChange?: (topic: string) => void;
   acceptedTypes?: string;
   maxFileSizeMB?: number;
+  subcategory?: MaterialSubcategory | null;
+  initialTopic?: string;
 };
+
+// Define which subcategories require table of contents
+const REQUIRES_TABLE_OF_CONTENTS: MaterialSubcategory[] = [
+  'COURSE_MATERIAL',
+  'TEXTBOOK',
+  'EBOOK',
+  'SYLLABUS'
+];
 
 export const FileUploader = ({ 
   onFilesSelected, 
+  onTopicChange,
   acceptedTypes = '.pdf,.jpg,.jpeg,.png',
-  maxFileSizeMB = 50
+  maxFileSizeMB = 50,
+  subcategory = null,
+  initialTopic = ''
 }: FileUploaderProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
   const [previews, setPreviews] = useState<{ url: string; type: string }[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Topic/Table of Contents state
+  const [topic, setTopic] = useState(initialTopic);
+  const [tableOfContents, setTableOfContents] = useState<TableOfContentsItem[]>([
+    { id: '1', title: '', chapter: '', pageNumber: '' }
+  ]);
+
+  // Check if current selection requires table of contents
+  const requiresTableOfContents = useMemo(() => {
+    return subcategory && REQUIRES_TABLE_OF_CONTENTS.includes(subcategory);
+  }, [subcategory]);
+
+  // Initialize table of contents from initial topic if it's JSON
+  useEffect(() => {
+    if (initialTopic && requiresTableOfContents) {
+      try {
+        const parsedToc = JSON.parse(initialTopic);
+        if (Array.isArray(parsedToc) && parsedToc.length > 0) {
+          setTableOfContents(parsedToc.map((item, index) => ({
+            ...item,
+            id: item.id || (index + 1).toString()
+          })));
+        }
+      } catch {
+        // If not valid JSON, keep default table of contents
+        setTableOfContents([{ id: '1', title: '', chapter: '', pageNumber: '' }]);
+      }
+    } else {
+      setTopic(initialTopic);
+    }
+  }, [initialTopic, requiresTableOfContents]);
+
+  // Reset topic/table of contents when subcategory changes
+  useEffect(() => {
+    if (subcategory) {
+      if (requiresTableOfContents) {
+        setTableOfContents([{ id: '1', title: '', chapter: '', pageNumber: '' }]);
+        setTopic('');
+      } else {
+        setTopic('');
+        setTableOfContents([{ id: '1', title: '', chapter: '', pageNumber: '' }]);
+      }
+    }
+  }, [subcategory, requiresTableOfContents]);
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -117,8 +184,130 @@ export const FileUploader = ({
     else return (bytes / 1048576).toFixed(1) + ' MB';
   };
 
+  // Handle topic change
+  const handleTopicChange = (value: string) => {
+    setTopic(value);
+    onTopicChange?.(value);
+  };
+
+  // Handle table of contents changes
+  const handleTocChange = (id: string, field: keyof TableOfContentsItem, value: string) => {
+    const updatedToc = tableOfContents.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    );
+    setTableOfContents(updatedToc);
+    
+    // Update the topic field with serialized table of contents
+    const validTocItems = updatedToc.filter(item => item.title.trim() !== '');
+    const tocString = JSON.stringify(validTocItems);
+    onTopicChange?.(tocString);
+  };
+
+   // Add new table of contents item
+  const addTocItem = () => {
+    const newId = (tableOfContents.length + 1).toString();
+    const updatedToc = [...tableOfContents, { id: newId, title: '', chapter: '', pageNumber: '' }];
+    setTableOfContents(updatedToc);
+  };
+
+  // Remove table of contents item
+  const removeTocItem = (id: string) => {
+    if (tableOfContents.length > 1) {
+      const updatedToc = tableOfContents.filter(item => item.id !== id);
+      setTableOfContents(updatedToc);
+      
+      // Update the topic field
+      const validTocItems = updatedToc.filter(item => item.title.trim() !== '');
+      const tocString = JSON.stringify(validTocItems);
+      onTopicChange?.(tocString);
+    }
+  };
+
   return (
     <div className="mb-6">
+       {/* Topic/Table of Contents Section */}
+      {subcategory && (
+        <div className="mb-6">
+          {requiresTableOfContents ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Table of Contents <span className="text-red-500">*</span>
+              </label>
+              <div className="border border-gray-300 rounded p-4 bg-gray-50 mb-4">
+                <div className="space-y-3">
+                  {tableOfContents.map((item) => (
+                    <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-6">
+                        <input
+                          type="text"
+                          placeholder="Chapter/Topic Title"
+                          value={item.title}
+                          onChange={(e) => handleTocChange(item.id, 'title', e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+                        />
+                      </div>
+                      <div className="col-span-3">
+                        <input
+                          type="text"
+                          placeholder="Chapter #"
+                          value={item.chapter || ''}
+                          onChange={(e) => handleTocChange(item.id, 'chapter', e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <input
+                          type="text"
+                          placeholder="Page"
+                          value={item.pageNumber || ''}
+                          onChange={(e) => handleTocChange(item.id, 'pageNumber', e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        {tableOfContents.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeTocItem(item.id)}
+                            className="text-red-500 hover:text-red-700 p-1 rounded"
+                            title="Remove item"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={addTocItem}
+                  className="mt-3 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                >
+                  + Add Item
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4">
+              <label htmlFor="topic" className="block text-sm font-medium text-gray-700 mb-1">
+                Topic <span className="text-red-500">*</span>
+              </label>
+              <input 
+                id="topic"
+                name="topic" 
+                value={topic}
+                onChange={(e) => handleTopicChange(e.target.value)} 
+                placeholder="e.g., Machine Learning Algorithms" 
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
+              />
+            </div>
+          )}
+        </div>
+      )}
+      
       <div
         className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer mb-4 ${
           isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'

@@ -6,6 +6,7 @@ import { FileUploader } from '@/components/upload/FileUploader';
 import { VideoUploader } from '@/components/upload/VideoUploader';
 import { TextUploader } from '@/components/upload/TextUploader';
 import { InfoForm } from '@/components/upload/Infoform';
+import { useUser } from '@/context/userContext';
 
 // Define material categories and subcategories
 export type MaterialCategory = 
@@ -56,6 +57,7 @@ export type MaterialInfo = {
   university: string;
   faculty: string;
   department: string;
+  level: string;
   course: string;
   topic: string;
   category: MaterialCategory | null;
@@ -68,11 +70,13 @@ export type MaterialInfo = {
 
 export default function UploadPage() {
   const router = useRouter();
+  const { userProfile } = useUser();
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [materialInfo, setMaterialInfo] = useState<MaterialInfo>({
-    university: '',
-    faculty: '',
-    department: '',
+    university: userProfile?.school || '',
+    faculty: userProfile?.faculty || '',
+    department: userProfile?.department || '',
+    level: userProfile?.level || '', // Add level
     course: '',
     topic: '',
     category: null,
@@ -82,9 +86,8 @@ export default function UploadPage() {
   });
 
   // Handle form field changes
-  const handleInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setMaterialInfo({ ...materialInfo, [name]: value });
+  const handleInfoChange = (name: string, value: string) => {
+    setMaterialInfo(prev => ({ ...prev, [name]: value }));
   };
 
   // Handle metadata changes
@@ -98,6 +101,11 @@ export default function UploadPage() {
     }));
   };
 
+   // Handle topic changes (including table of contents)
+  const handleTopicChange = useCallback((topic: string) => {
+    setMaterialInfo(prev => ({ ...prev, topic }));
+  }, []);
+
   // Set material category and subcategory
   const handleMaterialSelect = (category: MaterialCategory, subcategory: MaterialSubcategory) => {
     setMaterialInfo({ 
@@ -108,6 +116,7 @@ export default function UploadPage() {
       files: null,
       videoSource: null,
       textContent: undefined,
+      topic: '',
       metadata: {}
     });
     setCurrentStep(2);
@@ -142,13 +151,21 @@ export default function UploadPage() {
 
   // Check if the current material has valid data
   const hasValidData = useCallback(() => {
-    const { subcategory, files, videoSource, textContent } = materialInfo;
+    const { subcategory, files, videoSource, textContent, topic } = materialInfo;
     
     if (!subcategory) return false;
+
+    // Define which subcategories require table of contents
+    const requiresTableOfContents = ['COURSE_MATERIAL', 'TEXTBOOK', 'EBOOK', 'SYLLABUS'].includes(subcategory);
+    
+    // Check if topic/table of contents is filled
+    const hasValidTopic = requiresTableOfContents ? 
+      (topic && topic.trim() !== '' && topic !== '[]') : 
+      (topic && topic.trim() !== '');
     
     switch (subcategory) {
       case 'RECORDED_LECTURE':
-        return videoSource !== null;
+        return videoSource !== null && hasValidTopic;
       case 'TEXTBOOK':
       case 'EBOOK':
       case 'LECTURE_NOTE':
@@ -160,9 +177,9 @@ export default function UploadPage() {
       case 'MOCK_EXAM':
       case 'PRESENTATION':
       case 'SYLLABUS':
-        return files && files.length > 0;
+        return files && files.length > 0 && hasValidTopic;
       case 'TUTORIAL':
-        return textContent && textContent.trim() !== '';
+        return textContent && textContent.trim() !== '' && hasValidTopic;
       default:
         return false;
     }
@@ -185,7 +202,7 @@ export default function UploadPage() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
+    <div className="flex flex-col w-full items-center justify-center p-4 h-full">
       {/* Step 1: Basic Information */}
       {currentStep === 1 && (
         <InfoForm 
@@ -217,8 +234,11 @@ export default function UploadPage() {
           ) : (
             <FileUploader 
               onFilesSelected={handleFilesSelected}
+              onTopicChange={handleTopicChange}
               acceptedTypes={getAcceptedFileTypes(materialInfo.subcategory)}
               maxFileSizeMB={getMaxFileSize(materialInfo.subcategory)}
+              subcategory={materialInfo.subcategory}
+              initialTopic={materialInfo.topic}
             />
           )}
 

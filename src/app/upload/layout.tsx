@@ -166,7 +166,7 @@ export default function UploadLayout({ children }: UploadLayoutProps) {
   // Normal layout for tablets and desktop
   return (
     <GuidelinesContext.Provider value={{ toggleGuidelines, isGuidelinesOpen }}>
-      <div className="relative h-[80vh] pt-[100px] bg-gray-50 p-4">
+      <div className="relative flex flex-col w-full h-full py-[100px] bg-gray-50 p-4">
         {/* Main content area */}
         <div className="max-w-4xl mx-auto">
           <div className="bg-white shadow-md rounded-lg p-6">

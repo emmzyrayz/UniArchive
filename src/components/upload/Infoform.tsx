@@ -8,11 +8,11 @@ type InfoFormProps = {
     university: string;
     faculty: string;
     department: string;
+    level: string;
     course: string;
-    topic: string;
     metadata?: Record<string, string>;
   };
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (name: string, value: string) => void;
   onMetadataChange: (name: string, value: string) => void;
   onSelectMaterial: (category: MaterialCategory, subcategory: MaterialSubcategory) => void;
 };
@@ -133,25 +133,19 @@ export const InfoForm = ({
 
   // Memoize the form completion check function
   const checkFormCompletion = useCallback(() => {
-    const { university, course, topic } = materialInfo;
-    return university.trim() !== '' && course.trim() !== '' && topic.trim() !== '';
+    const { university, course } = materialInfo;
+    return university.trim() !== '' && course.trim() !== '';
   }, [materialInfo]);
 
   // Update form completion status
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e);
-    setTimeout(() => setFormComplete(checkFormCompletion()), 0);
-  };
-
-  // Handle metadata changes (example usage)
-  const handleMetadataChange = (name: string, value: string) => {
-    onMetadataChange(name, value);
-  };
-
-  // Check form completion on mount and when materialInfo changes
   useEffect(() => {
     setFormComplete(checkFormCompletion());
   }, [checkFormCompletion]);
+
+  // Handle subcategory selection
+  const handleSubcategorySelect = (category: MaterialCategory, subcategory: MaterialSubcategory) => {
+    onSelectMaterial(category, subcategory);
+  };
 
   // Get subcategories for selected category
   const subcategories = useMemo(() => {
@@ -186,7 +180,7 @@ export const InfoForm = ({
             id="university"
             name="university" 
             value={materialInfo.university}
-            onChange={handleChange} 
+            onChange={(e) => onChange('university', e.target.value)} 
             placeholder="e.g., Harvard University" 
             className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
             required
@@ -201,7 +195,7 @@ export const InfoForm = ({
             id="faculty"
             name="faculty" 
             value={materialInfo.faculty}
-            onChange={handleChange} 
+            onChange={(e) => onChange('faculty', e.target.value)} 
             placeholder="e.g., Engineering" 
             className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
           />
@@ -215,13 +209,28 @@ export const InfoForm = ({
             id="department"
             name="department" 
             value={materialInfo.department}
-            onChange={handleChange} 
+            onChange={(e) => onChange('department', e.target.value)}
             placeholder="e.g., Computer Science" 
             className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
           />
         </div>
-        
+
         <div>
+          <label htmlFor="level" className="block text-sm font-medium text-gray-700 mb-1">
+            Level <span className="text-red-500">*</span>
+          </label>
+          <input 
+            id="level"
+            name="level" 
+            value={materialInfo.level}
+            onChange={(e) => onChange('level', e.target.value)}
+            placeholder="e.g., 100, 200, 300..." 
+            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
+            required
+          />
+        </div>
+        
+        <div className="col-span-2">
           <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-1">
             Course <span className="text-red-500">*</span>
           </label>
@@ -229,23 +238,8 @@ export const InfoForm = ({
             id="course"
             name="course" 
             value={materialInfo.course}
-            onChange={handleChange} 
+            onChange={(e) => onChange('course', e.target.value)}
             placeholder="e.g., Introduction to AI" 
-            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
-            required
-          />
-        </div>
-        
-        <div className="col-span-2">
-          <label htmlFor="topic" className="block text-sm font-medium text-gray-700 mb-1">
-            Topic <span className="text-red-500">*</span>
-          </label>
-          <input 
-            id="topic"
-            name="topic" 
-            value={materialInfo.topic}
-            onChange={handleChange} 
-            placeholder="e.g., Machine Learning Algorithms" 
             className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
             required
           />
@@ -262,7 +256,7 @@ export const InfoForm = ({
           name="additional-info" 
           placeholder="Any additional details about the material" 
           className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
-          onChange={(e) => handleMetadataChange('additionalInfo', e.target.value)}
+          onChange={(e) => onMetadataChange('additionalInfo', e.target.value)}
         />
       </div>
 
@@ -322,7 +316,7 @@ export const InfoForm = ({
             {subcategories.map((subcategory) => (
               <div key={subcategory.id} className="relative">
                 <button
-                  onClick={() => onSelectMaterial(selectedCategory, subcategory.id)}
+                  onClick={() => handleSubcategorySelect(selectedCategory, subcategory.id)}
                   onMouseEnter={() => setHoveredSubcategory(subcategory.id)}
                   onMouseLeave={() => setHoveredSubcategory(null)}
                   className="w-full px-4 py-3 rounded bg-white border border-gray-300 hover:bg-gray-50 text-gray-700"
