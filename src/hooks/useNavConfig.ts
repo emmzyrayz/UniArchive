@@ -7,7 +7,7 @@ export interface NavItem {
   path: string;
   icon?: string;
   requiresAuth?: boolean;
-  roles?: ("admin" | "contributor" | "student" | "mod")[];
+  roles?: ("admin" | "contributor" | "student" | "mod" | "devsupport")[];
 }
 
 // Category structure for dropdown menus
@@ -16,7 +16,7 @@ export interface NavCategory {
   items: NavItem[];
   icon?: string;
   requiresAuth?: boolean;
-  roles?: ("admin" | "contributor" | "student" | "mod")[];
+  roles?: ("admin" | "contributor" | "student" | "mod" | "devsupport")[];
 }
 
 export interface PageNavConfig {
