@@ -12,7 +12,7 @@ interface UserData {
   dob: string | Date; // Allow both string and Date to handle incoming data
   phone: string;
   gender: "Male" | "Female" | "Other";
-  role: "admin" | "contributor" | "student" | "mod";
+  role: "admin" | "contributor" | "student" | "mod" | "devsupport";
   school: string;
   faculty: string;
   department: string;
@@ -42,7 +42,7 @@ interface SessionUpdateData {
   dob: string | Date;
   gender: "Male" | "Female" | "Other";
   profilePhoto?: string;
-  role: "admin" | "contributor" | "student" | "mod";
+  role: "admin" | "contributor" | "student" | "mod" | "devsupport";
   school: string;
   faculty: string;
   department: string;
@@ -148,6 +148,9 @@ export async function POST(request: NextRequest) {
     
     if (existingSession) {
       console.log("SessionUpload: Found existing session, checking if it needs refresh");
+
+      console.log("SessionUpload: userData received:", userData);
+console.log("SessionUpload: userData.level:", userData.level);
       
       // Calculate time difference in hours
       const now = new Date();
@@ -270,6 +273,8 @@ export async function POST(request: NextRequest) {
 
     // Create new session with complete user data
     console.log("SessionUpload: Creating new session with full user data");
+    console.log("SessionUpload: userData received:", userData);
+console.log("SessionUpload: userData.level:", userData.level);
     
     try {
       // Convert dob to Date if it's a string
@@ -364,6 +369,8 @@ export async function GET(request: NextRequest) {
     } else if (userId) {
       session = await SessionCache.findActiveSession(userId, 'userId');
     }
+
+    
     
     if (!session) {
       return NextResponse.json(

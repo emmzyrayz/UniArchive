@@ -36,6 +36,7 @@
     "@types/mongoose": "^5.11.96",
     "@types/nodemailer": "^6.4.17",
     "animejs": "^3.2.2",
+    "aws-sdk": "^2.1692.0",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.6.1",
     "crypto-js": "^4.2.0",

@@ -13,6 +13,7 @@ import { UserProvider } from "@/context/userContext";
 import { AdminProvider } from "@/context/adminContext";
 import RouteProtectionProvider from "@/components/protectedRoute";
 import DebugUserContext from "@/utils/DebugUserContext";
+import { SchoolProvider } from "@/context/schoolContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -74,9 +75,13 @@ export default function RootLayout({
             <RouteProtectionProvider>
               <DebugUserContext />
               <AdminProvider>
-                <ClientWrapper>
-                  <NavigationWrapper> {children}</NavigationWrapper>
-                </ClientWrapper>
+                <SchoolProvider>
+                  {" "}
+                  {/* Wrap with SchoolProvider */}
+                  <ClientWrapper>
+                    <NavigationWrapper> {children}</NavigationWrapper>
+                  </ClientWrapper>
+                </SchoolProvider>
               </AdminProvider>
             </RouteProtectionProvider>
           </UserProvider>

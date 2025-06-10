@@ -2,7 +2,7 @@
 export interface RouteProtection {
   path: string;
   requiresAuth: boolean;
-  requiredRoles?: ("admin" | "contributor" | "student" | "mod")[];
+  requiredRoles?: ("admin" | "contributor" | "student" | "mod" | "devsupport")[];
   fallbackPath?: string;
 }
 
@@ -11,7 +11,7 @@ export const PROTECTED_ROUTES: RouteProtection[] = [
   {
     path: '/admin',
     requiresAuth: true,
-    requiredRoles: ['admin'],
+    requiredRoles: ['admin', 'devsupport'],
     fallbackPath: '/'
   },
   {
@@ -36,6 +36,12 @@ export const PROTECTED_ROUTES: RouteProtection[] = [
   },
   {
     path: '/content/create',
+    requiresAuth: true,
+    requiredRoles: ['admin', 'contributor'],
+    fallbackPath: '/'
+  },
+  {
+    path: '/upload',
     requiresAuth: true,
     requiredRoles: ['admin', 'contributor'],
     fallbackPath: '/'
@@ -73,7 +79,7 @@ export const PROTECTED_ROUTES: RouteProtection[] = [
 ];
 
 // Define the user role type
-export type UserRole = "admin" | "contributor" | "student" | "mod";
+export type UserRole = "admin" | "contributor" | "student" | "mod" | "devsupport";
 
 
 // Helper function to find route protection config

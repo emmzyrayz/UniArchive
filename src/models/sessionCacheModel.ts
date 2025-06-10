@@ -41,7 +41,7 @@ interface IDecryptedUserData {
   phone?: string;
   gender: 'Male' | 'Female' | 'Other';
   profilePhoto?: string;
-  role: 'admin' | 'contributor' | 'student' | 'mod';
+  role: 'admin' | 'contributor' | 'student' | 'mod' | "devsupport";
   school: string;
   faculty: string;
   department: string;
@@ -65,6 +65,7 @@ export interface ISessionCache extends Document {
   uuid: string;
   userId: string;
   sessionToken: string;
+  sessionTokenHash: string;// Add this line
   email: string;
   emailHash: string;
   fullName: string;
@@ -73,7 +74,7 @@ export interface ISessionCache extends Document {
   phoneHash?: string;
   gender: 'Male' | 'Female' | 'Other';
   profilePhoto?: string;
-  role: 'admin' | 'contributor' | 'student' | 'mod';
+  role: 'admin' | 'contributor' | 'student' | 'mod' | "devsupport";
   school: string;
   faculty: string;
   department: string;
@@ -103,7 +104,7 @@ interface IUserData {
   phone?: string;
   gender: 'Male' | 'Female' | 'Other';
   profilePhoto?: string;
-  role: 'admin' | 'contributor' | 'student' | 'mod';
+  role: 'admin' | 'contributor' | 'student' | 'mod' | "devsupport";
   school: string;
   faculty: string;
   department: string;
@@ -145,6 +146,7 @@ const SessionCacheSchema = new Schema<ISessionCache>({
   uuid: { type: String, required: true },
   userId: { type: String, required: true },
   sessionToken: { type: String, required: true },
+  sessionTokenHash: { type: String, unique: true, sparse: true }, // Add this line
   email: { type: String, required: true },
   emailHash: { type: String, required: true },
   fullName: { type: String, required: true },
@@ -153,7 +155,7 @@ const SessionCacheSchema = new Schema<ISessionCache>({
   phoneHash: { type: String },
   gender: { type: String, enum: ['Male', 'Female', 'Other'], required: true },
   profilePhoto: { type: String },
-  role: { type: String, enum: ['admin', 'contributor', 'student', 'mod'], required: true },
+  role: { type: String, enum: ['admin', 'contributor', 'student', 'mod', 'devsupport'], required: true },
   school: { type: String, required: true },
   faculty: { type: String, required: true },
   department: { type: String, required: true },
@@ -439,6 +441,7 @@ SessionCacheSchema.statics.createFullSession = async function(
       uuid,
       userId,
       sessionToken,
+      sessionTokenHash: SessionCacheModel.hashForSearch(sessionToken),
       email: SessionCacheModel.encryptSensitiveData(userData.email),
       emailHash: SessionCacheModel.hashForSearch(userData.email),
       fullName: userData.fullName,
@@ -449,6 +452,7 @@ SessionCacheSchema.statics.createFullSession = async function(
       school: userData.school,
       faculty: userData.faculty,
       department: userData.department,
+      level: userData.level,
       upid: userData.upid,
       isVerified: userData.isVerified,
       isActive: true,
@@ -472,6 +476,7 @@ SessionCacheSchema.statics.createFullSession = async function(
     }
 
     console.log('Session data prepared, creating in database...');
+    console.log('Session data to be created:', sessionData);
     const createdSession = await this.create(sessionData);
     console.log('Session created successfully with UUID:', createdSession.uuid);
     
