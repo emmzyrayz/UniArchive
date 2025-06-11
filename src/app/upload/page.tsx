@@ -185,12 +185,34 @@ export default function UploadPage() {
     }
   }, [materialInfo]);
 
+  // Add this function to convert files to base64
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+};
+
   // Navigate to preview page
-  const goToPreview = useCallback(() => {
+  const goToPreview = useCallback(async () => {
     try {
+       // Convert files to base64
+    const filesBase64 = materialInfo.files 
+      ? await Promise.all(materialInfo.files.map(fileToBase64))
+      : [];
+    
+    // Create sanitized object without File instances
+    const materialInfoToStore = {
+      ...materialInfo,
+      files: null,
+      filesBase64
+    };
+
       // Store in memory instead of localStorage for artifact compatibility
-      sessionStorage.setItem('materialInfo', JSON.stringify(materialInfo));
-      router.push('/upload/preview');
+     sessionStorage.setItem('materialInfo', JSON.stringify(materialInfoToStore));
+    router.push('/upload/preview');
     } catch (error) {
       console.error('Error saving material info:', error);
       alert('Error saving data. Please try again.');

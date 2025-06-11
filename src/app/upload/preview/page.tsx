@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {PDFPreview} from '@/components/preview/PDFPreview';
-import {PhotoPreview} from '@/components/preview/PhotoPreview';
-import {VideoPreview} from '@/components/preview/VideoPreview';
-import {TextPreview} from '@/components/preview/TextPreview';
+import { FilePreview } from '@/components/preview/filePreview'; // Updated import
+import { VideoPreview } from '@/components/preview/VideoPreview';
+import { TextPreview } from '@/components/preview/TextPreview';
 import type { MaterialInfo } from '@/app/upload/page';
 import { DebugPanel } from '@/components/test/debugDataFlow';
 
@@ -14,13 +13,35 @@ export default function PreviewPage() {
   const [materialInfo, setMaterialInfo] = useState<MaterialInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Add this function to convert base64 to file objects
+const base64ToFile = (base64: string, filename: string): File => {
+  const arr = base64.split(',');
+  const mime = arr[0].match(/:(.*?);/)![1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  
+  return new File([u8arr], filename, { type: mime });
+};
+
   useEffect(() => {
-    // Retrieve material info from sessionStorage (changed from localStorage)
     const savedMaterialInfo = sessionStorage.getItem('materialInfo');
     
     if (savedMaterialInfo) {
       try {
         const parsedInfo = JSON.parse(savedMaterialInfo);
+
+        // Convert base64 back to files if needed
+      if (parsedInfo.filesBase64 && !parsedInfo.files) {
+        parsedInfo.files = parsedInfo.filesBase64.map((base64: string, i: number) => 
+          base64ToFile(base64, `file-${i}`)
+        );
+      }
+      
         setMaterialInfo(parsedInfo);
       } catch (error) {
         console.error('Error parsing material info:', error);
@@ -31,34 +52,26 @@ export default function PreviewPage() {
   }, []);
 
   const handleSubmit = () => {
-    // Here you would typically send the data to your API
     alert('Material submitted successfully!');
-    
-    // Clear sessionStorage
     sessionStorage.removeItem('materialInfo');
-    
-    // Redirect to confirmation or dashboard page
     router.push('/dashboard');
   };
 
-  // Helper function to determine material type based on subcategory
+  // Helper function to determine material type
   const getMaterialType = (materialInfo: MaterialInfo): 'PDF' | 'PHOTOS' | 'VIDEO' | 'TEXT' | null => {
     if (!materialInfo.subcategory) return null;
 
-    // Video materials
     if (materialInfo.subcategory === 'RECORDED_LECTURE') {
       return 'VIDEO';
     }
 
-    // Text materials
     if (materialInfo.subcategory === 'TUTORIAL') {
       return 'TEXT';
     }
 
-    // File-based materials - determine by file type
     if (materialInfo.files && materialInfo.files.length > 0) {
       const firstFile = materialInfo.files[0];
-      const fileType = firstFile.type.toLowerCase();
+      const fileType = firstFile?.type ? firstFile.type.toLowerCase() : '';
       
       if (fileType.includes('pdf')) {
         return 'PDF';
@@ -87,9 +100,9 @@ export default function PreviewPage() {
 
     switch (materialType) {
       case 'PDF':
-        return <PDFPreview materialInfo={materialInfo} />;
+        return <FilePreview type="pdf" materialInfo={materialInfo} />;
       case 'PHOTOS':
-        return <PhotoPreview materialInfo={materialInfo} />;
+        return <FilePreview type="image" materialInfo={materialInfo} />;
       case 'VIDEO':
         return <VideoPreview materialInfo={materialInfo} />;
       case 'TEXT':

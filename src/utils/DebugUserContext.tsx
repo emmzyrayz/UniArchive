@@ -171,6 +171,11 @@ const DebugUserContext: React.FC = () => {
     }
   };
 
+  // ADMIN-ONLY ACCESS CHECK - All hooks must be called before this early return
+  if (!hasActiveSession || !userProfile || userProfile.role !== 'admin') {
+    return null;
+  }
+
   // Collapsed button
   if (isCollapsed) {
     return (
