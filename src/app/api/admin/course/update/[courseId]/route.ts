@@ -2,19 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectUniPlatformDB } from '@/lib/database';
 import { getCourseModel, CourseOutlineWeek, CourseOutlineTopic, CourseOutlineSubtopic } from '@/models/courseModel';
 
-export async function PUT(req: NextRequest, { params }: { params: { courseId: string } }) {
+export async function PUT(
+  req: NextRequest, 
+  context: { params: { courseId: string } }
+) {
   try {
     // Connect to UniPlatformDB
     await connectUniPlatformDB();
     const CourseModel = await getCourseModel();
     
-     // Await params before accessing properties
-    const { courseId } = await params;
+    // Extract courseId from context.params (no need to await)
+    const { courseId } = context.params;
     const data = await req.json();
     
     if (!courseId) {
       return NextResponse.json({ message: 'Missing courseId' }, { status: 400 });
     }
+    
     // Validate new courseOutline structure if present
     if (data.courseOutline) {
       if (!Array.isArray(data.courseOutline)) {
@@ -43,6 +47,7 @@ export async function PUT(req: NextRequest, { params }: { params: { courseId: st
         }, { status: 400 });
       }
     }
+    
     // Prevent changing immutable fields
     const immutableFields = ['courseId', 'schoolId', 'facultyId', 'departmentId'];
     immutableFields.forEach(field => {

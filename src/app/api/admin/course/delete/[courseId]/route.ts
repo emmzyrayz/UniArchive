@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectUniPlatformDB } from '@/lib/database';
 import { getCourseModel } from '@/models/courseModel';
 
-export async function DELETE(req: NextRequest, { params }: { params: { courseId: string } }) {
+export async function DELETE(
+  req: NextRequest, 
+  context: { params: { courseId: string } }
+) {
   try {
     // Connect to UniPlatformDB
     await connectUniPlatformDB();
     const CourseModel = await getCourseModel();
     
-    const courseId = params.courseId;
+    const courseId = context.params.courseId;
     if (!courseId) {
       return NextResponse.json({ message: 'Missing courseId' }, { status: 400 });
     }
