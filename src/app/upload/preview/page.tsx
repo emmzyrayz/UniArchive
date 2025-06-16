@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FilePreview } from '@/components/preview/filePreview'; // Updated import
+import dynamic from 'next/dynamic';
+const FilePreview = dynamic(() => import('@/components/preview/filePreview').then(mod => mod.FilePreview), { ssr: false });
 import { VideoPreview } from '@/components/preview/VideoPreview';
 import { TextPreview } from '@/components/preview/TextPreview';
 import type { MaterialInfo } from '@/app/upload/page';

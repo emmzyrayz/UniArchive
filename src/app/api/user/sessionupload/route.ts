@@ -1,4 +1,4 @@
-// /api/user/sessionupload/route.ts - Fixed version with UUID in all responses
+// /api/user/sessionupload/route.ts - Fixed version with proper TypeScript types
 
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/database";
@@ -55,6 +55,46 @@ interface SessionUpdateData {
   level: string;
 }
 
+// Define MongoDB filter interface
+interface MongoFilter {
+  userId: string;
+  uuid?: { $ne: string };
+}
+
+// Define session document interface (extend as needed based on your model)
+interface SessionDocument {
+  uuid: string;
+  userId: string;
+  sessionToken: string;
+  isActive: boolean;
+  isSignedIn: boolean;
+  expiresAt: Date;
+  lastActivity: Date;
+  createdAt: Date;
+  deviceInfo: string;
+  ipAddress: string;
+  level: string;
+  fullName: string;
+  dob: Date;
+  gender: "Male" | "Female" | "Other";
+  profilePhoto?: string;
+  role: "admin" | "contributor" | "student" | "mod" | "devsupport";
+  school: string;
+  faculty: string;
+  department: string;
+  upid: string;
+  isVerified: boolean;
+  phone?: string;
+  phoneHash?: string;
+  regNumber?: string;
+  regNumberHash?: string;
+}
+
+// Define MongoDB delete result interface
+interface DeleteResult {
+  deletedCount: number;
+}
+
 // Helper function to extract device/browser info from user agent
 function getDeviceInfo(userAgent: string): string {
   if (userAgent.includes('Mobile')) return 'Mobile Device';
@@ -101,6 +141,44 @@ function validateUserData(userData: UserData): { isValid: boolean; missingFields
   };
 }
 
+// FIXED: Enhanced cleanup function to remove ALL sessions for a user
+async function cleanupUserSessions(userId: string, excludeUUID?: string): Promise<number> {
+  try {
+    const filter: MongoFilter = { userId: userId };
+    
+    // If we want to keep one specific session, exclude it
+    if (excludeUUID) {
+      filter.uuid = { $ne: excludeUUID };
+    }
+    
+    const result = await SessionCache.deleteMany(filter) as DeleteResult;
+    console.log(`SessionUpload: Cleaned up ${result.deletedCount} old sessions for user ${userId}`);
+    return result.deletedCount;
+  } catch (error) {
+    console.error("SessionUpload: Error cleaning up user sessions:", error);
+    return 0;
+  }
+}
+
+// FIXED: Enhanced function to cleanup expired sessions
+async function cleanupExpiredSessions(): Promise<number> {
+  try {
+    const now = new Date();
+    const result = await SessionCache.deleteMany({
+      $or: [
+        { expiresAt: { $lt: now } },
+        { isActive: false },
+        { isSignedIn: false }
+      ]
+    }) as DeleteResult;
+    console.log(`SessionUpload: Cleaned up ${result.deletedCount} expired/inactive sessions`);
+    return result.deletedCount;
+  } catch (error) {
+    console.error("SessionUpload: Error cleaning up expired sessions:", error);
+    return 0;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log("SessionUpload: Starting session upload process");
@@ -143,138 +221,105 @@ export async function POST(request: NextRequest) {
 
     console.log("SessionUpload: Device info:", deviceInfo, "IP:", ipAddress);
 
-    // Check if user already has an active session
-    const existingSession = await SessionCache.findActiveSession(userId, 'userId');
-    
-    if (existingSession) {
-      console.log("SessionUpload: Found existing session, checking if it needs refresh");
+   // FIXED: First cleanup all expired sessions globally
+    await cleanupExpiredSessions();
 
-      console.log("SessionUpload: userData received:", userData);
-console.log("SessionUpload: userData.level:", userData.level);
+    // FIXED: Get ALL sessions for this user (not just active ones)
+    const existingSessions = await SessionCache.find({ userId: userId }).sort({ createdAt: -1 }) as SessionDocument[];
+    
+    console.log(`SessionUpload: Found ${existingSessions.length} existing sessions for user ${userId}`);
+
+    const now = new Date();
+    let sessionToKeep: SessionDocument | null = null;
+    let shouldCreateNew = true;
+
+    // FIXED: Check if any existing session is still valid and recent
+    for (const session of existingSessions) {
+      const expiresAt = new Date(session.expiresAt);
+      const lastActivity = new Date(session.lastActivity);
+      const hoursSinceActivity = (now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60);
       
-      // Calculate time difference in hours
-      const now = new Date();
-      const lastActivity = new Date(existingSession.lastActivity);
-      const hoursDifference = (now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60);
+      console.log(`SessionUpload: Session ${session.uuid.substring(0, 8)}... - Hours since activity: ${hoursSinceActivity}, Expires: ${expiresAt > now}`);
       
-      console.log(`SessionUpload: Hours since last activity: ${hoursDifference}`);
-      
-      // If more than 1-2 hours have passed, refresh the session
-      if (hoursDifference >= 1) {
-        console.log("SessionUpload: Session timeout exceeded 1 hour, refreshing session");
-        
-        // Check if session has completely expired (beyond recovery)
-        const expiresAt = new Date(existingSession.expiresAt);
-        
-        if (now > expiresAt) {
-          console.log("SessionUpload: Session completely expired, creating new session");
-          
-          // Delete the expired session
-          await SessionCache.deleteOne({ uuid: existingSession.uuid });
-        } else {
-          console.log("SessionUpload: Session still recoverable, updating timeout and activity");
-          
-          // Update the existing session with new timeout, activity, and potentially updated user data
-          const newExpiresAt = new Date();
-          newExpiresAt.setHours(newExpiresAt.getHours() + (24 * 7)); // 7 days from now
-          
-          // Update session with fresh user data and metadata
-          const updateData: SessionUpdateData = {
-            lastActivity: now,
-            expiresAt: newExpiresAt,
-            deviceInfo: deviceInfo,
-            ipAddress: ipAddress,
-            updatedAt: now,
-            
-            // Update user data fields (in case they've changed)
-            fullName: userData.fullName,
-            dob: typeof userData.dob === 'string' ? new Date(userData.dob) : userData.dob,
-            gender: userData.gender,
-            profilePhoto: userData.profilePhoto,
-            role: userData.role,
-            school: userData.school,
-            faculty: userData.faculty,
-            department: userData.department,
-            upid: userData.upid,
-            isVerified: userData.isVerified,
-            level: userData.level,
-          };
-          
-          // Update encrypted fields if they've changed
-          if (userData.phone) {
-            updateData.phone = SessionCache.encryptSensitiveData(userData.phone);
-            updateData.phoneHash = SessionCache.hashForSearch(userData.phone);
-          }
-          
-          if (userData.regNumber) {
-            updateData.regNumber = SessionCache.encryptSensitiveData(userData.regNumber);
-            updateData.regNumberHash = SessionCache.hashForSearch(userData.regNumber);
-          }
-          
-          await SessionCache.findOneAndUpdate(
-            { uuid: existingSession.uuid },
-            updateData,
-            { new: true }
-          );
-          
-          console.log("SessionUpload: Existing session updated successfully");
-          
-          // FIXED: Include UUID in the response
-          return NextResponse.json(
-            {
-              message: "Session refreshed successfully",
-              sessionInfo: {
-                uuid: existingSession.uuid, // ✅ Added missing UUID
-                sessionToken: existingSession.sessionToken,
-                refreshed: true,
-                newExpiresAt: newExpiresAt
-              }
-            },
-            { status: 200 }
-          );
-        }
-      } else {
-        console.log("SessionUpload: Session still active within timeout, updating activity and user data only");
-        console.log("Refreshed session UUID:", existingSession.uuid);
-        
-        // Update activity and potentially changed user data
-        const updateData = {
-          lastActivity: now,
-          updatedAt: now,
-          
-          // Update user data fields that might have changed
-          fullName: userData.fullName,
-          profilePhoto: userData.profilePhoto,
-          role: userData.role,
-          isVerified: userData.isVerified,
-          level: userData.level,
-        };
-        
-        await SessionCache.findOneAndUpdate(
-          { uuid: existingSession.uuid },
-          updateData
-        );
-        
-        console.log("SessionUpload: Session activity updated");
-        
-        // FIXED: Include UUID in the response
-        return NextResponse.json(
-          {
-            message: "Session activity updated",
-            sessionInfo: {
-              uuid: existingSession.uuid, // ✅ Added missing UUID
-              refreshed: false
-            }
-          },
-          { status: 200 }
-        );
+      // If session is still valid (not expired and active within last 2 hours)
+      if (expiresAt > now && session.isActive && session.isSignedIn && hoursSinceActivity < 2) {
+        console.log("SessionUpload: Found valid recent session, will update it");
+        sessionToKeep = session;
+        shouldCreateNew = false;
+        break;
       }
     }
 
-    // Create new session with complete user data
+    // FIXED: Always cleanup all other sessions for this user first
+    if (sessionToKeep) {
+      await cleanupUserSessions(userId, sessionToKeep.uuid);
+    } else {
+      await cleanupUserSessions(userId);
+    }
+
+    if (sessionToKeep && !shouldCreateNew) {
+      // Update the existing valid session
+      console.log("SessionUpload: Updating existing valid session");
+      
+      const newExpiresAt = new Date();
+      newExpiresAt.setHours(newExpiresAt.getHours() + (24 * 7)); // 7 days from now
+      
+      const updateData: SessionUpdateData = {
+        lastActivity: now,
+        expiresAt: newExpiresAt,
+        deviceInfo: deviceInfo,
+        ipAddress: ipAddress,
+        updatedAt: now,
+        
+        // Update user data fields (in case they've changed)
+        fullName: userData.fullName,
+        dob: typeof userData.dob === 'string' ? new Date(userData.dob) : userData.dob,
+        gender: userData.gender,
+        profilePhoto: userData.profilePhoto,
+        role: userData.role,
+        school: userData.school,
+        faculty: userData.faculty,
+        department: userData.department,
+        upid: userData.upid,
+        isVerified: userData.isVerified,
+        level: userData.level,
+      };
+      
+      // Update encrypted fields
+      if (userData.phone) {
+        updateData.phone = SessionCache.encryptSensitiveData(userData.phone);
+        updateData.phoneHash = SessionCache.hashForSearch(userData.phone);
+      }
+      
+      if (userData.regNumber) {
+        updateData.regNumber = SessionCache.encryptSensitiveData(userData.regNumber);
+        updateData.regNumberHash = SessionCache.hashForSearch(userData.regNumber);
+      }
+      
+      await SessionCache.findOneAndUpdate(
+        { uuid: sessionToKeep.uuid },
+        updateData,
+        { new: true }
+      );
+      
+      console.log("SessionUpload: Existing session updated successfully");
+      
+      return NextResponse.json(
+        {
+          message: "Session updated successfully",
+          sessionInfo: {
+            uuid: sessionToKeep.uuid,
+            sessionToken: sessionToKeep.sessionToken,
+            refreshed: true,
+            newExpiresAt: newExpiresAt
+          }
+        },
+        { status: 200 }
+      );
+    }
+
+    // FIXED: Create new session (we've already cleaned up all old ones)
     console.log("SessionUpload: Creating new session with full user data");
-    console.log("SessionUpload: userData received:", userData);
-console.log("SessionUpload: userData.level:", userData.level);
     
     try {
       // Convert dob to Date if it's a string
@@ -291,7 +336,7 @@ console.log("SessionUpload: userData.level:", userData.level);
         24 * 7, // 7 days in hours
         deviceInfo,
         ipAddress
-      );
+      ) as SessionDocument;
 
       console.log("SessionUpload: New comprehensive session created successfully with UUID:", newSession.uuid);
       
@@ -301,9 +346,21 @@ console.log("SessionUpload: userData.level:", userData.level);
       });
 
       // Clean up old expired sessions (optional - run periodically)
-      SessionCache.cleanupExpiredSessions().catch((err: Error) => 
-        console.error("SessionUpload: Session cleanup error:", err)
-      );
+      // FIXED: Final verification - ensure only one session exists for this user
+      const finalSessionCount = await SessionCache.countDocuments({ userId: userId });
+      console.log(`SessionUpload: Final session count for user ${userId}: ${finalSessionCount}`);
+      
+      if (finalSessionCount > 1) {
+        console.warn(`SessionUpload: WARNING - User ${userId} still has ${finalSessionCount} sessions after cleanup`);
+        // Emergency cleanup - keep only the newest session
+        const allUserSessions = await SessionCache.find({ userId: userId }).sort({ createdAt: -1 }) as SessionDocument[];
+        const sessionsToDelete = allUserSessions.slice(1); // Keep the first (newest), delete the rest
+        
+        for (const session of sessionsToDelete) {
+          await SessionCache.deleteOne({ uuid: session.uuid });
+          console.log(`SessionUpload: Emergency cleanup - deleted session ${session.uuid}`);
+        }
+      }
 
       return NextResponse.json(
         {
@@ -348,6 +405,7 @@ console.log("SessionUpload: userData.level:", userData.level);
 }
 
 // GET method to check session upload status (optional)
+// FIXED: Enhanced GET method with better session checking
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -355,6 +413,28 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const uuid = searchParams.get('uuid');
+    const action = searchParams.get('action');
+    
+    // Special action to check for duplicate sessions
+    if (action === 'check-duplicates' && userId) {
+      const userSessions = await SessionCache.find({ userId: userId }) as SessionDocument[];
+      const activeSessions = userSessions.filter(s => s.isActive && new Date(s.expiresAt) > new Date());
+      
+      return NextResponse.json({
+        message: "Duplicate check completed",
+        userId: userId,
+        totalSessions: userSessions.length,
+        activeSessions: activeSessions.length,
+        hasDuplicates: activeSessions.length > 1,
+        sessions: userSessions.map(s => ({
+          uuid: s.uuid.substring(0, 8) + "...",
+          isActive: s.isActive,
+          expiresAt: s.expiresAt,
+          lastActivity: s.lastActivity,
+          createdAt: s.createdAt
+        }))
+      }, { status: 200 });
+    }
     
     if (!userId && !uuid) {
       return NextResponse.json(
@@ -363,14 +443,18 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    let session;
+    let session: SessionDocument | null = null;
     if (uuid) {
-      session = await SessionCache.findByUUID(uuid);
+      session = await SessionCache.findByUUID(uuid) as SessionDocument | null;
     } else if (userId) {
-      session = await SessionCache.findActiveSession(userId, 'userId');
+      // Get the most recent active session for the user
+      session = await SessionCache.findOne({ 
+        userId: userId, 
+        isActive: true, 
+        isSignedIn: true,
+        expiresAt: { $gt: new Date() }
+      }).sort({ lastActivity: -1 }) as SessionDocument | null;
     }
-
-    
     
     if (!session) {
       return NextResponse.json(

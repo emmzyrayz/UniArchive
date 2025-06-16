@@ -1,14 +1,104 @@
-// /api/auth/signin/route.ts - Fixed version with proper sessionUUID handling
+// /api/auth/signin/route.ts - Fixed version with proper TypeScript types
 
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/database";
 import User from "@/models/usermodel";
+import SessionCache from "@/models/sessionCacheModel";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { Types } from "mongoose";
 import { cookies } from 'next/headers';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key";
+
+// Define interfaces for better type safety
+interface UserDocument {
+  _id: Types.ObjectId;
+  email: string;
+  fullName: string;
+  dob: Date;
+  phone: string;
+  gender: "Male" | "Female" | "Other";
+  profilePhoto?: string;
+  role: "admin" | "contributor" | "student" | "mod" | "devsupport";
+  school: string;
+  faculty: string;
+  department: string;
+  regNumber: string;
+  level: string;
+  upid: string;
+  uuid: string;
+  isVerified: boolean;
+  emailHash: string;
+  updatedAt: Date;
+  comparePassword(password: string): Promise<boolean>;
+  save(): Promise<UserDocument>;
+}
+
+interface FullUserData {
+  email: string;
+  fullName: string;
+  dob: Date;
+  phone: string;
+  gender: "Male" | "Female" | "Other";
+  profilePhoto?: string;
+  role: "admin" | "contributor" | "student" | "mod" | "devsupport";
+  school: string;
+  faculty: string;
+  department: string;
+  regNumber: string;
+  level: string;
+  upid: string;
+  isVerified: boolean;
+}
+
+interface TokenPayload {
+  user: {
+    id: Types.ObjectId;
+    fullName: string;
+    email: string;
+    school: string;
+    faculty: string;
+    department: string;
+    uuid: string;
+    upid: string;
+    role: "admin" | "contributor" | "student" | "mod" | "devsupport";
+    isVerified: boolean;
+    profilePhoto?: string;
+    phone: string;
+    regNumber: string;
+    level: string;
+  };
+  sessionToken: string;
+}
+
+interface SessionUploadResponse {
+  message: string;
+  sessionInfo?: {
+    uuid: string;
+    sessionToken: string;
+    expiresAt: Date;
+    deviceInfo: string;
+    created?: boolean;
+    refreshed?: boolean;
+    newExpiresAt?: Date;
+  };
+}
+
+interface DeleteResult {
+  deletedCount: number;
+}
+
+// FIXED: Add cleanup function at the start with proper typing
+async function cleanupUserSessions(userId: string): Promise<void> {
+  try {
+    // Remove all existing sessions for this user
+    const result = await SessionCache.deleteMany({ userId: userId }) as DeleteResult;
+    console.log(`SignIn: Cleaned up ${result.deletedCount} existing sessions for user ${userId}`);
+  } catch (error) {
+    console.error("SignIn: Error cleaning up user sessions:", error);
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,8 +120,8 @@ export async function POST(request: NextRequest) {
     // Create hash to search for user (same hash used during registration)
     const emailHash = User.hashForSearch(email);
 
-    // Find user by email hash
-    const user = await User.findOne({ emailHash: emailHash });
+    // Find user by email hash with proper typing
+    const user = await User.findOne({ emailHash: emailHash }) as UserDocument | null;
 
     console.log("User found:", user ? "Yes" : "No");
 
@@ -60,11 +150,16 @@ export async function POST(request: NextRequest) {
         {
           message: "Please verify your email before logging in",
           requiresVerification: true,
-          email: email, // Send plain email back for verification process
+          email: email,
         },
         { status: 403 }
       );
     }
+
+    // FIXED: Clean up any existing sessions for this user BEFORE creating a new one
+    const userId = user._id.toString();
+    console.log("SignIn: Cleaning up existing sessions for user:", userId);
+    await cleanupUserSessions(userId);
 
     // Decrypt sensitive data for session storage
     const decryptedEmail = User.decryptSensitiveData(user.email);
@@ -77,11 +172,8 @@ export async function POST(request: NextRequest) {
     // Generate unique session token
     const sessionToken = crypto.randomBytes(32).toString('hex');
 
-    // Fixed: Properly type user._id
-    const userId = user._id as Types.ObjectId;
-
     // Prepare complete user data for session (using plain text for session storage)
-    const fullUserData = {
+    const fullUserData: FullUserData = {
       email: decryptedEmail,
       fullName: user.fullName,
       dob: user.dob,
@@ -99,9 +191,9 @@ export async function POST(request: NextRequest) {
     };
 
     // Generate JWT token with session reference
-    const tokenPayload = {
+    const tokenPayload: TokenPayload = {
       user: {
-        id: userId,
+        id: user._id,
         fullName: user.fullName,
         email: decryptedEmail,
         school: user.school,
@@ -114,8 +206,9 @@ export async function POST(request: NextRequest) {
         profilePhoto: user.profilePhoto,
         phone: decryptedPhone,
         regNumber: decryptedRegNumber,
+        level: user.level, // FIXED: Added missing level field
       },
-      sessionToken, // Include session token in JWT
+      sessionToken,
     };
 
     const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "7d" });
@@ -142,7 +235,7 @@ export async function POST(request: NextRequest) {
           'x-real-ip': request.headers.get('x-real-ip') || '',
         },
         body: JSON.stringify({
-          userId: userId.toString(),
+          userId: userId,
           email: decryptedEmail,
           userData: fullUserData,
           sessionToken,
@@ -161,7 +254,7 @@ export async function POST(request: NextRequest) {
         throw new Error(`SessionUpload returned non-JSON response: ${responseText.substring(0, 200)}...`);
       }
 
-      const sessionUploadResult = await sessionUploadResponse.json();
+      const sessionUploadResult = await sessionUploadResponse.json() as SessionUploadResponse;
       
       if (!sessionUploadResponse.ok) {
         console.error("Session upload failed:", sessionUploadResult);
@@ -170,7 +263,7 @@ export async function POST(request: NextRequest) {
 
       console.log("Session upload successful");
 
-      // Get session UUID from response - handle both new and existing sessions
+      // Get session UUID from response
       const sessionUUID = sessionUploadResult.sessionInfo?.uuid;
       
       if (sessionUUID) {
@@ -192,6 +285,17 @@ export async function POST(request: NextRequest) {
         user.updatedAt = new Date();
         await user.save();
 
+        // FIXED: Verify only one session exists for this user
+        const sessionCount = await SessionCache.countDocuments({ userId: userId });
+        console.log(`SignIn: Final session count for user ${userId}: ${sessionCount}`);
+        
+        if (sessionCount > 1) {
+          console.warn(`SignIn: WARNING - User ${userId} has ${sessionCount} sessions after login`);
+          // Emergency cleanup - keep only the newest session
+          await cleanupUserSessions(userId);
+          console.log("SignIn: Emergency cleanup completed");
+        }
+
         // Return response
         return NextResponse.json(
           {
@@ -199,7 +303,7 @@ export async function POST(request: NextRequest) {
             token,
             user: tokenPayload.user,
             sessionToken,
-            sessionUUID, // Include UUID in response for debugging
+            sessionUUID,
             sessionRefreshed: sessionUploadResult.sessionInfo?.refreshed || false,
           },
           { status: 200 }
@@ -213,7 +317,9 @@ export async function POST(request: NextRequest) {
     } catch (sessionError) {
       console.error("Failed to create session via sessionUpload:", sessionError);
       
-      // Return error response with details
+      // FIXED: Clean up any partial session data on failure
+      await cleanupUserSessions(userId);
+      
       return NextResponse.json(
         { 
           message: "Login failed during session creation", 
@@ -243,7 +349,6 @@ export async function POST(request: NextRequest) {
 
 // Helper function to extract device/browser info from user agent
 function getDeviceInfo(userAgent: string): string {
-  // Simple device detection - you can make this more sophisticated
   if (userAgent.includes('Mobile')) return 'Mobile Device';
   if (userAgent.includes('Chrome')) return 'Chrome Browser';
   if (userAgent.includes('Firefox')) return 'Firefox Browser';

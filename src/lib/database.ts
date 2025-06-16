@@ -2,7 +2,7 @@
 import mongoose from 'mongoose';
 
 // Type assertion to ensure MONGODB_URI is treated as string after validation
-const MONGODB_URI = process.env.MONGODB_URI as string;
+const MONGODB_URI = process.env.NEXT_PUBLIC_MONGODB_URI as string || process.env.MONGODB_URI as string;
 
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
