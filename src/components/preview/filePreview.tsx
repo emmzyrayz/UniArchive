@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
-import { getDocument, GlobalWorkerOptions, PDFDocumentProxy } from "pdfjs-dist";
+import { Document, Page, pdfjs } from 'react-pdf';
 import {
   DndContext,
   closestCenter,
@@ -23,10 +23,12 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { MaterialInfo } from "@/app/upload/page";
 
-// Configure PDF.js worker
-GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+// Configure PDF.js worker for react-pdf
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
-import "@react-pdf-viewer/core/lib/styles/index.css";
+// Import react-pdf styles
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
 type FilePreviewProps = {
   type: "pdf" | "image";
@@ -46,56 +48,21 @@ type PDFPageData = {
   pageNumber: number;
   originalIndex: number;
   thumbnail?: string;
-  customThumbnail?: string; // for user-uploaded thumbnail
+  customThumbnail?: string;
 };
 
 type PDFThumbnailProps = {
   pageData: PDFPageData;
-  pdfDocument: PDFDocumentProxy | null;
-  onThumbnailReady: (pageId: string, thumbnail: string) => void;
+  pdfFile: File | null;
   onCustomThumbnail: (pageId: string, file: File) => void;
 };
 
 const PDFThumbnail = ({
   pageData,
-  pdfDocument,
-  onThumbnailReady,
+  pdfFile,
   onCustomThumbnail,
 }: PDFThumbnailProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>("");
-
-  useEffect(() => {
-    if (!pdfDocument || !canvasRef.current || pageData.customThumbnail) return;
-
-    const renderThumbnail = async () => {
-      try {
-        setIsLoading(true);
-        setError("");
-        const page = await pdfDocument.getPage(pageData.pageNumber);
-        const canvas = canvasRef.current!;
-        const context = canvas.getContext("2d")!;
-        const viewport = page.getViewport({ scale: 1 });
-        const scale = 200 / viewport.width;
-        const scaledViewport = page.getViewport({ scale });
-        canvas.width = scaledViewport.width;
-        canvas.height = scaledViewport.height;
-        const renderContext = {
-          canvasContext: context,
-          viewport: scaledViewport,
-        };
-        await page.render(renderContext).promise;
-        const thumbnailDataUrl = canvas.toDataURL("image/jpeg", 0.8);
-        onThumbnailReady(pageData.id, thumbnailDataUrl);
-        setIsLoading(false);
-      } catch {
-        setError("Failed to render page " + pageData.pageNumber);
-        setIsLoading(false);
-      }
-    };
-    renderThumbnail();
-  }, [pdfDocument, pageData, onThumbnailReady]);
+  const [thumbnailError, setThumbnailError] = useState<string>("");
 
   const handleCustomThumbnail = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -126,25 +93,43 @@ const PDFThumbnail = ({
     );
   }
 
-  if (isLoading) {
+  if (!pdfFile) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-xs text-gray-500">
-            Loading page {pageData.pageNumber}...
-          </p>
-        </div>
+      <div className="flex items-center justify-center h-64 bg-gray-100">
+        <p className="text-xs text-gray-500">No PDF file</p>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 bg-red-50">
-        <div className="text-center">
+  return (
+    <div className="flex flex-col items-center justify-center h-64">
+      <Document
+        file={pdfFile}
+        onLoadError={() => {
+          setThumbnailError("Failed to load PDF");
+        }}
+        loading={
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto mb-2"></div>
+              <p className="text-xs text-gray-500">Loading page {pageData.pageNumber}...</p>
+            </div>
+          </div>
+        }
+      >
+        <Page
+          pageNumber={pageData.pageNumber}
+          width={200}
+          renderAnnotationLayer={false}
+          renderTextLayer={false}
+          onLoadError={() => setThumbnailError("Failed to render page")}
+        />
+      </Document>
+      
+      {thumbnailError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50">
           <svg
-            className="mx-auto h-8 w-8 text-red-500 mb-2"
+            className="h-8 w-8 text-red-500 mb-2"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -156,7 +141,7 @@ const PDFThumbnail = ({
               d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <p className="text-xs text-red-600">{error}</p>
+          <p className="text-xs text-red-600">{thumbnailError}</p>
           <label className="mt-2 text-xs text-blue-600 cursor-pointer underline">
             Use Custom Image
             <input
@@ -167,16 +152,8 @@ const PDFThumbnail = ({
             />
           </label>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="max-w-full h-auto"
-      style={{ maxHeight: "250px" }}
-    />
+      )}
+    </div>
   );
 };
 
@@ -253,8 +230,7 @@ export const FilePreview = ({ type, materialInfo }: FilePreviewProps) => {
   const [fileUrls, setFileUrls] = useState<string[]>([]);
   const [pdfPages, setPdfPages] = useState<PDFPageData[]>([]);
   const [numPages, setNumPages] = useState<number>(0);
-  const [pdfDocument, setPdfDocument] = useState<PDFDocumentProxy | null>(null);
-  const [pdfFileUrl, setPdfFileUrl] = useState<string>("");
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -267,9 +243,6 @@ export const FilePreview = ({ type, materialInfo }: FilePreviewProps) => {
   const [selectedEnhancement, setSelectedEnhancement] = useState("original");
   const [imageQuality, setImageQuality] = useState(100);
   const [pdfError, setPdfError] = useState<string>("");
-  const [thumbnailsLoaded, setThumbnailsLoaded] = useState<Set<string>>(
-    new Set()
-  );
 
   const [selectedFilter, setSelectedFilter] = useState("none");
   const [brightness, setBrightness] = useState(100);
@@ -282,17 +255,6 @@ export const FilePreview = ({ type, materialInfo }: FilePreviewProps) => {
     }
     return null;
   }, [type, materialInfo.files]);
-
-  // Handle thumbnail ready callback
-  const handleThumbnailReady = useCallback(
-    (pageId: string, thumbnail: string) => {
-      setPdfPages((prev) =>
-        prev.map((page) => (page.id === pageId ? { ...page, thumbnail } : page))
-      );
-      setThumbnailsLoaded((prev) => new Set(prev).add(pageId));
-    },
-    []
-  );
 
   // Handle custom thumbnail upload
   const handleCustomThumbnail = useCallback((pageId: string, file: File) => {
@@ -312,45 +274,36 @@ export const FilePreview = ({ type, materialInfo }: FilePreviewProps) => {
   }, []);
 
   // Load PDF document
-  const loadPdfDocument = useCallback(async (file: File) => {
-    try {
-      setIsLoading(true);
-      setPdfError("");
-      setPdfDocument(null);
-      setThumbnailsLoaded(new Set());
-      const fileUrl = URL.createObjectURL(file);
-      setPdfFileUrl(fileUrl);
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await getDocument({ data: arrayBuffer }).promise;
-      setPdfDocument(pdfDoc);
-      setNumPages(pdfDoc.numPages);
-      const pages: PDFPageData[] = [];
-      for (let i = 1; i <= pdfDoc.numPages; i++) {
-        pages.push({
-          id: `page-${i}`,
-          pageNumber: i,
-          originalIndex: i - 1,
-        });
-      }
-      setPdfPages(pages);
-      setIsLoading(false);
-    } catch (error) {
-      setIsLoading(false);
-      setPdfError(
-        `Failed to load PDF: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
+  const handleDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+    setPdfError("");
+    setIsLoading(false);
+    
+    const pages: PDFPageData[] = [];
+    for (let i = 1; i <= numPages; i++) {
+      pages.push({
+        id: `page-${i}`,
+        pageNumber: i,
+        originalIndex: i - 1,
+      });
     }
+    setPdfPages(pages);
+  }, []);
+
+  const handleDocumentLoadError = useCallback((error: Error) => {
+    setIsLoading(false);
+    setPdfError(`Failed to load PDF: ${error.message}`);
   }, []);
 
   useEffect(() => {
     if (!materialInfo.files || materialInfo.files.length === 0) {
       return;
     }
+    
     if (type === "pdf") {
       if (memoizedPdfFile) {
-        loadPdfDocument(memoizedPdfFile);
+        setIsLoading(true);
+        setPdfFile(memoizedPdfFile);
       }
     } else {
       const urls = materialInfo.files.map((file) => URL.createObjectURL(file));
@@ -359,17 +312,15 @@ export const FilePreview = ({ type, materialInfo }: FilePreviewProps) => {
         urls.forEach((url) => URL.revokeObjectURL(url));
       };
     }
-  }, [materialInfo, type, memoizedPdfFile, loadPdfDocument]);
+  }, [materialInfo, type, memoizedPdfFile]);
 
   useEffect(() => {
     return () => {
       if (type === "image") {
         fileUrls.forEach((url) => URL.revokeObjectURL(url));
-      } else if (pdfFileUrl) {
-        URL.revokeObjectURL(pdfFileUrl);
       }
     };
-  }, [fileUrls, pdfFileUrl, type]);
+  }, [fileUrls, type]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -409,57 +360,30 @@ export const FilePreview = ({ type, materialInfo }: FilePreviewProps) => {
 
   // Custom PDF Viewer rendering pages in pdfPages order
   const PDFPagesViewer = () => {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [pageCanvases, setPageCanvases] = useState<{ [id: string]: string }>(
-      {}
-    );
-
-    useEffect(() => {
-      if (!pdfDocument) return;
-      let isMounted = true;
-      const renderPages = async () => {
-        const canvases: { [id: string]: string } = {};
-        for (const pageData of pdfPages) {
-          try {
-            const page = await pdfDocument.getPage(pageData.pageNumber);
-            const viewport = page.getViewport({ scale: 1.5 });
-            const canvas = document.createElement("canvas");
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const context = canvas.getContext("2d")!;
-            await page.render({ canvasContext: context, viewport }).promise;
-            canvases[pageData.id] = canvas.toDataURL("image/png");
-          } catch {
-            canvases[pageData.id] = "";
-          }
-        }
-        if (isMounted) setPageCanvases(canvases);
-      };
-      renderPages();
-      return () => {
-        isMounted = false;
-      };
-    }, []);
+    if (!pdfFile) return null;
 
     return (
-      <div ref={containerRef} className="flex flex-col items-center gap-6 py-4">
+      <div className="flex flex-col items-center gap-6 py-4">
         {pdfPages.map((page, idx) => (
           <div
             key={page.id}
             className="border rounded shadow bg-white p-2 w-full flex flex-col items-center"
           >
             <div className="mb-2 text-xs text-gray-500">Page {idx + 1}</div>
-            {pageCanvases[page.id] ? (
-              <Image
-                src={pageCanvases[page.id]}
-                width={300}
-                height={500}
-                alt={`Page ${idx + 1}`}
-                style={{ maxWidth: "100%", maxHeight: "600px" }}
+            <Document
+              file={pdfFile}
+              onLoadSuccess={handleDocumentLoadSuccess}
+              onLoadError={handleDocumentLoadError}
+              loading={<div className="text-gray-500">Loading...</div>}
+              error={<div className="text-red-500">Failed to load PDF</div>}
+            >
+              <Page
+                pageNumber={page.pageNumber}
+                width={600}
+                renderAnnotationLayer={false}
+                renderTextLayer={false}
               />
-            ) : (
-              <div className="text-red-500">Failed to render page</div>
-            )}
+            </Document>
           </div>
         ))}
       </div>
@@ -654,14 +578,11 @@ export const FilePreview = ({ type, materialInfo }: FilePreviewProps) => {
             PDF loaded successfully with {numPages} page
             {numPages !== 1 ? "s" : ""}
           </p>
-          <p className="text-blue-500 text-xs mt-1">
-            Thumbnails loaded: {thumbnailsLoaded.size} of {numPages}
-          </p>
         </div>
       )}
 
       {/* Custom PDF Viewer Section */}
-      {type === "pdf" && pdfDocument && pdfPages.length > 0 && !isLoading && (
+      {type === "pdf" && pdfFile && pdfPages.length > 0 && !isLoading && (
         <div className="mb-6">
           <h3 className="font-medium mb-2">PDF Viewer (Arranged Order)</h3>
           <div
@@ -682,7 +603,7 @@ export const FilePreview = ({ type, materialInfo }: FilePreviewProps) => {
       </p>
 
       {/* PDF Thumbnails */}
-      {type === "pdf" && pdfDocument && (
+      {type === "pdf" && pdfFile && (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -703,8 +624,7 @@ export const FilePreview = ({ type, materialInfo }: FilePreviewProps) => {
                 >
                   <PDFThumbnail
                     pageData={page}
-                    pdfDocument={pdfDocument}
-                    onThumbnailReady={handleThumbnailReady}
+                    pdfFile={pdfFile}
                     onCustomThumbnail={handleCustomThumbnail}
                   />
                 </SortableFileItem>
