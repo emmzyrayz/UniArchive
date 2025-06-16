@@ -36,9 +36,7 @@ const defaultCourseOutlineWeek: CourseOutlineWeek = {
     {
       id: "topic-1",
       name: "",
-      subtopics: [
-        { id: "subtopic-1-1", name: "" }
-      ]
+      subtopics: []
     }
   ]
 };
@@ -220,7 +218,7 @@ const handleSubtopicChange = (weekIdx: number, topicIdx: number, subIdx: number,
                 ? topic
                 : {
                     ...topic,
-                    subtopics: topic.subtopics.map((sub, sIdx) =>
+                    subtopics: (topic.subtopics || []).map((sub, sIdx) =>
                       sIdx !== subIdx ? sub : { ...sub, name: value }
                     ),
                   }
@@ -243,9 +241,9 @@ const addSubtopic = (weekIdx: number, topicIdx: number) => {
                 : {
                     ...topic,
                     subtopics: [
-                      ...topic.subtopics,
+                      ...(topic.subtopics || []),
                       {
-                        id: `subtopic-${weekIdx + 1}-${topicIdx + 1}-${topic.subtopics.length + 1}`,
+                        id: `subtopic-${weekIdx + 1}-${topicIdx + 1}-${(topic.subtopics || []).length + 1}`,
                         name: "",
                       },
                     ],
@@ -269,8 +267,8 @@ const removeSubtopic = (weekIdx: number, topicIdx: number, subIdx: number) => {
                 : {
                     ...topic,
                     subtopics:
-                      topic.subtopics.length > 1
-                        ? topic.subtopics.filter((_, sIdx) => sIdx !== subIdx)
+                      (topic.subtopics || []).length > 1
+                        ? (topic.subtopics || []).filter((_, sIdx) => sIdx !== subIdx)
                         : topic.subtopics,
                   }
             ),
@@ -291,9 +289,7 @@ const addTopic = (weekIdx: number) => {
               {
                 id: `topic-${weekIdx + 1}-${week.topics.length + 1}`,
                 name: "",
-                subtopics: [
-                  { id: `subtopic-${weekIdx + 1}-${week.topics.length + 1}-1`, name: "" },
-                ],
+                subtopics: [],
               },
             ],
           }
@@ -327,9 +323,7 @@ const removeTopic = (weekIdx: number, topicIdx: number) => {
           {
             id: `topic-${prev.length+1}-1`,
             name: "",
-            subtopics: [
-              { id: `subtopic-${prev.length+1}-1-1`, name: "" }
-            ]
+            subtopics: []
           }
         ]
       }
@@ -362,9 +356,8 @@ const removeTopic = (weekIdx: number, topicIdx: number) => {
           .filter(topic => topic.name.trim() !== "")
           .map((topic) => ({
             ...topic,
-            subtopics: topic.subtopics.filter(st => st.name && st.name.trim() !== "")
+            subtopics: (topic.subtopics || []).filter(st => st.name && st.name.trim() !== "")
           }))
-          .filter(topic => topic.subtopics.length > 0)
       }))
       .filter(week => week.topics.length > 0);
     const data: Partial<ICourse> = {
@@ -656,7 +649,7 @@ const removeTopic = (weekIdx: number, topicIdx: number) => {
                     </button>
                   </div>
                   <div className="space-y-2">
-                    {topic.subtopics.map((sub, subIdx) => (
+                    {(topic.subtopics || []).map((sub, subIdx) => (
                       <div key={sub.id} className="flex items-center gap-2">
                         <span className="text-sm text-gray-500 min-w-[60px]">Subtopic {subIdx + 1}:</span>
                         <input
@@ -666,7 +659,7 @@ const removeTopic = (weekIdx: number, topicIdx: number) => {
                           onChange={e => handleSubtopicChange(weekIdx, topicIdx, subIdx, e.target.value)}
                           placeholder={`Subtopic for topic ${topicIdx + 1}`}
                         />
-                        {topic.subtopics.length > 1 && (
+                        {(topic.subtopics || []).length > 1 && (
                           <button
                             type="button"
                             onClick={() => removeSubtopic(weekIdx, topicIdx, subIdx)}
