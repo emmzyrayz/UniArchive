@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import '@react-pdf-viewer/core/lib/styles/index.css';
+/* @import '@react-pdf-viewer/core/lib/styles/index.css'; */
 
 /* Define theme variables using the proper @theme syntax */
 @theme {
