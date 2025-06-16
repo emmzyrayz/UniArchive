@@ -4,15 +4,15 @@ import { getCourseModel, CourseOutlineWeek, CourseOutlineTopic, CourseOutlineSub
 
 export async function PUT(
   req: NextRequest, 
-  context: { params: { courseId: string } }
+  { params }: { params: { courseId: string } }
 ) {
   try {
     // Connect to UniPlatformDB
     await connectUniPlatformDB();
     const CourseModel = await getCourseModel();
     
-    // Extract courseId from context.params (no need to await)
-    const { courseId } = context.params;
+    // Extract courseId from params
+    const { courseId } = params;
     const data = await req.json();
     
     if (!courseId) {
