@@ -4,22 +4,21 @@ import { getCourseModel, CourseOutlineWeek, CourseOutlineTopic, CourseOutlineSub
 
 export async function PUT(
   req: NextRequest, 
-  context: { params: { courseId: string } }
+  { params }: { params: Promise<{ courseId: string }> }
 ) {
   try {
     // Connect to UniPlatformDB
     await connectUniPlatformDB();
     const CourseModel = await getCourseModel();
     
-    // Extract courseId from params
-    const courseId = context.params.courseId;
+    // Await the params Promise
+    const courseId = (await params).courseId;
 
     if (!courseId) {
       return NextResponse.json({ message: 'Missing courseId' }, { status: 400 });
     }
+    
     const data = await req.json();
-    
-    
     
     // Validate new courseOutline structure if present
     if (data.courseOutline) {
