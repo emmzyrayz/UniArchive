@@ -77,6 +77,18 @@ interface CourseProviderProps {
   children: React.ReactNode;
 }
 
+// Helper function to generate unique IDs
+const generateUniqueId = (prefix: string, existingIds: Set<string>): string => {
+  let counter = 1;
+  let id = `${prefix}-${counter}`;
+  while (existingIds.has(id)) {
+    counter++;
+    id = `${prefix}-${counter}`;
+  }
+  existingIds.add(id);
+  return id;
+};
+
 export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -108,8 +120,7 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
     return true;
   }, [userState, hasActiveSession, userProfile]);
 
-   // Helper function to ensure courseOutline compatibility
-  // Normalize to new CourseOutlineWeek[] format
+   // FIXED: Helper function to ensure courseOutline compatibility with unique keys
   const normalizeCourseOutline = useCallback((
     courseOutline: CourseOutlineWeek[] | string | LegacyWeekOutline[] | string[] | null | undefined
   ): CourseOutlineWeek[] => {
@@ -117,42 +128,89 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
       return [];
     }
     
-    // Already in new format
+    // Track used IDs to ensure uniqueness
+    const usedWeekIds = new Set<string>();
+    const usedTopicIds = new Set<string>();
+    const usedSubtopicIds = new Set<string>();
+    
+    // Already in new format - but need to ensure unique IDs
     if (Array.isArray(courseOutline) && courseOutline[0] && typeof courseOutline[0] === 'object' && 'weekId' in courseOutline[0]) {
-      return courseOutline as CourseOutlineWeek[];
+      return (courseOutline as CourseOutlineWeek[]).map((week, weekIdx) => {
+        // Ensure unique weekId
+        const weekId = week.weekId && !usedWeekIds.has(week.weekId) 
+          ? week.weekId 
+          : generateUniqueId('week', usedWeekIds);
+        
+        return {
+          weekId,
+          index: weekIdx + 1, // Always sequential based on array position
+          topics: week.topics.map((topic, topicIdx) => {
+            // Ensure unique topicId
+            const topicId = topic.id && !usedTopicIds.has(topic.id)
+              ? topic.id
+              : generateUniqueId(`topic-${weekIdx + 1}`, usedTopicIds);
+            
+            return {
+              id: topicId,
+              name: topic.name || '',
+              subtopics: (topic.subtopics || []).map((subtopic) => {
+                // Ensure unique subtopicId
+                const subtopicId = subtopic.id && !usedSubtopicIds.has(subtopic.id)
+                  ? subtopic.id
+                  : generateUniqueId(`subtopic-${weekIdx + 1}-${topicIdx + 1}`, usedSubtopicIds);
+                
+                return {
+                  id: subtopicId,
+                  name: subtopic.name || ''
+                };
+              })
+            };
+          })
+        };
+      });
     }
     
     // Legacy: array of {week, topic, subtopics}
     if (Array.isArray(courseOutline) && courseOutline[0] && typeof courseOutline[0] === 'object' && 'week' in courseOutline[0]) {
-      return (courseOutline as LegacyWeekOutline[]).map((w, idx) => ({
-        weekId: `week-${idx+1}`,
-        index: idx+1,
-        topics: [
-          {
-            id: `topic-${idx+1}`,
-            name: w.topic || '',
-            subtopics: (w.subtopics || []).map((s: string, sidx: number) => ({
-              id: `subtopic-${idx+1}-${sidx+1}`,
-              name: s
-            }))
-          }
-        ]
-      }));
+      return (courseOutline as LegacyWeekOutline[]).map((w, idx) => {
+        const weekId = generateUniqueId('week', usedWeekIds);
+        const topicId = generateUniqueId(`topic-${idx + 1}`, usedTopicIds);
+        
+        return {
+          weekId,
+          index: idx + 1,
+          topics: [
+            {
+              id: topicId,
+              name: w.topic || '',
+              subtopics: (w.subtopics || []).map((s: string) => ({
+                id: generateUniqueId(`subtopic-${idx + 1}-1`, usedSubtopicIds),
+                name: s
+              }))
+            }
+          ]
+        };
+      });
     }
     
     // Legacy: array of strings
     if (Array.isArray(courseOutline) && typeof courseOutline[0] === 'string') {
-      return (courseOutline as string[]).map((topic: string, idx: number) => ({
-        weekId: `week-${idx+1}`,
-        index: idx+1,
-        topics: [
-          {
-            id: `topic-${idx+1}`,
-            name: topic,
-            subtopics: []
-          }
-        ]
-      }));
+      return (courseOutline as string[]).map((topic: string, idx: number) => {
+        const weekId = generateUniqueId('week', usedWeekIds);
+        const topicId = generateUniqueId(`topic-${idx + 1}`, usedTopicIds);
+        
+        return {
+          weekId,
+          index: idx + 1,
+          topics: [
+            {
+              id: topicId,
+              name: topic,
+              subtopics: []
+            }
+          ]
+        };
+      });
     }
     
     // JSON string
@@ -167,17 +225,22 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
     
     // Fallback: try to coerce
     if (Array.isArray(courseOutline)) {
-      return courseOutline.map((item: unknown, idx: number) => ({
-        weekId: `week-${idx+1}`,
-        index: idx+1,
-        topics: [
-          {
-            id: `topic-${idx+1}`,
-            name: String(item),
-            subtopics: []
-          }
-        ]
-      }));
+      return courseOutline.map((item: unknown, idx: number) => {
+        const weekId = generateUniqueId('week', usedWeekIds);
+        const topicId = generateUniqueId(`topic-${idx + 1}`, usedTopicIds);
+        
+        return {
+          weekId,
+          index: idx + 1,
+          topics: [
+            {
+              id: topicId,
+              name: String(item),
+              subtopics: []
+            }
+          ]
+        };
+      });
     }
     
     return [];
@@ -226,11 +289,27 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
         throw new Error(result.message || 'Failed to fetch courses');
       }
 
-      // Normalize course outlines for compatibility
+      // Normalize course outlines for compatibility with unique keys
       const fetchedCourses = (result.courses || []).map((course: Course) => ({
         ...course,
         courseOutline: normalizeCourseOutline(course.courseOutline)
       }));
+
+      console.log('=== NORMALIZED COURSES DEBUG ===');
+      fetchedCourses.forEach((course: Course, idx: number) => {
+        console.log(`Course ${idx + 1} - ${course.courseName}:`);
+        course.courseOutline.forEach((week: CourseOutlineWeek) => {
+          console.log(`  Week: ${week.weekId} (index: ${week.index})`);
+          week.topics.forEach((topic) => {
+            console.log(`    Topic: ${topic.id} - ${topic.name}`);
+            if (topic.subtopics && topic.subtopics.length > 0) {
+              topic.subtopics.forEach((subtopic) => {
+                console.log(`      Subtopic: ${subtopic.id} - ${subtopic.name}`);
+              });
+            }
+          });
+        });
+      });
 
       setCourses(fetchedCourses);
       setPagination(result.pagination || null);
@@ -259,10 +338,10 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
         throw new Error('Missing required fields: courseName, courseCode, or departmentId');
       }
 
-      // Ensure courseOutline is properly formatted
+      // Ensure courseOutline is properly formatted with unique keys
       const processedData = {
         ...courseData,
-        courseOutline: courseData.courseOutline || []
+        courseOutline: normalizeCourseOutline(courseData.courseOutline || [])
       };
 
       const response = await fetch('/api/admin/course/upload', {
@@ -283,17 +362,17 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [checkAdminPrivileges, fetchCourses]);
+  }, [checkAdminPrivileges, fetchCourses, normalizeCourseOutline]);
 
   const updateCourse = useCallback(async (courseId: string, courseData: Partial<ICourse>): Promise<boolean> => {
     if (!checkAdminPrivileges()) return false;
     setIsLoading(true);
     setError(null);
     try {
-      // Ensure courseOutline is properly formatted
+      // Ensure courseOutline is properly formatted with unique keys
       const processedData = {
         ...courseData,
-        courseOutline: courseData.courseOutline || []
+        courseOutline: normalizeCourseOutline(courseData.courseOutline || [])
       };
 
       const response = await fetch(`/api/admin/course/update/${courseId}`, {
@@ -314,7 +393,7 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [checkAdminPrivileges, fetchCourses]);
+  }, [checkAdminPrivileges, fetchCourses, normalizeCourseOutline]);
 
   const deleteCourse = useCallback(async (courseId: string): Promise<boolean> => {
     if (!checkAdminPrivileges()) return false;

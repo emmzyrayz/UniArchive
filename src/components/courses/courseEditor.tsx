@@ -29,16 +29,34 @@ const defaultCourse: Partial<ICourse> = {
   departmentName: "",
 };
 
-const defaultCourseOutlineWeek: CourseOutlineWeek = {
-  weekId: "week-1",
-  index: 1,
-  topics: [
-    {
-      id: "topic-1",
-      name: "",
-      subtopics: []
-    }
-  ]
+// Helper function to generate unique IDs - same as in CourseContext
+const generateUniqueId = (prefix: string, existingIds: Set<string>): string => {
+  let counter = 1;
+  let id = `${prefix}-${counter}`;
+  while (existingIds.has(id)) {
+    counter++;
+    id = `${prefix}-${counter}`;
+  }
+  existingIds.add(id);
+  return id;
+};
+
+// Helper function to create a default week with unique IDs
+const createDefaultWeek = (weekNumber: number, usedWeekIds: Set<string>, usedTopicIds: Set<string>): CourseOutlineWeek => {
+  const weekId = generateUniqueId('week', usedWeekIds);
+  const topicId = generateUniqueId(`topic-${weekNumber}`, usedTopicIds);
+  
+  return {
+    weekId,
+    index: weekNumber,
+    topics: [
+      {
+        id: topicId,
+        name: "",
+        subtopics: []
+      }
+    ]
+  };
 };
 
 // Deep equality check utility
@@ -98,7 +116,12 @@ export default function CourseEditor({
     ...defaultCourse,
     ...initialData,
   });
-  const [outlineWeeks, setOutlineWeeks] = useState<CourseOutlineWeek[]>([defaultCourseOutlineWeek]);
+  // Initialize with proper unique IDs
+  const [outlineWeeks, setOutlineWeeks] = useState<CourseOutlineWeek[]>(() => {
+    const usedWeekIds = new Set<string>();
+    const usedTopicIds = new Set<string>();
+    return [createDefaultWeek(1, usedWeekIds, usedTopicIds)];
+  });
   const [isModified, setIsModified] = useState(false);
   const { universities } = useAdmin();
 
@@ -131,17 +154,61 @@ export default function CourseEditor({
         return typeof item === 'object' && item !== null && 'weekId' in item && 'topics' in item;
       };
       if (isNewFormat(firstItem)) {
-        const weeks = initialData.courseOutline as CourseOutlineWeek[];
+        // Ensure unique IDs in the existing data
+        const usedWeekIds = new Set<string>();
+        const usedTopicIds = new Set<string>();
+        const usedSubtopicIds = new Set<string>();
+        
+        const weeks = (initialData.courseOutline as CourseOutlineWeek[]).map((week, weekIdx) => {
+          // Ensure unique weekId
+          const weekId = week.weekId && !usedWeekIds.has(week.weekId) 
+            ? week.weekId 
+            : generateUniqueId('week', usedWeekIds);
+          
+          return {
+            weekId,
+            index: weekIdx + 1, // Always sequential based on array position
+            topics: week.topics.map((topic, topicIdx) => {
+              // Ensure unique topicId
+              const topicId = topic.id && !usedTopicIds.has(topic.id)
+                ? topic.id
+                : generateUniqueId(`topic-${weekIdx + 1}`, usedTopicIds);
+              
+              return {
+                id: topicId,
+                name: topic.name || '',
+                subtopics: (topic.subtopics || []).map((subtopic) => {
+                  // Ensure unique subtopicId
+                  const subtopicId = subtopic.id && !usedSubtopicIds.has(subtopic.id)
+                    ? subtopic.id
+                    : generateUniqueId(`subtopic-${weekIdx + 1}-${topicIdx + 1}`, usedSubtopicIds);
+                  
+                  return {
+                    id: subtopicId,
+                    name: subtopic.name || ''
+                  };
+                })
+              };
+            })
+          };
+        });
+        
         setOutlineWeeks(weeks);
         initialDataRef.current.outlineWeeks = weeks;
       } else {
-        // Legacy: fallback to one week, one topic
-        setOutlineWeeks([defaultCourseOutlineWeek]);
-        initialDataRef.current.outlineWeeks = [defaultCourseOutlineWeek];
+       // Legacy: fallback to one week, one topic with unique IDs
+        const usedWeekIds = new Set<string>();
+        const usedTopicIds = new Set<string>();
+        const defaultWeek = createDefaultWeek(1, usedWeekIds, usedTopicIds);
+        setOutlineWeeks([defaultWeek]);
+        initialDataRef.current.outlineWeeks = [defaultWeek];
       }
     } else {
-      setOutlineWeeks([defaultCourseOutlineWeek]);
-      initialDataRef.current.outlineWeeks = [defaultCourseOutlineWeek];
+      const usedWeekIds = new Set<string>();
+      const usedTopicIds = new Set<string>();
+      const defaultWeek = createDefaultWeek(1, usedWeekIds, usedTopicIds);
+      setOutlineWeeks([defaultWeek]);
+      initialDataRef.current.outlineWeeks = [defaultWeek];
     }
   }, [initialData.courseOutline]);
 
@@ -339,38 +406,70 @@ const removeTopic = (weekIdx: number, topicIdx: number) => {
     }
   };
 
-  const handleSubmit = () => {
-    // Generate courseId if not present
-    const courseId =
-      formData.courseId ||
-      generateCourseId(
-        formData.departmentId || "",
-        formData.level || "",
-        formData.courseCode || ""
-      );
-    // Clean up outline: remove empty topics/subtopics
-    const cleanedOutline = outlineWeeks
-      .map((week) => ({
-        ...week,
-        topics: week.topics
-          .filter(topic => topic.name.trim() !== "")
-          .map((topic) => ({
-            ...topic,
-            subtopics: (topic.subtopics || []).filter(st => st.name && st.name.trim() !== "")
-          }))
-      }))
-      .filter(week => week.topics.length > 0);
-    const data: Partial<ICourse> = {
-      ...formData,
-      courseId,
-      courseOutline: cleanedOutline
-    };
-    if (mode === "edit" && onUpdate && formData.courseId) {
-      onUpdate(formData.courseId, data);
-    } else {
-      onSave(data);
-    }
+ // Fixed handleSubmit function for CourseEditor
+const handleSubmit = () => {
+  // Generate courseId if not present
+  const courseId =
+    formData.courseId ||
+    generateCourseId(
+      formData.departmentId || "",
+      formData.level || "",
+      formData.courseCode || ""
+    );
+
+  // Clean up outline: remove empty topics/subtopics
+  const cleanedOutline = outlineWeeks
+    .map((week) => ({
+      ...week,
+      topics: week.topics
+        .filter(topic => topic.name.trim() !== "")
+        .map((topic) => ({
+          ...topic,
+          // Keep subtopics array even if empty, but filter out empty subtopics
+          subtopics: (topic.subtopics || [])
+            .filter(st => st.name && st.name.trim() !== "")
+            .map(st => ({
+              id: st.id,
+              name: st.name?.trim()
+            }))
+        }))
+    }))
+    .filter(week => week.topics.length > 0);
+
+  console.log('=== CLEANED OUTLINE DEBUG ===');
+  console.log('Original outline weeks:', outlineWeeks);
+  console.log('Cleaned outline:', cleanedOutline);
+  
+  // Verify each week and topic
+  cleanedOutline.forEach((week, weekIdx) => {
+    console.log(`Week ${weekIdx + 1}:`, week);
+    week.topics.forEach((topic, topicIdx) => {
+      console.log(`  Topic ${topicIdx + 1}:`, topic.name);
+      console.log(`  Subtopics count:`, topic.subtopics?.length || 0);
+      if (topic.subtopics && topic.subtopics.length > 0) {
+        topic.subtopics.forEach((sub, subIdx) => {
+          console.log(`    Subtopic ${subIdx + 1}:`, sub.name);
+        });
+      }
+    });
+  });
+
+  const data: Partial<ICourse> = {
+    ...formData,
+    courseId,
+    courseOutline: cleanedOutline
   };
+
+  console.log('=== FINAL DATA TO SUBMIT ===');
+  console.log('Full data object:', data);
+  console.log('Course outline structure:', JSON.stringify(data.courseOutline, null, 2));
+
+  if (mode === "edit" && onUpdate && formData.courseId) {
+    onUpdate(formData.courseId, data);
+  } else {
+    onSave(data);
+  }
+};
 
   const isRequiredMissing =
     !formData.courseName ||
