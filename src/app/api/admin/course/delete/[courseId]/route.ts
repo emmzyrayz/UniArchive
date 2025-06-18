@@ -11,7 +11,9 @@ export async function DELETE(
     await connectUniPlatformDB();
     const CourseModel = await getCourseModel();
     
-    const courseId = params.courseId;
+    const courseId = (await params).courseId;
+
+
     if (!courseId) {
       return NextResponse.json({ message: 'Missing courseId' }, { status: 400 });
     }

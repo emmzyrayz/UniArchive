@@ -12,7 +12,7 @@ export async function PUT(
     const CourseModel = await getCourseModel();
     
     // Extract courseId from params
-    const { courseId } = params;
+    const { courseId } = await params;
     const data = await req.json();
     
     if (!courseId) {
