@@ -49,8 +49,9 @@ const navConfig: PageNavConfig = {
       {
         name: "Community",
         items: [
-          { name: "Sign in", path: "/auth/signin" },
-          { name: "Get Started", path: "/auth/signup" },
+          { name: "About Us", path: "/about" },
+          { name: "Help Center", path: "/help" },
+          { name: "Contact", path: "/contact" },
         ]
       }
     ],
@@ -129,6 +130,14 @@ const navConfig: PageNavConfig = {
           { name: "Departments", path: "/schools/departments" },
           { name: "Faculty", path: "/schools/faculty" },
         ]
+      },
+      {
+        name: "Information",
+        items: [
+          { name: "Rankings", path: "/schools/rankings" },
+          { name: "Admission Info", path: "/schools/admissions" },
+          { name: "Scholarships", path: "/schools/scholarships" },
+        ]
       }
     ],
     showSearch: true,
@@ -195,7 +204,7 @@ const navConfig: PageNavConfig = {
   "/admin": {
     title: "Administration",
     standaloneItems: [
-      { name: "Dashboard", path: "/admin", requiresAuth: true, roles: ["admin"] },
+      { name: "Dashboard", path: "/dashboard/admin", requiresAuth: true, roles: ["admin"] },
     ],
     categories: [
       {
@@ -237,7 +246,7 @@ const navConfig: PageNavConfig = {
   "/moderation": {
     title: "Moderation",
     standaloneItems: [
-      { name: "Dashboard", path: "/moderation", requiresAuth: true, roles: ["admin", "mod"] },
+      { name: "Dashboard", path: "/dashboard/moderation", requiresAuth: true, roles: ["admin", "mod"] },
     ],
     categories: [
       {
@@ -257,7 +266,7 @@ const navConfig: PageNavConfig = {
         items: [
           { name: "User Reports", path: "/moderation/user-reports", requiresAuth: true, roles: ["admin", "mod"] },
           { name: "Warnings", path: "/moderation/warnings", requiresAuth: true, roles: ["admin", "mod"] },
-          { name: "Suspensions", path: "/moderation/actions", requiresAuth: true, roles: ["admin", "mod"] },
+          { name: "Suspensions", path: "/moderation/suspensions", requiresAuth: true, roles: ["admin", "mod"] },
         ]
       }
     ],
