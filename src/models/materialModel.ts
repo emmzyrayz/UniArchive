@@ -1,6 +1,253 @@
 // src/models/baseMaterial.ts
 import mongoose, { Schema, Document } from "mongoose";
 
+
+// Base interface for all material types
+export interface IBaseMaterial {
+  // Unique Material Identifiers
+  muid: string;
+  pmuid: string;
+  
+  // Uploader info
+  uploaderName: string;
+  uploaderUpid: string;
+  uploaderRole: "admin" | "mod" | "contributor";
+  
+  // Course info
+  courseName: string;
+  courseId: string;
+  
+  // Material metadata
+  materialTitle: string;
+  materialDescription: string;
+  materialType: "PDF" | "IMAGE" | "VIDEO";
+  
+  // File metadata
+  fileSize: number;
+  format: string;
+  originalFileName: string;
+  
+  // Status and visibility
+  isApproved: boolean;
+  isPublic: boolean;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "ARCHIVED";
+
+  approvalHistory: IApprovalRecord[];
+  rejectionReason?: string;
+  moderatorNotes?: string;
+  approvedBy?: string; // Admin/mod who approved
+  approvedAt?: Date;
+  rejectedBy?: string; // Admin/mod who rejected
+  rejectedAt?: Date;
+  
+  // Content organization
+  tableOfContent: string[];
+  tags: string[];
+  keywords: string[];
+  
+  // Ratings and Comments
+  comments: IComment[];
+  ratings: IRating[];
+  averageRating: number;
+  totalRatings: number;
+  
+  // Analytics
+  analytics: IAnalytics;
+  
+  // Timestamps
+  createdAt: Date;
+  updatedAt?: Date;
+  
+  // Moderation
+  reportCount: number;
+  isReported: boolean;
+
+  version: number;
+  editHistory: IEditRecord[];
+  lastEditedBy?: string;
+  lastEditedAt?: Date;
+}
+
+// New interfaces for approval workflow
+export interface IApprovalRecord {
+  actionType: "SUBMITTED" | "APPROVED" | "REJECTED" | "RESUBMITTED";
+  performedBy: string; // upid of user
+  performedByName: string;
+  performedByRole: "admin" | "mod" | "contributor";
+  timestamp: Date;
+  notes?: string;
+  reason?: string; // For rejections
+}
+
+export interface IEditRecord {
+  editedBy: string; // upid
+  editedByName: string;
+  editedByRole: "admin" | "mod" | "contributor";
+  timestamp: Date;
+  changedFields: string[];
+  previousVersion: number;
+  reason?: string;
+}
+
+// Comment interface
+export interface IComment {
+  commentId: string;
+  userId: string;
+  userName: string;
+  userUpid: string;
+  content: string;
+  createdAt: Date;
+  updatedAt?: Date;
+  isEdited: boolean;
+  likes: number;
+  replies: IReply[];
+}
+
+// Reply interface
+export interface IReply {
+  replyId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  createdAt: Date;
+  likes: number;
+}
+
+// Rating interface
+export interface IRating {
+  userId: string;
+  userUpid: string;
+  rating: number;
+  review?: string;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+// Analytics interface
+export interface IAnalytics {
+  totalViews: number;
+  totalDownloads: number;
+  uniqueViewers: string[];
+  uniqueDownloaders: string[];
+  viewHistory: IViewRecord[];
+  downloadHistory: IDownloadRecord[];
+  lastViewedAt?: Date;
+  lastDownloadedAt?: Date;
+}
+
+export interface IViewRecord {
+  userId: string;
+  timestamp: Date;
+  duration?: number;
+  device?: string;
+  location?: string;
+}
+
+export interface IDownloadRecord {
+  userId: string;
+  timestamp: Date;
+  device?: string;
+  location?: string;
+}
+
+// Updated material interfaces that extend both base interface and Document
+export interface IPdfMaterial extends IBaseMaterial, Document {
+  materialType: "PDF";
+  topic: string;
+  pdfUrl: string;
+  pageCount?: number;
+  isSearchable?: boolean;
+  textContent?: string;
+  thumbnailUrl?: string;
+}
+
+export interface IImageMaterial extends IBaseMaterial, Document {
+  materialType: "IMAGE";
+  topic: string;
+  imageUrls: string[];
+  thumbnailUrls?: string[];
+  dimensions?: { width: number; height: number }[];
+  totalImages: number;
+  isProcessed?: boolean;
+  ocrText?: string[];
+}
+
+export interface IVideoMaterial extends IBaseMaterial, Document {
+  materialType: "VIDEO";
+  topic: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+  duration?: number;
+  resolution?: string;
+  bitrate?: number;
+  subtitleUrls?: string[];
+  previewUrl?: string;
+  isProcessed?: boolean;
+  fps?: number;
+  streamingUrls?: {
+    hd?: string;
+    sd?: string;
+    mobile?: string;
+  };
+}
+
+// Union type for all material types
+export type Material = IPdfMaterial | IImageMaterial | IVideoMaterial;
+
+// Helper type for creating/updating materials (without Document-specific fields)
+export type MaterialInput = Omit<IBaseMaterial, '_id' | '__v' | 'createdAt' | 'updatedAt'> & {
+  materialType: "PDF" | "IMAGE" | "VIDEO";
+  // Type-specific fields
+  topic?: string;
+  pdfUrl?: string;
+  pageCount?: number;
+  isSearchable?: boolean;
+  textContent?: string;
+  thumbnailUrl?: string;
+
+  imageUrls?: string[];
+  thumbnailUrls?: string[];
+  dimensions?: { width: number; height: number }[];
+  totalImages?: number;
+  isProcessed?: boolean;
+  ocrText?: string[];
+
+  videoUrl?: string;
+  duration?: number;
+  resolution?: string;
+  bitrate?: number;
+  subtitleUrls?: string[];
+  previewUrl?: string;
+  fps?: number;
+  streamingUrls?: {
+    hd?: string;
+    sd?: string;
+    mobile?: string;
+  };
+
+  // Add these fields for cloud storage
+  materialUrl?: string;  // Generic URL field for any material type
+  fileName?: string;     // Cloud storage file name
+  cloudFileName?: string; // Cloud-specific file name
+  cloudPublicId?: string; // For Cloudinary
+  mimeType?: string;     // File MIME type
+  fileSize?: number;     // File size (this already exists in IBaseMaterial, but include here for clarity)
+
+  // Make sure all new optional fields are properly typed
+  uploaderRole?: "admin" | "mod" | "contributor";
+  approvalHistory?: IApprovalRecord[];
+  rejectionReason?: string;
+  moderatorNotes?: string;
+  approvedBy?: string;
+  approvedAt?: Date;
+  rejectedBy?: string;
+  rejectedAt?: Date;
+  version?: number;
+  editHistory?: IEditRecord[];
+  lastEditedBy?: string;
+  lastEditedAt?: Date;
+};
+
 // Comment subdocument schema
 const CommentSchema = new Schema({
   commentId: { type: String, required: true, unique: true },
@@ -21,15 +268,6 @@ const CommentSchema = new Schema({
     likes: { type: Number, default: 0 }
   }]
 }, { _id: false });
-
-interface IRating {
-  userId: string;
-  userUpid: string;
-  rating: number;
-  review?: string;
-  createdAt: Date;
-  updatedAt?: Date;
-}
 
 // Rating subdocument schema
 const RatingSchema = new Schema({
@@ -82,6 +320,11 @@ export const BaseMaterialFields = {
   // Uploader info
   uploaderName: { type: String, required: true },
   uploaderUpid: { type: String, required: true, index: true },
+  uploaderRole: {
+    type: String,
+    enum: ["admin", "mod", "contributor"],
+    required: true
+  },
   
   // Course info
   courseName: { type: String, required: true },
@@ -111,6 +354,49 @@ export const BaseMaterialFields = {
     default: "PENDING",
     index: true
   },
+
+  // NEW: Approval workflow fields
+  approvalHistory: [{
+    actionType: {
+      type: String,
+      enum: ["SUBMITTED", "APPROVED", "REJECTED", "RESUBMITTED"],
+      required: true
+    },
+    performedBy: { type: String, required: true },
+    performedByName: { type: String, required: true },
+    performedByRole: {
+      type: String,
+      enum: ["admin", "mod", "contributor"],
+      required: true
+    },
+    timestamp: { type: Date, default: Date.now },
+    notes: { type: String },
+    reason: { type: String }
+  }],
+  rejectionReason: { type: String },
+  moderatorNotes: { type: String },
+  approvedBy: { type: String },
+  approvedAt: { type: Date },
+  rejectedBy: { type: String },
+  rejectedAt: { type: Date },
+
+  // NEW: Version control fields
+  version: { type: Number, default: 1 },
+  editHistory: [{
+    editedBy: { type: String, required: true },
+    editedByName: { type: String, required: true },
+    editedByRole: {
+      type: String,
+      enum: ["admin", "mod", "contributor"],
+      required: true
+    },
+    timestamp: { type: Date, default: Date.now },
+    changedFields: [{ type: String }],
+    previousVersion: { type: Number, required: true },
+    reason: { type: String }
+  }],
+  lastEditedBy: { type: String },
+  lastEditedAt: { type: Date },
   
   // Content organization
   tableOfContent: [String],
@@ -136,20 +422,7 @@ export const BaseMaterialFields = {
   moderationNotes: { type: String }
 };
 
-// PDF Material Model
-export interface IPdfMaterial extends Document {
-  muid: string;
-  pmuid: string;
-  topic: string;
-  pdfUrl: string;
-  pageCount?: number;
-  isSearchable?: boolean; // OCR processed
-  textContent?: string; // Extracted text for search
-  fileSize: number;
-  format: string;
-  // All other BaseMaterial fields are inherited
-}
-
+// PDF Material Schema
 const PdfMaterialSchema = new Schema({
   ...BaseMaterialFields,
   topic: { type: String, required: true },
@@ -168,19 +441,7 @@ PdfMaterialSchema.index({ tags: 1, isPublic: 1 });
 export const PdfMaterial = mongoose.models.PdfMaterial || 
   mongoose.model<IPdfMaterial>("PdfMaterial", PdfMaterialSchema);
 
-// Image Material Model
-export interface IImageMaterial extends Document {
-  muid: string;
-  pmuid: string;
-  topic: string;
-  imageUrls: string[];
-  thumbnailUrls?: string[];
-  dimensions?: { width: number; height: number }[];
-  totalImages: number;
-  fileSize: number;
-  format: string;
-}
-
+// Image Material Schema
 const ImageMaterialSchema = new Schema({
   ...BaseMaterialFields,
   topic: { type: String, required: true },
@@ -201,21 +462,7 @@ ImageMaterialSchema.index({ uploaderUpid: 1, createdAt: -1 });
 export const ImageMaterial = mongoose.models.ImageMaterial || 
   mongoose.model<IImageMaterial>("ImageMaterial", ImageMaterialSchema);
 
-// Video Material Model
-export interface IVideoMaterial extends Document {
-  muid: string;
-  pmuid: string;
-  topic: string;
-  videoUrl: string;
-  thumbnailUrl?: string;
-  duration?: number;
-  resolution?: string;
-  bitrate?: number;
-  subtitleUrls?: string[];
-  fileSize: number;
-  format: string;
-}
-
+// Video Material Schema
 const VideoMaterialSchema = new Schema({
   ...BaseMaterialFields,
   topic: { type: String, required: true },
@@ -319,4 +566,167 @@ export const updateAverageRating = async (materialId: string, materialType: stri
       totalRatings: material.ratings.length
     });
   }
+};
+
+
+// Helper functions for approval workflow and version control
+
+// Add approval record to material
+export const addApprovalRecord = async (
+  materialId: string,
+  materialType: string,
+  approvalData: {
+    actionType: "SUBMITTED" | "APPROVED" | "REJECTED" | "RESUBMITTED";
+    performedBy: string;
+    performedByName: string;
+    performedByRole: "admin" | "mod" | "contributor";
+    notes?: string;
+    reason?: string;
+  }
+) => {
+  const Model = materialType === 'PDF' ? PdfMaterial : 
+               materialType === 'IMAGE' ? ImageMaterial : VideoMaterial;
+  
+  const approvalRecord: IApprovalRecord = {
+    ...approvalData,
+    timestamp: new Date()
+  };
+
+  await Model.findByIdAndUpdate(materialId, {
+    $push: { approvalHistory: approvalRecord }
+  });
+};
+
+// Approve material
+export const approveMaterial = async (
+  materialId: string,
+  materialType: string,
+  approvedBy: string,
+  approvedByName: string,
+  approvedByRole: "admin" | "mod",
+  notes?: string
+) => {
+  const Model = materialType === 'PDF' ? PdfMaterial : 
+               materialType === 'IMAGE' ? ImageMaterial : VideoMaterial;
+  
+  const now = new Date();
+  
+  await Model.findByIdAndUpdate(materialId, {
+    $set: {
+      status: "APPROVED",
+      isApproved: true,
+      approvedBy,
+      approvedAt: now
+    },
+    $push: {
+      approvalHistory: {
+        actionType: "APPROVED",
+        performedBy: approvedBy,
+        performedByName: approvedByName,
+        performedByRole: approvedByRole,
+        timestamp: now,
+        notes
+      }
+    }
+  });
+};
+
+// Reject material
+export const rejectMaterial = async (
+  materialId: string,
+  materialType: string,
+  rejectedBy: string,
+  rejectedByName: string,
+  rejectedByRole: "admin" | "mod",
+  reason: string,
+  notes?: string
+) => {
+  const Model = materialType === 'PDF' ? PdfMaterial : 
+               materialType === 'IMAGE' ? ImageMaterial : VideoMaterial;
+  
+  const now = new Date();
+  
+  await Model.findByIdAndUpdate(materialId, {
+    $set: {
+      status: "REJECTED",
+      isApproved: false,
+      rejectedBy,
+      rejectedAt: now,
+      rejectionReason: reason
+    },
+    $push: {
+      approvalHistory: {
+        actionType: "REJECTED",
+        performedBy: rejectedBy,
+        performedByName: rejectedByName,
+        performedByRole: rejectedByRole,
+        timestamp: now,
+        reason,
+        notes
+      }
+    }
+  });
+};
+
+// Add edit record when material is updated
+export const addEditRecord = async (
+  materialId: string,
+  materialType: string,
+  editData: {
+    editedBy: string;
+    editedByName: string;
+    editedByRole: "admin" | "mod" | "contributor";
+    changedFields: string[];
+    reason?: string;
+  }
+) => {
+  const Model = materialType === 'PDF' ? PdfMaterial : 
+               materialType === 'IMAGE' ? ImageMaterial : VideoMaterial;
+  
+  // Get current version
+  const material = await Model.findById(materialId);
+  if (!material) throw new Error('Material not found');
+  
+  const currentVersion = material.version || 1;
+  const newVersion = currentVersion + 1;
+  const now = new Date();
+  
+  const editRecord: IEditRecord = {
+    ...editData,
+    timestamp: now,
+    previousVersion: currentVersion
+  };
+
+  await Model.findByIdAndUpdate(materialId, {
+    $set: {
+      version: newVersion,
+      lastEditedBy: editData.editedBy,
+      lastEditedAt: now,
+      updatedAt: now
+    },
+    $push: { editHistory: editRecord }
+  });
+};
+
+// Get material approval status
+export const getMaterialApprovalStatus = async (materialId: string, materialType: string) => {
+  const Model = materialType === 'PDF' ? PdfMaterial : 
+               materialType === 'IMAGE' ? ImageMaterial : VideoMaterial;
+  
+  const material = await Model.findById(materialId).select('status isApproved approvalHistory rejectionReason');
+  return material;
+};
+
+// Get materials pending approval
+export const getMaterialsPendingApproval = async (limit: number = 50) => {
+  const pdfMaterials = await PdfMaterial.find({ status: "PENDING" }).limit(limit);
+  const imageMaterials = await ImageMaterial.find({ status: "PENDING" }).limit(limit);
+  const videoMaterials = await VideoMaterial.find({ status: "PENDING" }).limit(limit);
+  
+  return {
+    pdf: pdfMaterials,
+    image: imageMaterials,
+    video: videoMaterials,
+    total: pdfMaterials.length + imageMaterials.length + videoMaterials.length
+  };
 };

@@ -2,16 +2,16 @@
 
 import Image from 'next/image';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { MaterialSubcategory } from '@/app/upload/page';
+import { MaterialSubcategory } from '@/types/materialUpload';
 
-interface TableOfContentsItem {
+export interface TableOfContentsItem {
   id: string;
   title: string;
   chapter?: string;
   pageNumber?: string;
 }
 
-type FileUploaderProps = {
+export type FileUploaderProps = {
   onFilesSelected: (files: File[] | null) => void;
   onTopicChange?: (topic: string) => void;
   acceptedTypes?: string;

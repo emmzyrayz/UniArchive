@@ -1,20 +1,28 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { MaterialCategory, MaterialSubcategory } from '@/app/upload/page';
+import { MaterialCategory, MaterialSubcategory } from '@/types/materialUpload';
+import { User } from '@/context/userContext';
 
-type InfoFormProps = {
+export type InfoFormProps = {
   materialInfo: {
-    university: string;
+    school: string;
     faculty: string;
     department: string;
     level: string;
     course: string;
+
+    authorName?: string;
+    authorEmail?: string;
+    authorRole?: string;
+    session?: string;
     metadata?: Record<string, string>;
   };
+  userProfile?: User | null;
   onChange: (name: string, value: string) => void;
   onMetadataChange: (name: string, value: string) => void;
   onSelectMaterial: (category: MaterialCategory, subcategory: MaterialSubcategory) => void;
+  autoPopulateUserData?: boolean;
 };
 
 const CATEGORIES = [
@@ -121,20 +129,144 @@ const CATEGORIES = [
 ];
 
 export const InfoForm = ({ 
-  materialInfo, 
+  materialInfo,
+  userProfile,
   onChange,
   onMetadataChange,
-  onSelectMaterial 
+  onSelectMaterial,
+  autoPopulateUserData = true
 }: InfoFormProps) => {
   const [formComplete, setFormComplete] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<MaterialCategory | null>(null);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [hoveredSubcategory, setHoveredSubcategory] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [userDataPopulated, setUserDataPopulated] = useState(false);
 
-  // Memoize the form completion check function
+  // Auto-populate user data when component mounts or user profile changes
+  useEffect(() => {
+    if (autoPopulateUserData && userProfile && !userDataPopulated) {
+      try {
+        console.log('InfoForm: Auto-populating user data');
+        
+        // Map user profile fields to form fields
+        const fieldsToPopulate = [
+          { formField: 'authorName', userField: userProfile.fullName || '' },
+          { formField: 'authorEmail', userField: userProfile.email || '' },
+          { formField: 'authorRole', userField: userProfile.role || 'student' },
+          { formField: 'university', userField: userProfile.school || '' }, // Map school to university
+          { formField: 'faculty', userField: userProfile.faculty || '' },
+          { formField: 'department', userField: userProfile.department || '' },
+          { formField: 'level', userField: userProfile.level || '' },
+        ];
+
+        // Only populate empty fields to avoid overwriting existing data
+        fieldsToPopulate.forEach(({ formField, userField }) => {
+          if (userField && (!materialInfo[formField as keyof typeof materialInfo] || materialInfo[formField as keyof typeof materialInfo] === '')) {
+            onChange(formField, userField);
+          }
+        });
+
+        // Auto-populate metadata
+        const metadataToPopulate = [
+          { key: 'upid', value: userProfile.upid || '' },
+          { key: 'uuid', value: userProfile.uuid || '' },
+          { key: 'regNumber', value: userProfile.regNumber || '' },
+          { key: 'isVerified', value: userProfile.isVerified?.toString() || 'false' },
+          { key: 'phone', value: userProfile.phone || '' },
+          { key: 'gender', value: userProfile.gender || '' },
+          { key: 'dob', value: userProfile.dob ? userProfile.dob.toISOString() : '' },
+        ];
+
+        metadataToPopulate.forEach(({ key, value }) => {
+          if (value && (!materialInfo.metadata?.[key] || materialInfo.metadata[key] === '')) {
+            onMetadataChange(key, value);
+          }
+        });
+
+        // Set default session to current academic year if not set
+        if (!materialInfo.session || materialInfo.session === '') {
+          const currentYear = new Date().getFullYear();
+          const academicSession = `${currentYear}/${currentYear + 1}`;
+          onChange('session', academicSession);
+        }
+
+        setUserDataPopulated(true);
+        console.log('InfoForm: User data auto-population completed');
+      } catch (err) {
+        console.error('InfoForm: Error auto-populating user data:', err);
+      }
+    }
+  }, [userProfile, autoPopulateUserData, userDataPopulated, onChange, onMetadataChange, materialInfo]);
+
+   // Validation function
+  const validateField = (name: string, value: string): string => {
+    switch (name) {
+      case 'title':
+        if (!value.trim()) return 'Title is required';
+        if (value.length < 5) return 'Title must be at least 5 characters';
+        return '';
+      case 'description':
+        if (!value.trim()) return 'Description is required';
+        if (value.length < 10) return 'Description must be at least 10 characters';
+        return '';
+      case 'authorName':
+        if (!value.trim()) return 'Author name is required';
+        return '';
+      case 'authorEmail':
+        if (!value.trim()) return 'Author email is required';
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) return 'Please enter a valid email address';
+        return '';
+      case 'school':
+        if (!value.trim()) return 'School is required';
+        return '';
+      case 'faculty':
+        if (!value.trim()) return 'Faculty is required';
+        return '';
+      case 'department':
+        if (!value.trim()) return 'Department is required';
+        return '';
+      case 'level':
+        if (!value.trim()) return 'Level is required';
+        return '';
+      case 'course':
+        if (!value.trim()) return 'Course is required';
+        return '';
+      case 'session':
+        if (!value.trim()) return 'Session is required';
+        return '';
+      default:
+        return '';
+    }
+  };
+
+  // Handle input changes with validation
+  const handleChange = (name: string, value: string) => {
+    onChange(name, value);
+    
+    // Validate and update errors
+    const error = validateField(name, value);
+    setErrors(prev => ({
+      ...prev,
+      [name]: error
+    }));
+  };
+
+  // Handle metadata changes
+  const handleMetadataChange = (name: string, value: string) => {
+    if (onMetadataChange) {
+      onMetadataChange(name, value);
+    }
+  };
+
+   // Memoize the form completion check function
   const checkFormCompletion = useCallback(() => {
-    const { university, course } = materialInfo;
-    return university.trim() !== '' && course.trim() !== '';
+    const { school, course, authorName, authorEmail } = materialInfo;
+    return school?.trim() !== '' && 
+           course?.trim() !== '' && 
+           authorName?.trim() !== '' && 
+           authorEmail?.trim() !== '';
   }, [materialInfo]);
 
   // Update form completion status
@@ -167,82 +299,206 @@ export const InfoForm = ({
     return '';
   }, []);
 
+   // User info display banner
+  const renderUserInfoBanner = () => {
+    if (!userProfile || !autoPopulateUserData) return null;
+
+    return (
+      <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+            {userProfile.fullName?.charAt(0) || 'U'}
+          </div>
+          <div>
+            <p className="text-sm font-medium text-green-800">
+              Auto-populated with your profile information
+            </p>
+            <p className="text-xs text-green-600">
+              {userProfile.fullName} • {userProfile.department} • {userProfile.level}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
+      {/* User info banner */}
+      {renderUserInfoBanner()}
+      
       <h2 className="text-xl font-semibold mb-6">Step 1: Provide Material Information</h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div>
-          <label htmlFor="university" className="block text-sm font-medium text-gray-700 mb-1">
-            University <span className="text-red-500">*</span>
-          </label>
-          <input 
-            id="university"
-            name="university" 
-            value={materialInfo.university}
-            onChange={(e) => onChange('university', e.target.value)} 
-            placeholder="e.g., Harvard University" 
-            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
-            required
-          />
+       {/* Author Information Section */}
+      <div className="mb-6">
+        <h3 className="text-lg font-medium mb-4 text-gray-800">Author Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="authorName" className="block text-sm font-medium text-gray-700 mb-1">
+              Author Name <span className="text-red-500">*</span>
+            </label>
+            <input 
+              id="authorName"
+              name="authorName" 
+              value={materialInfo.authorName || ''}
+              onChange={(e) => handleChange('authorName', e.target.value)} 
+              placeholder="e.g., John Doe" 
+              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
+                errors.authorName ? 'border-red-300' : 'border-gray-300'
+              }`}
+              required
+            />
+            {errors.authorName && (
+              <p className="text-red-500 text-xs mt-1">{errors.authorName}</p>
+            )}
+          </div>
+          
+          <div>
+            <label htmlFor="authorEmail" className="block text-sm font-medium text-gray-700 mb-1">
+              Author Email <span className="text-red-500">*</span>
+            </label>
+            <input 
+              id="authorEmail"
+              name="authorEmail" 
+              type="email"
+              value={materialInfo.authorEmail || ''}
+              onChange={(e) => handleChange('authorEmail', e.target.value)} 
+              placeholder="e.g., john.doe@university.edu" 
+              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
+                errors.authorEmail ? 'border-red-300' : 'border-gray-300'
+              }`}
+              required
+            />
+            {errors.authorEmail && (
+              <p className="text-red-500 text-xs mt-1">{errors.authorEmail}</p>
+            )}
+          </div>
         </div>
-        
-        <div>
-          <label htmlFor="faculty" className="block text-sm font-medium text-gray-700 mb-1">
-            Faculty
-          </label>
-          <input 
-            id="faculty"
-            name="faculty" 
-            value={materialInfo.faculty}
-            onChange={(e) => onChange('faculty', e.target.value)} 
-            placeholder="e.g., Engineering" 
-            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
-          />
-        </div>
-        
-        <div>
-          <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
-            Department
-          </label>
-          <input 
-            id="department"
-            name="department" 
-            value={materialInfo.department}
-            onChange={(e) => onChange('department', e.target.value)}
-            placeholder="e.g., Computer Science" 
-            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
-          />
-        </div>
+      </div>
 
-        <div>
-          <label htmlFor="level" className="block text-sm font-medium text-gray-700 mb-1">
-            Level <span className="text-red-500">*</span>
-          </label>
-          <input 
-            id="level"
-            name="level" 
-            value={materialInfo.level}
-            onChange={(e) => onChange('level', e.target.value)}
-            placeholder="e.g., 100, 200, 300..." 
-            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
-            required
-          />
-        </div>
-        
-        <div className="col-span-2">
-          <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-1">
-            Course <span className="text-red-500">*</span>
-          </label>
-          <input 
-            id="course"
-            name="course" 
-            value={materialInfo.course}
-            onChange={(e) => onChange('course', e.target.value)}
-            placeholder="e.g., Introduction to AI" 
-            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
-            required
-          />
+      {/* Academic Information Section */}
+      <div className="mb-6">
+        <h3 className="text-lg font-medium mb-4 text-gray-800">Academic Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="university" className="block text-sm font-medium text-gray-700 mb-1">
+              University/School <span className="text-red-500">*</span>
+            </label>
+            <input 
+              id="university"
+              name="university" 
+              value={materialInfo.school}
+              onChange={(e) => handleChange('university', e.target.value)} 
+              placeholder="e.g., Harvard University" 
+              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
+                errors.university ? 'border-red-300' : 'border-gray-300'
+              }`}
+              required
+            />
+            {errors.university && (
+              <p className="text-red-500 text-xs mt-1">{errors.university}</p>
+            )}
+          </div>
+          
+          <div>
+            <label htmlFor="faculty" className="block text-sm font-medium text-gray-700 mb-1">
+              Faculty <span className="text-red-500">*</span>
+            </label>
+            <input 
+              id="faculty"
+              name="faculty" 
+              value={materialInfo.faculty}
+              onChange={(e) => handleChange('faculty', e.target.value)} 
+              placeholder="e.g., Engineering" 
+              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
+                errors.faculty ? 'border-red-300' : 'border-gray-300'
+              }`}
+              required
+            />
+            {errors.faculty && (
+              <p className="text-red-500 text-xs mt-1">{errors.faculty}</p>
+            )}
+          </div>
+          
+          <div>
+            <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+              Department <span className="text-red-500">*</span>
+            </label>
+            <input 
+              id="department"
+              name="department" 
+              value={materialInfo.department}
+              onChange={(e) => handleChange('department', e.target.value)}
+              placeholder="e.g., Computer Science" 
+              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
+                errors.department ? 'border-red-300' : 'border-gray-300'
+              }`}
+              required
+            />
+            {errors.department && (
+              <p className="text-red-500 text-xs mt-1">{errors.department}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="level" className="block text-sm font-medium text-gray-700 mb-1">
+              Level <span className="text-red-500">*</span>
+            </label>
+            <input 
+              id="level"
+              name="level" 
+              value={materialInfo.level}
+              onChange={(e) => handleChange('level', e.target.value)}
+              placeholder="e.g., 100, 200, 300..." 
+              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
+                errors.level ? 'border-red-300' : 'border-gray-300'
+              }`}
+              required
+            />
+            {errors.level && (
+              <p className="text-red-500 text-xs mt-1">{errors.level}</p>
+            )}
+          </div>
+          
+          <div>
+            <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-1">
+              Course <span className="text-red-500">*</span>
+            </label>
+            <input 
+              id="course"
+              name="course" 
+              value={materialInfo.course}
+              onChange={(e) => handleChange('course', e.target.value)}
+              placeholder="e.g., Introduction to AI" 
+              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
+                errors.course ? 'border-red-300' : 'border-gray-300'
+              }`}
+              required
+            />
+            {errors.course && (
+              <p className="text-red-500 text-xs mt-1">{errors.course}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="session" className="block text-sm font-medium text-gray-700 mb-1">
+              Academic Session <span className="text-red-500">*</span>
+            </label>
+            <input 
+              id="session"
+              name="session" 
+              value={materialInfo.session || ''}
+              onChange={(e) => handleChange('session', e.target.value)}
+              placeholder="e.g., 2024/2025" 
+              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
+                errors.session ? 'border-red-300' : 'border-gray-300'
+              }`}
+              required
+            />
+            {errors.session && (
+              <p className="text-red-500 text-xs mt-1">{errors.session}</p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -251,12 +507,13 @@ export const InfoForm = ({
         <label htmlFor="additional-info" className="block text-sm font-medium text-gray-700 mb-1">
           Additional Information
         </label>
-        <input 
+        <textarea 
           id="additional-info"
           name="additional-info" 
           placeholder="Any additional details about the material" 
           className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
-          onChange={(e) => onMetadataChange('additionalInfo', e.target.value)}
+          rows={3}
+          onChange={(e) => handleMetadataChange('additionalInfo', e.target.value)}
         />
       </div>
 

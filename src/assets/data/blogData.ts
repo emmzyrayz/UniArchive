@@ -5,6 +5,8 @@ export type BlogType = "platform" | "teacher" | "student";
 export type ReactionType = "like" | "love" | "haha" | "wow" | "sad" | "angry";
 export type UserRole = "admin" | "teacher" | "student" | "guest";
 
+
+
 export interface User {
   id: number;
   username: string;

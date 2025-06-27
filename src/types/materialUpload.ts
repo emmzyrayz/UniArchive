@@ -1,4 +1,6 @@
 // /types/materialUpload.ts
+
+import {  User, UserState } from '@/context/userContext';
 // Types for frontend upload payloads matching backend models
 
 // Comment Reply Interface
@@ -280,3 +282,82 @@ export type PaginatedResponse<T> = {
     hasPrevPage: boolean;
   };
 };
+
+export type MaterialCategory = 
+  | 'LEARNING_AIDS'
+  | 'ACADEMIC_WORK'
+  | 'MEDIA'
+  | 'EXAMS'
+  | 'BOOKS';
+
+export type MaterialSubcategory = 
+  | 'LECTURE_NOTE'
+  | 'PAST_QUESTION'
+  | 'COURSE_MATERIAL'
+  | 'ASSIGNMENT'
+  | 'TUTORIAL'
+  | 'RECORDED_LECTURE'
+  | 'PRESENTATION'
+  | 'PROJECT'
+  | 'LAB_REPORT'
+  | 'EBOOK'
+  | 'TEXTBOOK'
+  | 'MOCK_EXAM'
+  | 'SYLLABUS';
+
+// Video types
+export type VideoPlatform = 'YouTube' | 'Vimeo' | 'Facebook' | 'Instagram' | 'TikTok' | 'Twitter' | 'Twitch' | 'Dailymotion' | 'Other';
+
+export interface VideoMetadata {
+  title?: string;
+  duration?: number;
+  width?: number;
+  height?: number;
+  format?: string;
+  bitrate?: number;
+  fileSize?: number;
+  platform?: VideoPlatform;
+  originalUrl?: string;
+  thumbnailUrl?: string;
+}
+
+export type VideoSource = {
+  type: 'file' | 'url';
+  data: File | string;
+  metadata: VideoMetadata;
+};
+
+export type userRole = 'admin' | 'superadmin' | 'contributor'| "devsupport" | 'student' | 'mod' | "lecturer" | "guest";
+
+export type MaterialInfo = {
+  title: string;
+  description: string;
+  category: MaterialCategory | null; // Use the enum type
+  subcategory: MaterialSubcategory | null; // Use the enum type  
+  tags: string[];
+  visibility: 'public' | 'private';
+  authorName: string;
+  authorEmail: string;
+  authorRole: userRole;
+  school: string;
+  faculty: string;
+  department: string;
+  level: string;
+  semester: string;
+  course: string;
+  session: string;
+  files: File[] | null;
+  videoSource?: VideoSource | null;
+  textContent?: string;
+  topic: string;
+  metadata?: Record<string, any>; 
+};
+
+// Define the debug info interface
+export interface DebugInfo {
+  userProfile: User | null;
+  userState: UserState | null;
+  hasActiveSession: boolean;
+  canUpload: boolean;
+  coursesCount: number;
+}

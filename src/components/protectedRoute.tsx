@@ -1,4 +1,4 @@
-// components/RouteProtectionProvider.tsx - Updated with URL mapping and no periodic checks
+// components/RouteProtectionProvider.tsx - Fixed version with better error handling
 "use client";
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
@@ -19,51 +19,76 @@ declare global {
   }
 }
 
-// URL mapping storage (in-memory)
+// Enhanced URL mapping storage with better error handling and graceful fallback
 class URLMappingStorage {
   private inMemoryStorage: { [key: string]: string } = {};
+  private storageAvailable: boolean | null = null;
+
+  private checkStorageAvailability(): boolean {
+    if (this.storageAvailable !== null) {
+      return this.storageAvailable;
+    }
+
+    if (typeof window === 'undefined') {
+      this.storageAvailable = false;
+      return false;
+    }
+
+    try {
+      const testKey = '__session_test__';
+      sessionStorage.setItem(testKey, 'test');
+      sessionStorage.removeItem(testKey);
+      this.storageAvailable = true;
+      return true;
+    } catch (error) {
+      console.warn('RouteProtection: sessionStorage not available, using in-memory storage:', error);
+      this.storageAvailable = false;
+      return false;
+    }
+  }
 
   getItem(key: string): string | null {
-    if (typeof window !== 'undefined') {
+    if (this.checkStorageAvailability()) {
       try {
         return sessionStorage.getItem(key);
       } catch (error) {
-        console.warn('sessionStorage access failed, using in-memory storage:', error);
-        return this.inMemoryStorage[key] || null;
+        console.warn('RouteProtection: sessionStorage read failed, falling back to in-memory storage:', error);
       }
     }
     return this.inMemoryStorage[key] || null;
   }
 
   setItem(key: string, value: string): void {
-    if (typeof window !== 'undefined') {
+    if (this.checkStorageAvailability()) {
       try {
         sessionStorage.setItem(key, value);
+        // Also store in memory as backup
+        this.inMemoryStorage[key] = value;
         return;
       } catch (error) {
-        console.warn('sessionStorage write failed, using in-memory storage:', error);
+        console.warn('RouteProtection: sessionStorage write failed, using in-memory storage:', error);
       }
     }
     this.inMemoryStorage[key] = value;
   }
 
   removeItem(key: string): void {
-    if (typeof window !== 'undefined') {
+    if (this.checkStorageAvailability()) {
       try {
         sessionStorage.removeItem(key);
       } catch (error) {
-        console.warn('sessionStorage remove failed:', error);
+        console.warn('RouteProtection: sessionStorage remove failed:', error);
       }
     }
     delete this.inMemoryStorage[key];
   }
 
   clear(): void {
-    if (typeof window !== 'undefined') {
+    if (this.checkStorageAvailability()) {
       try {
         sessionStorage.clear();
       } catch (error) {
-        console.warn('sessionStorage clear failed:', error);
+        console.warn('RouteProtection: sessionStorage clear failed:', error);
       }
     }
     this.inMemoryStorage = {};
@@ -89,12 +114,15 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
   const [isInitializing, setIsInitializing] = useState(true);
   const [lastCheckedPath, setLastCheckedPath] = useState<string>('');
   const [shouldShowLoading, setShouldShowLoading] = useState(true);
+  const [routeCheckAttempts, setRouteCheckAttempts] = useState(0);
   
   // Use refs to track state changes and prevent stale closures
   const userStateRef = useRef(userState);
   const hasActiveSessionRef = useRef(hasActiveSession);
   const userProfileRef = useRef(userProfile);
   const routeCheckedRef = useRef(false);
+  const initializationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const refreshAttemptRef = useRef(false);
 
   // Update refs when state changes
   useEffect(() => {
@@ -118,17 +146,24 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
     return publicRoutes.some(route => pathname.startsWith(route)) || isAuthRoute;
   }, [pathname, isAuthRoute]);
 
-  // Combined loading state - be more selective about when to show loading
+  // Enhanced loading state logic with better timing
   const isLoading = useMemo(() => {
     // Don't show loading for public routes unless we're initializing
     if (isPublicRoute && !isInitializing) return false;
     
-    // Show loading if user context is loading or if we're in loading/initializing state
-    return userLoading || 
-           isInitializing || 
-           userState === UserState.LOADING || 
-           userState === UserState.INITIALIZING;
-  }, [userLoading, isInitializing, userState, isPublicRoute]);
+    // Show loading if user context is loading, we're initializing, or in loading/initializing state
+    const shouldLoad = userLoading || 
+                      isInitializing || 
+                      userState === UserState.LOADING || 
+                      userState === UserState.INITIALIZING;
+    
+    // For protected routes, also consider if we haven't checked yet
+    if (routeProtection?.requiresAuth && !hasCheckedRoute && !shouldLoad) {
+      return userState !== UserState.ACTIVE_SESSION && userState !== UserState.NO_SESSION;
+    }
+    
+    return shouldLoad;
+  }, [userLoading, isInitializing, userState, isPublicRoute, routeProtection, hasCheckedRoute]);
 
   // URL mapping functions
   const saveIntendedURL = useCallback((url: string) => {
@@ -166,15 +201,42 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
     return false;
   }, [getIntendedURL, clearIntendedURL, router, pathname]);
 
-  // Initialize route protection
+  // Enhanced initialization with timeout fallback
   useEffect(() => {
     const initializeProtection = async () => {
-      // Give a moment for user context to initialize
-      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log('RouteProtection: Starting initialization...');
+      
+      // Set a maximum initialization timeout (30 seconds instead of 10)
+      initializationTimeoutRef.current = setTimeout(() => {
+        console.log('RouteProtection: Initialization timeout reached, proceeding...');
+        if (isInitializing) {
+          setIsInitializing(false);
+          setShouldShowLoading(false);
+        }
+      }, 30000); // Increased to 30 seconds for slower networks
+      
+      // Wait for user context to stabilize (increased timeout)
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Increased from 300ms
+      
+      // Clear timeout if initialization completes normally
+      if (initializationTimeoutRef.current) {
+        clearTimeout(initializationTimeoutRef.current);
+        initializationTimeoutRef.current = null;
+      }
+      
+      console.log('RouteProtection: Initialization completed');
       setIsInitializing(false);
     };
+    
     initializeProtection();
-  }, []);
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (initializationTimeoutRef.current) {
+        clearTimeout(initializationTimeoutRef.current);
+      }
+    };
+  }, [isInitializing]);
 
   // Reset route check when pathname changes
   useEffect(() => {
@@ -183,7 +245,9 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
       setHasCheckedRoute(false);
       setShouldShowLoading(true);
       setLastCheckedPath(pathname);
+      setRouteCheckAttempts(0);
       routeCheckedRef.current = false;
+      refreshAttemptRef.current = false;
     }
   }, [pathname, lastCheckedPath]);
 
@@ -207,7 +271,8 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
       isInitializing,
       isLoading,
       hasCheckedRoute,
-      shouldShowLoading
+      shouldShowLoading,
+      routeCheckAttempts
     });
     console.log('🎯 Route Checks:', {
       isAuthRoute,
@@ -220,9 +285,9 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
       currentPath: pathname
     });
     console.log('================================================');
-  }, [pathname, routeProtection, userLoading, isInitializing, isLoading, hasCheckedRoute, shouldShowLoading, isAuthRoute, isPublicRoute, getIntendedURL]);
+  }, [pathname, routeProtection, userLoading, isInitializing, isLoading, hasCheckedRoute, shouldShowLoading, routeCheckAttempts, isAuthRoute, isPublicRoute, getIntendedURL]);
 
-  // Main route protection logic with improved state handling
+  // Enhanced route protection logic with retry mechanism and better error handling
   const checkRouteAccess = useCallback(async () => {
     // Skip if already checked or if we're on auth routes
     if (hasCheckedRoute || isAuthRoute || routeCheckedRef.current) {
@@ -230,7 +295,16 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
     }
 
     // Skip if still loading or initializing
-    if (isLoading) {
+    if (isLoading && isInitializing) {
+      return;
+    }
+
+    // Prevent infinite loops by limiting attempts
+    if (routeCheckAttempts >= 5) {
+      console.log('RouteProtection: Max route check attempts reached, allowing access');
+      setHasCheckedRoute(true);
+      setShouldShowLoading(false);
+      routeCheckedRef.current = true;
       return;
     }
 
@@ -249,40 +323,106 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
     let shouldRedirect = false;
     let redirectPath = '/auth/signin'; // Default fallback
 
-    // Authentication check
+    // Authentication check with improved logic
     if (routeProtection.requiresAuth) {
       console.log('🔐 Checking authentication requirement...');
       
-      // If user state is still initializing, wait a bit more
-      if (userStateRef.current === UserState.INITIALIZING) {
-        console.log('⏳ User state still initializing, waiting...');
+      // If user state is still initializing and we haven't waited long enough, wait more
+      if (userStateRef.current === UserState.INITIALIZING && routeCheckAttempts < 3) {
+        console.log('⏳ User state still initializing, waiting... (attempt', routeCheckAttempts + 1, ')');
+        setRouteCheckAttempts(prev => prev + 1);
+        
+        // Retry after a delay
+        setTimeout(() => {
+          checkRouteAccess();
+        }, 2000); // Wait 2 seconds before retry
         return;
       }
 
-      // If no active session and user state is settled
-      if (!hasActiveSessionRef.current && 
-          (userStateRef.current === UserState.NO_SESSION || userStateRef.current === UserState.ERROR)) {
+      // Handle different user states
+      if (userStateRef.current === UserState.NO_SESSION) {
+        console.log('❌ No active session confirmed, redirecting to auth');
+        shouldRedirect = true;
+        redirectPath = '/auth/signin';
+      }
+      else if (userStateRef.current === UserState.ERROR) {
+        console.log('💥 User state error detected');
+        
+        // Only attempt refresh once per route check
+        if (!refreshAttemptRef.current && routeCheckAttempts < 2) {
+          console.log('🔄 Attempting to refresh user data due to error state...');
+          refreshAttemptRef.current = true;
+          setRouteCheckAttempts(prev => prev + 1);
+          
+          try {
+            const refreshed = await refreshUserData();
+            if (!refreshed) {
+              console.log('❌ Refresh failed, redirecting to auth');
+              shouldRedirect = true;
+              redirectPath = '/auth/signin';
+            } else {
+              console.log('✅ Refresh successful, retrying route check');
+              // Don't set hasCheckedRoute yet, let it retry
+              setTimeout(() => {
+                checkRouteAccess();
+              }, 1000);
+              return;
+            }
+          } catch (error) {
+            console.error('💥 Error during refresh:', error);
+            // Don't immediately redirect on network errors
+            if (routeCheckAttempts >= 2) {
+              shouldRedirect = true;
+              redirectPath = '/auth/signin';
+            } else {
+              setRouteCheckAttempts(prev => prev + 1);
+              setTimeout(() => {
+                checkRouteAccess();
+              }, 3000); // Wait longer on error
+              return;
+            }
+          }
+        } else {
+          // If we've already attempted refresh or tried multiple times, allow with warning
+          console.log('⚠️ Multiple error states detected, allowing access with degraded experience');
+          setHasCheckedRoute(true);
+          setShouldShowLoading(false);
+          routeCheckedRef.current = true;
+          return;
+        }
+      }
+      else if (!hasActiveSessionRef.current && userStateRef.current !== UserState.ACTIVE_SESSION) {
         console.log('❌ No active session, redirecting to auth');
         shouldRedirect = true;
         redirectPath = '/auth/signin';
       }
-      
-      // If we have a session but no user profile yet, try refreshing ONCE
       else if (hasActiveSessionRef.current && !userProfileRef.current) {
-        console.log('🔄 Active session without profile, attempting single refresh...');
-        try {
-          const refreshed = await refreshUserData();
-          if (!refreshed) {
-            console.log('❌ Refresh failed, redirecting to auth');
+        // If we have a session but no user profile yet, try refreshing ONCE
+        if (!refreshAttemptRef.current && routeCheckAttempts < 2) {
+          console.log('🔄 Active session without profile, attempting single refresh...');
+          refreshAttemptRef.current = true;
+          setRouteCheckAttempts(prev => prev + 1);
+          
+          try {
+            const refreshed = await refreshUserData();
+            if (!refreshed) {
+              console.log('❌ Refresh failed, redirecting to auth');
+              shouldRedirect = true;
+              redirectPath = '/auth/signin';
+            } else {
+              console.log('✅ Refresh successful, retrying route check');
+              // Don't set hasCheckedRoute yet, let it retry
+              setTimeout(() => {
+                checkRouteAccess();
+              }, 1000);
+              return;
+            }
+          } catch (error) {
+            console.error('💥 Error during refresh:', error);
             shouldRedirect = true;
             redirectPath = '/auth/signin';
-          } else {
-            console.log('✅ Refresh successful, retrying route check');
-            // Don't set hasCheckedRoute yet, let it retry
-            return;
           }
-        } catch (error) {
-          console.error('💥 Error during refresh:', error);
+        } else {
           shouldRedirect = true;
           redirectPath = '/auth/signin';
         }
@@ -337,44 +477,78 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
     setHasCheckedRoute(true);
     setShouldShowLoading(false);
     routeCheckedRef.current = true;
-  }, [hasCheckedRoute, isAuthRoute, isLoading, routeProtection, refreshUserData, logDetailedState, redirectToSignin, pathname, router]);
+  }, [hasCheckedRoute, isAuthRoute, isLoading, isInitializing, routeProtection, refreshUserData, logDetailedState, redirectToSignin, pathname, router, routeCheckAttempts]);
 
   // Run route check when dependencies change
   useEffect(() => {
-    checkRouteAccess();
+    // Add debouncing to prevent too frequent checks
+    const timeoutId = setTimeout(() => {
+      checkRouteAccess();
+    }, 200); // 200ms debounce
+
+    return () => clearTimeout(timeoutId);
   }, [checkRouteAccess, userState, hasActiveSession, userProfile]);
 
-  // Handle specific user state transitions
+  // Handle specific user state transitions with better timing
   useEffect(() => {
     if (userState === UserState.ACTIVE_SESSION && !hasCheckedRoute && !isAuthRoute) {
-      console.log('🔄 User session became active, rechecking route and checking for redirects');
+      console.log('🔄 User session became active, checking for redirects and rechecking route');
       
       // Check if we need to redirect to intended URL
       const redirected = handleAuthSuccessRedirect();
       
       if (!redirected) {
+        // Reset route check state and recheck
+        setHasCheckedRoute(false);
+        routeCheckedRef.current = false;
+        refreshAttemptRef.current = false;
+        
         // Small delay to ensure state has propagated
         setTimeout(() => {
           checkRouteAccess();
-        }, 100);
+        }, 500); // Increased delay for better reliability
       }
     }
   }, [userState, hasCheckedRoute, isAuthRoute, checkRouteAccess, handleAuthSuccessRedirect]);
 
-  // Handle session state changes and errors
+  // Enhanced session state change handler
   const handleSessionStateChange = useCallback(async () => {
+    // Only handle errors on protected routes
     if (userState === UserState.ERROR && routeProtection?.requiresAuth && !isAuthRoute) {
-      console.log('💥 User state error on protected route, attempting single refresh');
-      const refreshed = await refreshUserData();
-      if (!refreshed) {
-        console.log('❌ Refresh failed, redirecting to signin');
-        redirectToSignin(pathname);
+      console.log('💥 User state error on protected route');
+      
+      // Don't immediately redirect - let the route check handle it with retries
+      if (!hasCheckedRoute) {
+        console.log('🔄 Route not checked yet, will be handled by route check');
+        return;
+      }
+      
+      // If route was already checked and we get an error, try one refresh
+      if (!refreshAttemptRef.current) {
+        console.log('🔄 Attempting refresh due to error state');
+        refreshAttemptRef.current = true;
+        
+        try {
+          const refreshed = await refreshUserData();
+          if (!refreshed) {
+            console.log('❌ Refresh failed on error state, redirecting to signin');
+            redirectToSignin(pathname);
+          }
+        } catch (error) {
+          console.error('💥 Refresh error in session state handler:', error);
+          // Don't redirect immediately on network errors
+        }
       }
     }
-  }, [userState, routeProtection, refreshUserData, isAuthRoute, redirectToSignin, pathname]);
+  }, [userState, routeProtection, refreshUserData, isAuthRoute, hasCheckedRoute, redirectToSignin, pathname]);
 
   useEffect(() => {
-    handleSessionStateChange();
+    // Debounce session state changes
+    const timeoutId = setTimeout(() => {
+      handleSessionStateChange();
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
   }, [handleSessionStateChange]);
 
   // Expose redirect function globally for auth components
@@ -402,21 +576,22 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
     return <>{children}</>;
   }
 
-  // Show loading state for protected routes
-  if (shouldShowLoading && (isLoading || !hasCheckedRoute)) {
+  // Show loading state for protected routes with better conditions
+  if (shouldShowLoading && (isLoading || (!hasCheckedRoute && routeCheckAttempts < 5))) {
     console.log('⏳ Showing loading state', {
       shouldShowLoading,
       isLoading,
       hasCheckedRoute,
-      userState
+      userState,
+      routeCheckAttempts
     });
     return <Loading />;
   }
 
-  // Access denied scenarios with enhanced logging
-  if (!isLoading && hasCheckedRoute) {
+  // Access denied scenarios with enhanced logging and better error handling
+  if (!isLoading && (hasCheckedRoute || routeCheckAttempts >= 5)) {
     // If we need auth but don't have an active session
-    if (routeProtection.requiresAuth && !hasActiveSession) {
+    if (routeProtection.requiresAuth && !hasActiveSession && userState !== UserState.ERROR) {
       console.log('🚫 Access denied - no session');
       return (
         <div className="flex items-center justify-center min-h-screen">
@@ -461,9 +636,36 @@ const RouteProtectionProvider: React.FC<RouteProtectionProviderProps> = ({ child
         </div>
       );
     }
+
+    // If we're in an error state, show error message instead of infinite loading
+    if (userState === UserState.ERROR && routeProtection.requiresAuth) {
+      console.log('🚫 Error state on protected route');
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Connection Error</h1>
+            <p className="mb-4">Unable to verify your session. Please try again.</p>
+            <div className="space-x-4">
+              <button 
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Reload Page
+              </button>
+              <button 
+                onClick={() => redirectToSignin(pathname)}
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                Sign In Again
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
   }
 
-  console.log('🎯 Rendering children - all checks passed');
+  console.log('🎯 Rendering children - all checks passed or fallback reached');
   return <>{children}</>;
 };
 

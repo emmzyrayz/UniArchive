@@ -1,4 +1,6 @@
 // config/routeProtection.ts - Define which routes need protection
+
+
 export interface RouteProtection {
   path: string;
   requiresAuth: boolean;

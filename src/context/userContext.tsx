@@ -2,11 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 
+
 // User role type
 type UserRole = "admin" | "contributor" | "student" | "mod" | "devsupport";
 
 // Enhanced User interface - matches SessionCache data structure
-interface User {
+export interface User {
   id: string;
   fullName: string;
   email: string;
@@ -203,26 +204,51 @@ const saveUserPreferencesToStorage = (preferences: UserPreferences): void => {
   }
 };
 
-// Token storage abstraction
+// Enhanced Token storage abstraction with better error handling
 class TokenStorage {
   private inMemoryStorage: { [key: string]: string } = {};
+  private storageAvailable: boolean | null = null;
+
+  private checkStorageAvailability(): boolean {
+    if (this.storageAvailable !== null) {
+      return this.storageAvailable;
+    }
+
+    if (typeof window === 'undefined') {
+      this.storageAvailable = false;
+      return false;
+    }
+
+    try {
+      const testKey = '__storage_test__';
+      localStorage.setItem(testKey, 'test');
+      localStorage.removeItem(testKey);
+      this.storageAvailable = true;
+      return true;
+    } catch (error) {
+      console.warn('localStorage not available, using in-memory storage:', error);
+      this.storageAvailable = false;
+      return false;
+    }
+  }
 
   getItem(key: string): string | null {
-    if (typeof window !== 'undefined') {
+    if (this.checkStorageAvailability()) {
       try {
         return localStorage.getItem(key);
       } catch (error) {
-        console.warn('localStorage access failed, using in-memory storage:', error);
-        return this.inMemoryStorage[key] || null;
+        console.warn('localStorage read failed, falling back to in-memory storage:', error);
       }
     }
     return this.inMemoryStorage[key] || null;
   }
 
   setItem(key: string, value: string): void {
-    if (typeof window !== 'undefined') {
+    if (this.checkStorageAvailability()) {
       try {
         localStorage.setItem(key, value);
+        // Also store in memory as backup
+        this.inMemoryStorage[key] = value;
         return;
       } catch (error) {
         console.warn('localStorage write failed, using in-memory storage:', error);
@@ -232,7 +258,7 @@ class TokenStorage {
   }
 
   removeItem(key: string): void {
-    if (typeof window !== 'undefined') {
+    if (this.checkStorageAvailability()) {
       try {
         localStorage.removeItem(key);
       } catch (error) {
@@ -261,6 +287,38 @@ const safeParseDate = (dateValue: string | Date | undefined): Date => {
   }
 };
 
+// Enhanced retry mechanism for network requests
+const retryWithBackoff: <T>(
+  fn: () => Promise<T>,
+  maxRetries?: number,
+  baseDelay?: number
+) => Promise<T> = async (fn, maxRetries = 3, baseDelay = 1000) => {
+  let lastError: Error;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      console.log(`Attempt ${i + 1} failed:`, error);
+      
+      // Don't retry on 401 errors (authentication issues)
+      if (error instanceof Response && error.status === 401) {
+        throw error;
+      }
+      
+      // If this isn't the last attempt, wait before retrying
+      if (i < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(2, i); // Exponential backoff
+        console.log(`Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError!;
+};
+
 // User Provider Component
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [userProfile, setUserProfile] = useState<User | null>(null);
@@ -271,10 +329,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
   const [userState, setUserState] = useState<UserState>(UserState.INITIALIZING);
 
-  // Refs to prevent race conditions
+  // Refs to prevent race conditions and track state
   const mountedRef = useRef(true);
   const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
   const initializationCompleteRef = useRef(false);
+  const lastRefreshAttempt = useRef<number>(0);
+  const refreshRetryCount = useRef<number>(0);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -290,23 +350,27 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  // Clear user data - FIXED: Using enum values
-  const clearUserData = useCallback(() => {
-    console.log('UserContext: Clearing user data and setting NO_SESSION state');
+  // Clear user data - FIXED: Using enum values and preserving certain states
+  const clearUserData = useCallback((reason?: string) => {
+    console.log(`UserContext: Clearing user data${reason ? ` - ${reason}` : ''}`);
     safeSetState(() => {
       setUserProfile(null);
       setSessionInfo(null);
       setUserPermissions(getPermissionsByRole('student'));
       setHasActiveSession(false);
-      setUserState(UserState.NO_SESSION); // FIXED: Using enum value
+      setUserState(UserState.NO_SESSION);
       setIsLoading(false);
     });
     
-    // Also clear the auth token
-    tokenStorage.removeItem('authToken');
+    // Only clear token if this is an actual logout, not a network error
+    if (!reason || reason === 'logout' || reason === 'session_expired') {
+      tokenStorage.removeItem('authToken');
+    }
+    
+    initializationCompleteRef.current = true;
   }, [safeSetState]);
 
-  // Refresh user data from SessionCache via online-status
+  // Enhanced refresh user data with better error handling and retries
   const refreshUserData = useCallback(async (): Promise<boolean> => {
     // Return existing promise if one is already running
     if (refreshPromiseRef.current) {
@@ -316,53 +380,95 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const token = tokenStorage.getItem('authToken');
     if (!token) {
       console.log('UserContext: No auth token found');
-      clearUserData();
+      clearUserData('no_token');
       return false;
     }
+
+    // Prevent too frequent refresh attempts
+    const now = Date.now();
+    if (now - lastRefreshAttempt.current < 2000) { // 2 second cooldown
+      console.log('UserContext: Refresh cooldown active, skipping');
+      return false;
+    }
+    lastRefreshAttempt.current = now;
 
     // Create new promise and store it
     const refreshPromise = (async (): Promise<boolean> => {
       try {
         safeSetState(() => {
-          setUserState(UserState.LOADING); // FIXED: Using enum value
+          setUserState(UserState.LOADING);
           setIsLoading(true);
         });
 
         console.log('UserContext: Fetching comprehensive user session data...');
 
-         // FIXED: Reduced timeout for faster response
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-        
-        const response = await fetch('/api/user/online-status', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          signal: controller.signal,
-        });
+        // Enhanced fetch with retry mechanism
+        const fetchUserData = async () => {
+          const controller = new AbortController();
+          // Increased timeout to 30 seconds for better reliability
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          
+          try {
+            const response = await fetch('/api/user/online-status', {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache', // Prevent caching issues
+              },
+              signal: controller.signal,
+            });
 
-        clearTimeout(timeoutId);
+            clearTimeout(timeoutId);
+            return response;
+          } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
+          }
+        };
+
+        // Use retry mechanism for the fetch
+        const response = await retryWithBackoff(fetchUserData, 3, 2000);
 
         if (!response.ok) {
-          console.log('UserContext: Online status check failed:', response.status);
+          console.log('UserContext: Online status check failed:', response.status, response.statusText);
+          
           if (response.status === 401) {
-            console.log("UserContext: Session expired, clearing user data");
-            clearUserData();
-          } else {
-            // For other errors, set error state but don't clear user data immediately
+            console.log("UserContext: Session expired (401), clearing user data");
+            clearUserData('session_expired');
+            refreshRetryCount.current = 0;
+            return false;
+          } else if (response.status >= 500) {
+            // Server error - don't clear user data, just set error state
+            console.log("UserContext: Server error, maintaining current session");
             safeSetState(() => {
               setUserState(UserState.ERROR);
               setIsLoading(false);
             });
+            
+            // Increment retry count for server errors
+            refreshRetryCount.current++;
+            
+            // Only clear session after multiple server error retries
+            if (refreshRetryCount.current >= 5) {
+              console.log("UserContext: Too many server errors, clearing session");
+              clearUserData('server_error');
+            }
+            
+            return false;
+          } else {
+            // Other client errors
+            console.log("UserContext: Client error, clearing user data");
+            clearUserData('client_error');
+            return false;
           }
-          return false;
         }
 
+        // Reset retry count on successful response
+        refreshRetryCount.current = 0;
+
         const data = await response.json();
-        console.log('UserContext: Online status response received');
-        console.log('UserContext: User data includes level:', data.user?.level);
+        console.log('UserContext: Online status response received successfully');
 
         if (data.isOnline && data.user && data.sessionInfo) {
           // Parse and validate the comprehensive user data from SessionCache
@@ -396,7 +502,6 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             expiresAt: safeParseDate(data.sessionInfo.expiresAt),
             deviceInfo: data.sessionInfo.deviceInfo || 'Unknown Device',
             ipAddress: data.sessionInfo.ipAddress || 'Unknown IP',
-            // Derive sign-in time (we can use lastActivity as a proxy if signInTime isn't available)
             signInTime: safeParseDate(data.sessionInfo.signInTime || data.sessionInfo.lastActivity),
           };
 
@@ -404,13 +509,13 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log('UserContext: User level:', userProfileData.level);
           console.log('UserContext: User role:', userProfileData.role);
 
-          // Update state with comprehensive data - FIXED: Using enum value
+          // Update state with comprehensive data
           safeSetState(() => {
             setUserProfile(userProfileData);
             setSessionInfo(sessionInfoData);
             setUserPermissions(getPermissionsByRole(userProfileData.role));
             setHasActiveSession(true);
-            setUserState(UserState.ACTIVE_SESSION); // FIXED: Using enum value
+            setUserState(UserState.ACTIVE_SESSION);
             setIsLoading(false);
           });
           
@@ -421,19 +526,39 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log('UserContext: No active session found in server response');
           if (data.sessionExpired) {
             console.log("UserContext: Session expired from server");
+            clearUserData('session_expired');
+          } else {
+            clearUserData('no_session');
           }
-          clearUserData();
           return false;
         }
       } catch (error) {
         console.error('UserContext: Failed to refresh user data:', error);
-        if (error instanceof Error && error.name === 'AbortError') {
-          console.log('UserContext: Request timed out');
+        
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            console.log('UserContext: Request timed out - network issue');
+          } else if (error.message?.includes('fetch')) {
+            console.log('UserContext: Network error - maintaining current session if exists');
+            
+            // Don't clear user data on network errors if we have an existing session
+            if (hasActiveSession && userProfile) {
+              console.log('UserContext: Maintaining existing session despite network error');
+              safeSetState(() => {
+                setUserState(UserState.ERROR);
+                setIsLoading(false);
+              });
+              return false;
+            }
+          }
         }
+        
+        // Only set error state, don't clear data immediately
         safeSetState(() => {
-          setUserState(UserState.ERROR); // FIXED: Using enum value
+          setUserState(UserState.ERROR);
           setIsLoading(false);
         });
+        
         initializationCompleteRef.current = true;
         return false;
       } finally {
@@ -443,9 +568,9 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     refreshPromiseRef.current = refreshPromise;
     return refreshPromise;
-  }, [clearUserData, safeSetState]);
+  }, [clearUserData, safeSetState, hasActiveSession, userProfile]);
 
-  // FIXED: Only trigger refresh if we haven't initialized and there's a token
+  // Enhanced initialization with better error handling
   useEffect(() => {
     if (initializationCompleteRef.current) return;
     
@@ -454,24 +579,20 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     if (token) {
       console.log("UserContext: Token found, refreshing user data");
-      refreshUserData();
+      refreshUserData().catch(error => {
+        console.error("UserContext: Initial refresh failed:", error);
+        // Don't clear user data on initialization failure
+        safeSetState(() => {
+          setUserState(UserState.ERROR);
+          setIsLoading(false);
+        });
+        initializationCompleteRef.current = true;
+      });
     } else {
       console.log("UserContext: No token found, setting NO_SESSION state");
-      clearUserData();
+      clearUserData('no_token');
     }
-  }, [refreshUserData, clearUserData]);
-
-  // Initialize user data on mount
-  useEffect(() => {
-    console.log('UserContext: Initializing...');
-    const initializeUser = async () => {
-      // Small delay to ensure proper mounting
-      await new Promise(resolve => setTimeout(resolve, 50));
-      await refreshUserData();
-    };
-    
-    initializeUser();
-  }, [refreshUserData]);
+  }, [refreshUserData, clearUserData, safeSetState]);
 
   // Load preferences on mount
   useEffect(() => {
@@ -479,8 +600,52 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUserPreferences(preferences);
   }, []);
 
-  // REMOVED: Periodic session validation that was causing logouts
-  // The useEffect that ran every 10 minutes has been completely removed
+  // Enhanced periodic session validation with better error handling
+  useEffect(() => {
+    if (!hasActiveSession || userState !== UserState.ACTIVE_SESSION) {
+      return;
+    }
+
+    // Only validate session periodically if user is active
+    const validateSession = async () => {
+      try {
+        console.log('UserContext: Performing periodic session validation...');
+        const isValid = await refreshUserData();
+        if (!isValid) {
+          console.log('UserContext: Periodic validation failed - session may have expired');
+        }
+      } catch (error) {
+        console.error('UserContext: Periodic validation error:', error);
+        // Don't logout on periodic validation errors
+      }
+    };
+
+    // Validate every 15 minutes instead of 10 to reduce server load
+    const intervalId = setInterval(validateSession, 15 * 60 * 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [hasActiveSession, userState, refreshUserData]);
+
+  // Handle page visibility changes to refresh session when user returns
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && hasActiveSession && userState === UserState.ACTIVE_SESSION) {
+        // Small delay to allow network to stabilize
+        setTimeout(() => {
+          refreshUserData().catch(error => {
+            console.error('UserContext: Visibility change refresh failed:', error);
+          });
+        }, 1000);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [hasActiveSession, userState, refreshUserData]);
 
   // Update user preferences
   const updateUserPreferences = (newPreferences: Partial<UserPreferences>) => {
@@ -589,7 +754,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return userProfile.gender;
   };
 
- // Debug logging for state changes
+  // Enhanced debug logging for state changes
   useEffect(() => {
     console.log('UserContext State Update:', {
       userState,
@@ -597,7 +762,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isLoading,
       userRole: userProfile?.role,
       userName: userProfile?.fullName,
-      initializationComplete: initializationCompleteRef.current
+      initializationComplete: initializationCompleteRef.current,
+      retryCount: refreshRetryCount.current
     });
   }, [userState, hasActiveSession, isLoading, userProfile]);
 
@@ -610,7 +776,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isLoading,
     userState,
     refreshUserData,
-    clearUserData,
+    clearUserData: () => clearUserData('manual'),
     getFilteredNavItems,
     canAccessRoute,
     updateUserPreferences,

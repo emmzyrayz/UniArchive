@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { MaterialInfo } from '@/app/upload/page';
+import type { MaterialInfo } from '@/types/materialUpload';
 import { Section } from '@/components/upload/TextUploader';
 import Image from 'next/image';
 import katex from 'katex';
 
-type TextPreviewProps = {
+export type TextPreviewProps = {
   materialInfo: MaterialInfo;
 };
 

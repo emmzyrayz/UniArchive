@@ -14,6 +14,8 @@ import { AdminProvider } from "@/context/adminContext";
 import RouteProtectionProvider from "@/components/protectedRoute";
 import DebugUserContext from "@/utils/DebugUserContext";
 import { SchoolProvider } from "@/context/schoolContext";
+import { CourseProvider } from "@/context/courseContext";
+import { MaterialProvider } from "@/context/materialContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -78,9 +80,13 @@ export default function RootLayout({
                 <SchoolProvider>
                   {" "}
                   {/* Wrap with SchoolProvider */}
-                  <ClientWrapper>
-                    <NavigationWrapper> {children}</NavigationWrapper>
-                  </ClientWrapper>
+                  <CourseProvider>
+                    <MaterialProvider>
+                      <ClientWrapper>
+                        <NavigationWrapper>{children}</NavigationWrapper>
+                      </ClientWrapper>
+                    </MaterialProvider>
+                  </CourseProvider>
                 </SchoolProvider>
               </AdminProvider>
             </RouteProtectionProvider>

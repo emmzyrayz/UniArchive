@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { MaterialInfo } from '@/app/upload/page';
+import type { MaterialInfo } from '@/types/materialUpload';
 
-type VideoPreviewProps = {
+export type VideoPreviewProps = {
   materialInfo: MaterialInfo;
 };
 

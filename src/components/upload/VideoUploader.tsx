@@ -30,13 +30,13 @@ interface VideoMetadata {
 }
 
 // Video source type
-type VideoSource = {
+export type VideoSource = {
   type: 'file' | 'url';
   data: File | string;
   metadata: VideoMetadata;
 };
 
-type VideoUploaderProps = {
+export type VideoUploaderProps = {
   onVideoSelected: (videoSource: VideoSource | null) => void;
   maxFileSizeMB?: number;
 };

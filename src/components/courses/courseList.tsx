@@ -30,6 +30,22 @@ export default function CourseList() {
     }
   }, [isInitialized, fetchCourses]);
 
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    if (showCreateEditor) {
+      // Prevent background scroll
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Restore background scroll
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup function to restore scroll on unmount
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showCreateEditor]);
+
   // Filter courses by search term
   const filteredCourses = useMemo(() => {
     if (!searchTerm) return courses;
@@ -128,21 +144,47 @@ export default function CourseList() {
       </div>
       {/* New Course Editor Modal */}
       {showCreateEditor && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full">
-            <CourseEditor
-              initialData={{}}
-              onSave={(data) => { uploadCourse(data); setShowCreateEditor(false); }}
-              isLoading={isLoading}
-              mode="create"
-            />
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={() => setShowCreateEditor(false)}
-                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-              >
-                Cancel
-              </button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          {/* Scrollable container */}
+          <div className="w-full max-w-4xl max-h-full overflow-y-auto">
+            {/* Modal content */}
+            <div className="bg-white rounded-lg shadow-xl my-8">
+              {/* Header with close button */}
+              <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white rounded-t-lg z-10">
+                <h2 className="text-xl font-bold text-gray-900">Create New Course</h2>
+                <button
+                  onClick={() => setShowCreateEditor(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Course Editor Content */}
+              <div className="p-6">
+                <CourseEditor
+                  initialData={{}}
+                  onSave={(data) => { 
+                    uploadCourse(data); 
+                    setShowCreateEditor(false); 
+                  }}
+                  isLoading={isLoading}
+                  mode="create"
+                />
+              </div>
+              
+              {/* Footer with action buttons */}
+              <div className="flex justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                <button
+                  onClick={() => setShowCreateEditor(false)}
+                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded transition-colors"
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

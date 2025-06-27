@@ -10,7 +10,7 @@ import { CSS } from '@dnd-kit/utilities';
 import Image from 'next/image';
 import katex from 'katex';
 
-type TextUploaderProps = {
+export type TextUploaderProps = {
   onContentChange?: (content: string) => void;
   initialContent?: string;
 };
