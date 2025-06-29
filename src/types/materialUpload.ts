@@ -129,6 +129,8 @@ export type MaterialUploadBase = {
 export type PdfMaterialUpload = MaterialUploadBase & {
   topic: string;
   pdfUrl: string;
+  fileName: string; // Backblaze storage file name (required for signed URL)
+  signedUrl?: string; // Signed URL for secure access
   pageCount?: number;
   isSearchable?: boolean;
   textContent?: string;
@@ -139,6 +141,8 @@ export type PdfMaterialUpload = MaterialUploadBase & {
 export type ImageMaterialUpload = MaterialUploadBase & {
   topic: string;
   imageUrls: string[];
+  fileNames: string[]; // Array of Backblaze storage file names
+  signedUrls?: string[]; // Array of signed URLs for secure access
   thumbnailUrls?: string[];
   dimensions?: { width: number; height: number }[];
   totalImages: number;
@@ -150,6 +154,8 @@ export type ImageMaterialUpload = MaterialUploadBase & {
 export type VideoMaterialUpload = MaterialUploadBase & {
   topic: string;
   videoUrl: string;
+  fileName: string; // Backblaze storage file name (required for signed URL)
+  signedUrl?: string; // Signed URL for secure access
   thumbnailUrl?: string;
   duration?: number;
   resolution?: string;
@@ -346,11 +352,12 @@ export type MaterialInfo = {
   semester: string;
   course: string;
   session: string;
+  uploadedFileUrl: string;
   files: File[] | null;
   videoSource?: VideoSource | null;
   textContent?: string;
   topic: string;
-  metadata?: Record<string, any>; 
+  metadata?: Record<string, unknown>; 
 };
 
 // Define the debug info interface

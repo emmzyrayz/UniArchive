@@ -7,6 +7,7 @@ import MaterialList from '@/components/upload/MaterialList';
 import { MaterialProvider, useMaterial } from '@/context/materialContext';
 import { MaterialInfo } from '@/types/materialUpload';
 
+
 function MaterialStats() {
   const { materials, isInitialized } = useMaterial();
   return (
@@ -77,6 +78,7 @@ function MaterialDataManagerPage() {
         department: '',
         level: '',
         semester: '',
+        uploadedFileUrl: '',
         course: '',
         session: '',
         files: null,
@@ -106,6 +108,7 @@ function MaterialDataManagerPage() {
       course: '',
       session: new Date().getFullYear().toString(), // Current year as default session
       files: null,
+      uploadedFileUrl: '',
       videoSource: null,
       textContent: '',
       topic: '',

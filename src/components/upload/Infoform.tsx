@@ -16,7 +16,7 @@ export type InfoFormProps = {
     authorEmail?: string;
     authorRole?: string;
     session?: string;
-    metadata?: Record<string, string>;
+    metadata?: Record<string, unknown>;
   };
   userProfile?: User | null;
   onChange: (name: string, value: string) => void;

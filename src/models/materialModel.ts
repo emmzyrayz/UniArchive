@@ -44,6 +44,9 @@ export interface IBaseMaterial {
   tableOfContent: string[];
   tags: string[];
   keywords: string[];
+  schoolName: string;
+  facultyName: string;
+  departmentName: string;
   
   // Ratings and Comments
   comments: IComment[];
@@ -155,6 +158,8 @@ export interface IPdfMaterial extends IBaseMaterial, Document {
   materialType: "PDF";
   topic: string;
   pdfUrl: string;
+  fileName: string; // Backblaze storage file name (required for signed URL)
+  signedUrl?: string; // Signed URL for secure access
   pageCount?: number;
   isSearchable?: boolean;
   textContent?: string;
@@ -165,6 +170,8 @@ export interface IImageMaterial extends IBaseMaterial, Document {
   materialType: "IMAGE";
   topic: string;
   imageUrls: string[];
+  fileNames: string[]; // Array of Backblaze storage file names
+  signedUrls?: string[]; // Array of signed URLs for secure access
   thumbnailUrls?: string[];
   dimensions?: { width: number; height: number }[];
   totalImages: number;
@@ -176,6 +183,8 @@ export interface IVideoMaterial extends IBaseMaterial, Document {
   materialType: "VIDEO";
   topic: string;
   videoUrl: string;
+  fileName: string; // Backblaze storage file name (required for signed URL)
+  signedUrl?: string; // Signed URL for secure access
   thumbnailUrl?: string;
   duration?: number;
   resolution?: string;
@@ -402,6 +411,9 @@ export const BaseMaterialFields = {
   tableOfContent: [String],
   tags: [{ type: String, index: true }], // For better searchability
   keywords: [String], // SEO and search keywords
+  schoolName: { type: String, required: true },
+  facultyName: { type: String, required: true },
+  departmentName: { type: String, required: true },
   
   // Ratings and Comments
   comments: [CommentSchema],
@@ -427,6 +439,8 @@ const PdfMaterialSchema = new Schema({
   ...BaseMaterialFields,
   topic: { type: String, required: true },
   pdfUrl: { type: String, required: true },
+  fileName: { type: String, required: true }, // Backblaze storage file name
+  signedUrl: { type: String }, // Signed URL for secure access
   pageCount: { type: Number },
   isSearchable: { type: Boolean, default: false },
   textContent: { type: String }, // For full-text search
@@ -443,17 +457,19 @@ export const PdfMaterial = mongoose.models.PdfMaterial ||
 
 // Image Material Schema
 const ImageMaterialSchema = new Schema({
-  ...BaseMaterialFields,
-  topic: { type: String, required: true },
-  imageUrls: [{ type: String, required: true }],
-  thumbnailUrls: [String], // Compressed versions for quick loading
-  dimensions: [{ 
-    width: { type: Number },
-    height: { type: Number }
-  }],
-  totalImages: { type: Number, required: true, min: 1 },
-  isProcessed: { type: Boolean, default: false }, // Image processing status
-  ocrText: [String] // OCR extracted text from images
+...BaseMaterialFields,
+topic: { type: String, required: true },
+imageUrls: [{ type: String, required: true }],
+fileNames: [{ type: String, required: true }], // Array of Backblaze storage file names
+signedUrls: [String], // Array of signed URLs for secure access
+thumbnailUrls: [String], // Compressed versions for quick loading
+dimensions: [{
+width: { type: Number },
+height: { type: Number }
+}],
+totalImages: { type: Number, required: true, min: 1 },
+isProcessed: { type: Boolean, default: false }, // Image processing status
+ocrText: [String] // OCR extracted text from images
 });
 
 ImageMaterialSchema.index({ courseId: 1, materialType: 1, isApproved: 1 });
@@ -467,6 +483,8 @@ const VideoMaterialSchema = new Schema({
   ...BaseMaterialFields,
   topic: { type: String, required: true },
   videoUrl: { type: String, required: true },
+  fileName: { type: String, required: true }, // Backblaze storage file name
+  signedUrl: { type: String }, // Signed URL for secure access
   thumbnailUrl: { type: String },
   duration: { type: Number }, // Duration in seconds
   resolution: { type: String }, // e.g., "1920x1080", "720p"

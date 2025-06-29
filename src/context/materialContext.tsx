@@ -46,6 +46,37 @@ interface UploadLimits {
   allowedFileTypes: string[];
 }
 
+// Define the API response structure for fetching materials
+// interface MaterialApiResponse {
+//   materials: Material[];
+//   pagination?: PaginationInfo;
+//   statistics?: Statistics;
+//   message?: string;
+// }
+
+// Define the structure for materials returned from API before processing
+interface MaterialFromApi {
+  _id: string;
+  materialTitle: string;
+  materialType: string;
+  materialUrl: string;
+  fileName?: string;
+  uploaderUpid: string;
+  uploaderName: string;
+  uploaderRole: string;
+  courseId: string;
+  courseName: string;
+  status: string;
+  isApproved: boolean;
+  createdAt: string;
+  updatedAt: string;
+  fileSize?: number;
+  mimeType?: string;
+  cloudFileName?: string;
+  cloudPublicId?: string;
+  rejectionReason?: string;
+}
+
 interface MaterialContextType {
   materials: Material[];
   isLoading: boolean;
@@ -505,7 +536,24 @@ export const MaterialProvider: React.FC<MaterialProviderProps> = ({ children }) 
         throw new Error(result.message || 'Failed to fetch materials');
       }
       
-      setMaterials(result.materials || []);
+      // Attach signed URLs for private Backblaze files
+      const materialsWithSignedUrls = await Promise.all(
+        (result.materials || []).map(async (material: MaterialFromApi) => {
+          // Only attach signedUrl for PDF materialType
+          if (material.materialType === 'PDF' && material.fileName) {
+            try {
+              const res = await fetch(`/api/signed-url?file=${encodeURIComponent(material.fileName)}`);
+              if (res.ok) {
+                const { url: signedUrl } = await res.json();
+                return { ...material, signedUrl };
+              }
+            } catch {}
+            return { ...material };
+          }
+          return material;
+        })
+      );
+      setMaterials(materialsWithSignedUrls);
       setPagination(result.pagination || null);
       setStatistics(result.statistics || null);
     } catch (err) {
