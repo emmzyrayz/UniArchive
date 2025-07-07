@@ -33,7 +33,7 @@ const getMaterialModel = (materialType: string) => {
 // Type for the incoming request data
 interface MaterialUploadData extends Partial<MaterialInput> {
   materialTitle: string;
-  materialType: "PDF" | "IMAGE" | "VIDEO";
+  materialType: "PDF" | "IMAGE" | "VIDEO" | "TEXT";
   courseId: string;
   materialUrl?: string;
   fileName?: string;
@@ -45,6 +45,9 @@ interface MaterialUploadData extends Partial<MaterialInput> {
   uploaderUpid: string;
   uploaderRole: "admin" | "mod" | "contributor" | undefined;
   courseName: string;
+  departmentName?: string;
+  facultyName?: string;
+  schoolName?: string;
 }
 
 // Type for the material data to be saved
@@ -74,6 +77,9 @@ interface MaterialCreateData extends Partial<MaterialInput> {
   editHistory: IEditRecord[];
   topic: string;
   createdAt: Date;
+  departmentName: string;
+  facultyName: string;
+  schoolName: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -83,6 +89,7 @@ export async function POST(req: NextRequest) {
 
     let data: MaterialUploadData;
     const contentType = req.headers.get("content-type") || "";
+    
 
     try {
       if (contentType.includes("multipart/form-data")) {
@@ -90,14 +97,27 @@ export async function POST(req: NextRequest) {
         console.log("Processing FormData request");
         const formData = await req.formData();
 
-        // FIXED: Helper function to safely get form data values with proper empty string handling
         const getFormValue = (key: string): string | undefined => {
           const value = formData.get(key);
           if (typeof value === "string") {
-            // Return undefined for empty strings to ensure proper validation
-            return value.trim() || undefined;
+            return value;
           }
           return undefined;
+        };
+
+        // Add field mapping for client-server differences
+        const fieldMappings: Record<string, string> = {
+          course: "courseName",
+          uploader: "uploaderName",
+          department: "departmentName",
+          faculty: "facultyName",
+          school: "schoolName",
+          // Add other field mappings if needed
+        };
+
+        const getMappedValue = (key: string) => {
+          const mappedKey = fieldMappings[key] || key;
+          return getFormValue(mappedKey);
         };
 
         const getFormArray = (key: string): string[] => {
@@ -127,15 +147,18 @@ export async function POST(req: NextRequest) {
 
         // Build the data object with proper typing
         data = {
-          materialTitle: getFormValue("materialTitle") || "",
+          materialTitle: getMappedValue("materialTitle") || "",
           materialType:
-            (getFormValue("materialType") as "PDF" | "IMAGE" | "VIDEO") ||
-            "PDF",
-          courseId: getFormValue("courseId") || "",
-          materialUrl: getFormValue("materialUrl"),
-          fileName: getFormValue("fileName"),
-          cloudFileName: getFormValue("cloudFileName"),
-          cloudPublicId: getFormValue("cloudPublicId"),
+            (getMappedValue("materialType") as
+              | "PDF"
+              | "IMAGE"
+              | "VIDEO"
+              | "TEXT") || "PDF",
+          courseId: getMappedValue("courseId") || "",
+          materialUrl: getFormValue("pdfUrl"),
+          pdfUrl: getFormValue("pdfUrl"),
+          fileName: getFormValue("courseName"),
+          cloudFileName: getFormValue("fileName"),
           mimeType: getFormValue("mimeType"),
           fileSize: getFormNumber("fileSize"),
           uploaderName: getFormValue("uploaderName") || "",
@@ -158,7 +181,12 @@ export async function POST(req: NextRequest) {
             | "REJECTED"
             | "ARCHIVED"
             | undefined,
+          departmentName: getFormValue("departmentName"),
+          facultyName: getFormValue("facultyName"),
+          schoolName: getFormValue("schoolName"),
         };
+
+        console.error("Received data:", data);
 
         console.log("Parsed FormData:", Object.keys(data));
         console.log("FormData values after parsing:", {
@@ -168,6 +196,9 @@ export async function POST(req: NextRequest) {
           uploaderUpid: data.uploaderUpid,
           uploaderRole: data.uploaderRole,
           courseName: data.courseName,
+          departmentName: data.departmentName,
+          facultyName: data.facultyName,
+          schoolName: data.schoolName,
         });
       } else if (contentType.includes("application/json")) {
         // Handle JSON
@@ -219,6 +250,9 @@ export async function POST(req: NextRequest) {
       "uploaderUpid",
       "uploaderRole",
       "courseName",
+      "departmentName",
+      "facultyName",
+      "schoolName",
     ];
 
     // Check for missing or empty required fields
@@ -226,6 +260,8 @@ export async function POST(req: NextRequest) {
       const value = data[field];
       return !value || (typeof value === "string" && value.trim() === "");
     });
+
+    console.error("Missing or empty required fields:", missingFields);
 
     if (missingFields.length > 0) {
       console.error("Missing or empty required fields:", missingFields);
@@ -307,6 +343,9 @@ export async function POST(req: NextRequest) {
 
       // Timestamps
       createdAt: new Date(),
+      departmentName: data.departmentName || "Unknown Department",
+      facultyName: data.facultyName || "Unknown Faculty",
+      schoolName: data.schoolName || "Unknown School",
     };
 
     // Set URL based on material type

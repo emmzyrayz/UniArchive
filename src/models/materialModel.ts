@@ -20,7 +20,7 @@ export interface IBaseMaterial {
   // Material metadata
   materialTitle: string;
   materialDescription: string;
-  materialType: "PDF" | "IMAGE" | "VIDEO";
+  materialType: "PDF" | "IMAGE" | "VIDEO" | "TEXT";
   
   // File metadata
   fileSize: number;
@@ -204,8 +204,8 @@ export interface IVideoMaterial extends IBaseMaterial, Document {
 export type Material = IPdfMaterial | IImageMaterial | IVideoMaterial;
 
 // Helper type for creating/updating materials (without Document-specific fields)
-export type MaterialInput = Omit<IBaseMaterial, '_id' | '__v' | 'createdAt' | 'updatedAt'> & {
-  materialType: "PDF" | "IMAGE" | "VIDEO";
+export type MaterialInput = Omit<IBaseMaterial, '_id' | '__v' | 'createdAt' | 'updatedAt' | 'muid' | 'pmuid' > & {
+  materialType: "PDF" | "IMAGE" | "VIDEO" | "TEXT";
   // Type-specific fields
   topic?: string;
   pdfUrl?: string;
@@ -344,7 +344,7 @@ export const BaseMaterialFields = {
   materialDescription: { type: String, required: true, maxlength: 2000 },
   materialType: {
     type: String,
-    enum: ["PDF", "IMAGE", "VIDEO"],
+    enum: ["PDF", "IMAGE", "VIDEO", "TEXT"],
     required: true,
     index: true
   },

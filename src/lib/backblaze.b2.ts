@@ -1,5 +1,10 @@
 // lib/backblaze-b2.ts
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export interface B2Config {
@@ -24,16 +29,21 @@ export interface PresignedUrlResult {
   error?: string;
 }
 
+export interface DeleteResult {
+  success: boolean;
+  error?: string;
+}
+
 export class BackblazeB2Client {
   private s3Client: S3Client;
   private bucketName: string;
 
   constructor(config: B2Config) {
     this.bucketName = config.bucketName;
-    
+
     this.s3Client = new S3Client({
       endpoint: `https://${config.endpoint}`,
-      region: 'eu-central-003', // Backblaze B2 region
+      region: "eu-central-003", // Backblaze B2 region
       credentials: {
         accessKeyId: config.keyId,
         secretAccessKey: config.applicationKey,
@@ -52,12 +62,12 @@ export class BackblazeB2Client {
   ): Promise<UploadResult> {
     try {
       const sanitizedFileName = this.sanitizeFileName(fileName);
-      
+
       const command = new PutObjectCommand({
         Bucket: this.bucketName,
         Key: sanitizedFileName,
         Body: file,
-        ContentType: contentType || 'application/octet-stream',
+        ContentType: contentType || "application/octet-stream",
       });
 
       await this.s3Client.send(command);
@@ -70,10 +80,34 @@ export class BackblazeB2Client {
         fileName: sanitizedFileName,
       };
     } catch (error) {
-      console.error('B2 Upload Error:', error);
+      console.error("B2 Upload Error:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Upload failed',
+        error: error instanceof Error ? error.message : "Upload failed",
+      };
+    }
+  }
+
+  /**
+   * Delete a file from Backblaze B2
+   */
+  async deleteFile(fileName: string): Promise<DeleteResult> {
+    try {
+      const command = new DeleteObjectCommand({
+        Bucket: this.bucketName,
+        Key: fileName,
+      });
+
+      await this.s3Client.send(command);
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("B2 Delete Error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Delete failed",
       };
     }
   }
@@ -88,11 +122,11 @@ export class BackblazeB2Client {
   ): Promise<PresignedUrlResult> {
     try {
       const sanitizedFileName = this.sanitizeFileName(fileName);
-      
+
       const command = new PutObjectCommand({
         Bucket: this.bucketName,
         Key: sanitizedFileName,
-        ContentType: contentType || 'application/octet-stream',
+        ContentType: contentType || "application/octet-stream",
       });
 
       const uploadUrl = await getSignedUrl(this.s3Client, command, {
@@ -107,10 +141,13 @@ export class BackblazeB2Client {
         downloadUrl,
       };
     } catch (error) {
-      console.error('B2 Presigned URL Error:', error);
+      console.error("B2 Presigned URL Error:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate presigned URL',
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to generate presigned URL",
       };
     }
   }
@@ -137,10 +174,13 @@ export class BackblazeB2Client {
         downloadUrl,
       };
     } catch (error) {
-      console.error('B2 Download URL Error:', error);
+      console.error("B2 Download URL Error:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate download URL',
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to generate download URL",
       };
     }
   }
@@ -158,15 +198,15 @@ export class BackblazeB2Client {
   private sanitizeFileName(fileName: string): string {
     // Remove or replace unsafe characters
     const sanitized = fileName
-      .replace(/[^a-zA-Z0-9.-_]/g, '_')
-      .replace(/_{2,}/g, '_')
+      .replace(/[^a-zA-Z0-9.-_]/g, "_")
+      .replace(/_{2,}/g, "_")
       .toLowerCase();
-    
+
     // Ensure file has extension
-    if (!sanitized.includes('.')) {
+    if (!sanitized.includes(".")) {
       return `${sanitized}.bin`;
     }
-    
+
     return sanitized;
   }
 
@@ -176,9 +216,9 @@ export class BackblazeB2Client {
   generateUniqueFileName(originalName: string): string {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
-    const extension = originalName.split('.').pop() || 'bin';
-    const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '');
-    
+    const extension = originalName.split(".").pop() || "bin";
+    const nameWithoutExt = originalName.replace(/\.[^/.]+$/, "");
+
     return `${nameWithoutExt}_${timestamp}_${random}.${extension}`;
   }
 }

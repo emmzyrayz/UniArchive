@@ -39,11 +39,15 @@ export type VideoSource = {
 export type VideoUploaderProps = {
   onVideoSelected: (videoSource: VideoSource | null) => void;
   maxFileSizeMB?: number;
+  title: string;
+  onTitleChange: (title: string) => void;
 };
 
 export const VideoUploader = ({ 
   onVideoSelected, 
-  maxFileSizeMB = 500
+  maxFileSizeMB = 500,
+  title,
+  onTitleChange
 }: VideoUploaderProps) => {
   const [activeTab, setActiveTab] = useState<'file' | 'url'>('file');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -417,6 +421,20 @@ export const VideoUploader = ({
 
   return (
     <div className="mb-6">
+      {/* Add title input above tabs */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Material Title <span className="text-red-500">*</span>
+        </label>
+        <input 
+          type="text"
+          value={title}
+          onChange={(e) => onTitleChange(e.target.value)}
+          placeholder="Enter a descriptive title for your material"
+          className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+        />
+      </div>
+      
       {/* Tabs for file/URL selection */}
       <div className="flex border-b mb-4">
         <button

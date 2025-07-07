@@ -336,18 +336,21 @@ export type VideoSource = {
 export type userRole = 'admin' | 'superadmin' | 'contributor'| "devsupport" | 'student' | 'mod' | "lecturer" | "guest";
 
 export type MaterialInfo = {
-  title: string;
-  description: string;
-  category: MaterialCategory | null; // Use the enum type
-  subcategory: MaterialSubcategory | null; // Use the enum type  
+
+  materialTitle: string; 
+  materialDescription: string; 
+  materialType: 'PDF' | 'IMAGE' | 'VIDEO' | 'TEXT';
+  category: MaterialCategory | null;
+  subcategory: MaterialSubcategory | null;  
   tags: string[];
+  isPublic?: boolean;
   visibility: 'public' | 'private';
-  authorName: string;
-  authorEmail: string;
-  authorRole: userRole;
-  school: string;
-  faculty: string;
-  department: string;
+ uploaderName: string;
+  uploaderRole: userRole; 
+  courseId: string; 
+  schoolName: string;
+  facultyName: string;
+  departmentName: string;
   level: string;
   semester: string;
   course: string;
@@ -357,7 +360,17 @@ export type MaterialInfo = {
   videoSource?: VideoSource | null;
   textContent?: string;
   topic: string;
-  metadata?: Record<string, unknown>; 
+  metadata?: Record<string, string>; 
+
+  pdfUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  format?: string;
+  originalFileName?: string;
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
+  isApproved?: boolean;
+  tableOfContent?: string[];
+  keywords?: string[];
 };
 
 // Define the debug info interface

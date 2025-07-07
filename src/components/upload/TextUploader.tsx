@@ -13,6 +13,8 @@ import katex from 'katex';
 export type TextUploaderProps = {
   onContentChange?: (content: string) => void;
   initialContent?: string;
+  title: string;
+  onTitleChange: (title: string) => void;
 };
 
 export type Section = {
@@ -31,7 +33,8 @@ export type Section = {
 
 
 
-export const TextUploader = ({ onContentChange = () => {}, initialContent }: TextUploaderProps) => {
+export const TextUploader = ({ onContentChange = () => {}, initialContent, title,
+  onTitleChange }: TextUploaderProps) => {
   const [sections, setSections] = useState<Section[]>([]);
   const [showFormulaModal, setShowFormulaModal] = useState(false);
   const [currentFormulaId, setCurrentFormulaId] = useState<string | null>(null);
@@ -550,6 +553,22 @@ const SortableSection = ({ section }: { section: Section }) => {
           <h1 className="text-2xl font-bold">Content Creator</h1>
           <p className="text-gray-600">Create structured content with titles, text, formulas, and images</p>
         </div>
+
+         {/* Add title section above action bar */}
+      <div className="max-w-5xl mx-auto w-full mb-4">
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Material Title <span className="text-red-500">*</span>
+          </label>
+          <input 
+            type="text"
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            placeholder="Enter a descriptive title for your material"
+            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+          />
+        </div>
+      </div>
         
         {/* Main content */}
         <div className="flex flex-col w-full items-center justify-center p-4 gap-5 bg-white rounded-lg shadow-sm border">

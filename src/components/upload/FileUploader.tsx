@@ -18,6 +18,8 @@ export type FileUploaderProps = {
   maxFileSizeMB?: number;
   subcategory?: MaterialSubcategory | null;
   initialTopic?: string;
+  title: string;
+  onTitleChange: (title: string) => void;
 };
 
 // Define which subcategories require table of contents
@@ -34,7 +36,10 @@ export const FileUploader = ({
   acceptedTypes = '.pdf,.jpg,.jpeg,.png',
   maxFileSizeMB = 50,
   subcategory = null,
-  initialTopic = ''
+  initialTopic = '',
+  title,
+  onTitleChange
+  
 }: FileUploaderProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
   const [previews, setPreviews] = useState<{ url: string; type: string }[]>([]);
@@ -225,6 +230,20 @@ export const FileUploader = ({
 
   return (
     <div className="mb-6">
+            {/* Add title input */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Material Title <span className="text-red-500">*</span>
+        </label>
+        <input 
+          type="text"
+          value={title}
+          onChange={(e) => onTitleChange(e.target.value)}
+          placeholder="Enter a descriptive title for your material"
+          className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+        />
+      </div>
+
        {/* Topic/Table of Contents Section */}
       {subcategory && (
         <div className="mb-6">

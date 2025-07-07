@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/context/userContext';
 import MaterialList from '@/components/upload/MaterialList';
 import { MaterialProvider, useMaterial } from '@/context/materialContext';
-import { MaterialInfo } from '@/types/materialUpload';
+import { MaterialInfo, userRole } from '@/types/materialUpload';
 
 
 function MaterialStats() {
@@ -64,18 +64,19 @@ function MaterialDataManagerPage() {
   const createDefaultMaterialInfo = (): MaterialInfo => {
     if (!userProfile) {
       return {
-        title: '',
-        description: '',
+        materialTitle: '',
+      materialDescription: '',
+      materialType: 'PDF',
         category: 'LEARNING_AIDS',
       subcategory: 'LECTURE_NOTE',
         tags: [],
         visibility: 'public',
-        authorName: '',
-        authorEmail: '',
-        authorRole: 'student',
-        school: '',
-        faculty: '',
-        department: '',
+        uploaderName: '',
+        uploaderRole: 'student',
+        courseId: '',
+        schoolName: '',
+        facultyName: '',
+        departmentName: '',
         level: '',
         semester: '',
         uploadedFileUrl: '',
@@ -91,22 +92,23 @@ function MaterialDataManagerPage() {
 
     // Populate with user data
     return {
-      title: '',
-      description: '',
+      materialTitle: '',
+    materialDescription: '',
+    materialType: 'PDF',
       category: 'LEARNING_AIDS',
       subcategory: 'LECTURE_NOTE',
       tags: [],
       visibility: 'public',
-      authorName: userProfile.fullName || '',
-      authorEmail: userProfile.email || '',
-      authorRole: userProfile.role || 'student',
-      school: userProfile.school || '',
-      faculty: userProfile.faculty || '',
-      department: userProfile.department || '',
+      uploaderName: userProfile.fullName || '',
+      uploaderRole: (userProfile.role as userRole) || 'student',
+      courseId: '',
+      schoolName: userProfile.school || '',
+      facultyName: userProfile.faculty || '',
+      departmentName: userProfile.department || '',
       level: userProfile.level || '',
       semester: '',
       course: '',
-      session: new Date().getFullYear().toString(), // Current year as default session
+      session: new Date().getFullYear().toString(),
       files: null,
       uploadedFileUrl: '',
       videoSource: null,
@@ -116,7 +118,7 @@ function MaterialDataManagerPage() {
         upid: userProfile.upid || '',
         uuid: userProfile.uuid || '',
         regNumber: userProfile.regNumber || '',
-        isVerified: userProfile.isVerified || false,
+        isVerified: userProfile.isVerified?.toString() || 'false',
         profilePhoto: userProfile.profilePhoto || '',
         phone: userProfile.phone || '',
         gender: userProfile.gender || '',

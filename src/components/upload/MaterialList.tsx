@@ -8,6 +8,7 @@ import { User } from '@/context/userContext';
 
 interface MaterialItem {
   muid: string;
+  courseId: string;
   materialTitle: string;
   materialDescription?: string;
   category?: MaterialCategory;
@@ -17,6 +18,7 @@ interface MaterialItem {
   uploaderName: string;
   authorEmail?: string;
   authorRole?: userRole;
+  uploaderRole?: userRole; // Added this property
   schoolName?: string;
   facultyName?: string;
   departmentName?: string;
@@ -28,7 +30,7 @@ interface MaterialItem {
   materialType: 'PDF' | 'IMAGE' | 'VIDEO' | 'TEXT';
   textContent?: string;
   topic?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, string>;
   status?: string;
   createdAt: Date;
   updatedAt?: Date;
@@ -53,20 +55,27 @@ export default function MaterialList({ defaultMaterialInfo, userProfile }: Mater
     const currentYear = new Date().getFullYear();
     const academicSession = `${currentYear}/${currentYear + 1}`;
     
-    return defaultMaterialInfo || {
-      title: '',
-      description: '',
+    // If defaultMaterialInfo is provided, use it
+    if (defaultMaterialInfo) {
+      return defaultMaterialInfo;
+    }
+    
+    // Otherwise, create default MaterialInfo with all required properties
+    return {
+      materialTitle: '',
+      materialDescription: '',
+      materialType: 'PDF',
       category: null,
       subcategory: null,
       tags: [],
       visibility: 'public',
-      authorName: userProfile?.fullName || '',
-      authorEmail: userProfile?.email || '',
-      authorRole: userProfile?.role || 'student',
-      school: userProfile?.school || '',
-      faculty: userProfile?.faculty || '',
-      department: userProfile?.department || '',
+      uploaderName: userProfile?.fullName || '',
+      uploaderRole: userProfile?.role || 'student',
+      schoolName: userProfile?.school || '',
+      facultyName: userProfile?.faculty || '',
+      departmentName: userProfile?.department || '',
       level: userProfile?.level || '',
+      courseId: '',
       semester: '',
       uploadedFileUrl: '',
       course: '',
@@ -93,7 +102,7 @@ export default function MaterialList({ defaultMaterialInfo, userProfile }: Mater
     error,
     fetchMaterials,
     isInitialized,
-    clearError,
+    setError,
     uploadMaterial,
     deleteMaterial,
   } = useMaterial();
@@ -137,17 +146,31 @@ export default function MaterialList({ defaultMaterialInfo, userProfile }: Mater
 
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => clearError(), 5000);
+      const timer = setTimeout(() => setError(null), 5000);
       return () => clearTimeout(timer);
     }
-  }, [error, clearError]);
+  }, [error, setError]);
 
   // Handle material info changes
   const handleMaterialInfoChange = (name: string, value: string) => {
-    setMaterialInfo(prev => ({
-      ...prev,
-      [name]: value
-    }));
+     // Map frontend names to backend names
+  const fieldMap: Record<string, string> = {
+    title: 'materialTitle',
+    description: 'materialDescription',
+    school: 'schoolName',
+    faculty: 'facultyName',
+    department: 'departmentName',
+    courseId: 'courseId',
+    course: 'course',
+    materialType: 'materialType',
+    pdfUrl: 'pdfUrl',
+    fileName: 'fileName'
+  };
+
+  setMaterialInfo(prev => ({
+    ...prev,
+    [fieldMap[name] || name]: value
+  }));
   };
 
   // Handle metadata changes
@@ -208,18 +231,19 @@ export default function MaterialList({ defaultMaterialInfo, userProfile }: Mater
     const academicSession = `${currentYear}/${currentYear + 1}`;
     
     setMaterialInfo({
-      title: '',
-      description: '',
+      materialTitle: '',
+      materialDescription: '',
+       materialType: 'PDF',
       category: null,
       subcategory: null,
       tags: [],
       visibility: 'public',
-      authorName: userProfile?.fullName || '',
-      authorEmail: userProfile?.email || '',
-      authorRole: userProfile?.role || 'student',
-      school: userProfile?.school || '',
-      faculty: userProfile?.faculty || '',
-      department: userProfile?.department || '',
+      uploaderName: userProfile?.fullName || '',
+      uploaderRole: userProfile?.role || 'student',
+      courseId: '',
+      schoolName: userProfile?.school || '',
+      facultyName: userProfile?.faculty || '',
+      departmentName: userProfile?.department || '',
       level: userProfile?.level || '',
       semester: '',
       course: '',
@@ -246,7 +270,7 @@ export default function MaterialList({ defaultMaterialInfo, userProfile }: Mater
   const handleSubmitMaterial = async (): Promise<boolean> => {
     try {
       // Validate required fields
-      if (!materialInfo.title || !materialInfo.category || !materialInfo.subcategory || !materialInfo.course) {
+      if (!materialInfo.materialTitle || !materialInfo.category || !materialInfo.subcategory || !materialInfo.course) {
         throw new Error('Please fill in all required fields');
       }
 
@@ -266,45 +290,53 @@ export default function MaterialList({ defaultMaterialInfo, userProfile }: Mater
       // Create FormData object
       const formData = new FormData();
       
-      // Add material info
-      formData.append('title', materialInfo.title);
-      formData.append('description', materialInfo.description);
-      formData.append('university', materialInfo.school);
-      formData.append('faculty', materialInfo.faculty);
-      formData.append('department', materialInfo.department);
+      // Add required fields for all types
+      formData.append('materialTitle', materialInfo.materialTitle);
+      formData.append('materialDescription', materialInfo.materialDescription);
+      formData.append('schoolName', materialInfo.schoolName);
+formData.append('facultyName', materialInfo.facultyName);
+formData.append('departmentName', materialInfo.departmentName);
       formData.append('level', materialInfo.level);
-      formData.append('course', materialInfo.course);
+      formData.append('pdfUrl', materialInfo.pdfUrl || '');
+formData.append('fileName', materialInfo.fileName || '');
+      formData.append('courseName', materialInfo.course);
+      formData.append('courseId', materialInfo.courseId);
       formData.append('semester', materialInfo.semester);
       formData.append('session', materialInfo.session);
       formData.append('category', materialInfo.category!);
       formData.append('subcategory', materialInfo.subcategory!);
       formData.append('topic', materialInfo.topic);
-      formData.append('visibility', materialInfo.visibility);
-      formData.append('authorName', materialInfo.authorName);
-      formData.append('authorEmail', materialInfo.authorEmail);
-      formData.append('authorRole', materialInfo.authorRole);
-      
+      formData.append('isPublic', materialInfo.visibility === 'public' ? 'true' : 'false');
+      formData.append('uploaderName', materialInfo.uploaderName);
+      formData.append('uploaderRole', materialInfo.uploaderRole);
+      formData.append('uploaderUpid', userProfile?.upid || '');
+
       // Add tags
       if (materialInfo.tags && materialInfo.tags.length > 0) {
         formData.append('tags', JSON.stringify(materialInfo.tags));
       }
-      
-      // Add metadata
-      if (materialInfo.metadata) {
-        formData.append('metadata', JSON.stringify(materialInfo.metadata));
-      }
-      
-      // Add content based on type
+
+      // Add metadata with proper type checking
+    if (materialInfo.metadata && typeof materialInfo.metadata === 'object') {
+      // Convert metadata to ensure all values are strings
+      const stringifiedMetadata: Record<string, string> = {};
+      Object.entries(materialInfo.metadata).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          stringifiedMetadata[key] = String(value);
+        }
+      });
+      formData.append('metadata', JSON.stringify(stringifiedMetadata) as string);
+    }
+
+      // Add content and materialType based on type
       if (editorType === 'file' && materialInfo.files) {
-        materialInfo.files.forEach((file) => {
-          formData.append('files', file);
-        });
+        formData.append('file', materialInfo.files[0]);
+        formData.append('materialType', 'PDF'); // or 'IMAGE' if image
       }
-      
       if (editorType === 'text' && materialInfo.textContent) {
         formData.append('textContent', materialInfo.textContent);
+        formData.append('materialType', 'TEXT');
       }
-      
       if (editorType === 'video' && materialInfo.videoSource) {
         if (materialInfo.videoSource.type === 'file' && materialInfo.videoSource.data instanceof File) {
           formData.append('videoFile', materialInfo.videoSource.data);
@@ -312,23 +344,30 @@ export default function MaterialList({ defaultMaterialInfo, userProfile }: Mater
           formData.append('videoUrl', materialInfo.videoSource.data);
         }
         formData.append('videoMetadata', JSON.stringify(materialInfo.videoSource.metadata));
+        formData.append('materialType', 'VIDEO');
       }
 
-      // Submit the material
-      await uploadMaterial(formData);
-      
-      // Reset form and close editor
+
+       const success = await uploadMaterial(formData);
+       console.log("FormData contents:");
+for (const [key, value] of formData.entries()) {
+  console.log(key, value);
+}
+    
+    if (success) {
+      // Only reset and close on success
       resetFormState();
       setShowCreateEditor(false);
-      
-      // Refresh the materials list
       await fetchMaterials();
-      
       return true;
-    } catch (error) {
-      console.error('Error submitting material:', error);
-      throw error;
     }
+    return false;
+    } catch (err) {
+    console.error('Error in handleSubmitMaterial:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Submission failed. Please try again.';
+     setError(errorMessage); // ✅ Now using setError function
+  return false;
+  }
   };
 
   // Handle creating new material
@@ -343,21 +382,22 @@ export default function MaterialList({ defaultMaterialInfo, userProfile }: Mater
     setEditingMaterial(material);
     // Convert material data to MaterialInfo format
     setMaterialInfo({
-      title: material.materialTitle || '',
-      description: material.materialDescription || '',
+     materialTitle: material.materialTitle,
+    materialDescription: material.materialDescription || '',
+    materialType: material.materialType,
       category: material.category || null,
       subcategory: material.subcategory || null,
       tags: material.tags || [],
       visibility: material.isPublic ? 'public' : 'private',
-      authorName: material.uploaderName || '',
-      authorEmail: material.authorEmail || '',
-      authorRole: material.authorRole || 'student',
-      school: material.schoolName || '',
-      faculty: material.facultyName || '',
-      department: material.departmentName || '',
+      uploaderName: material.uploaderName || '',
+      uploaderRole: material.uploaderRole || 'student',
+      schoolName: material.schoolName || '',
+    facultyName: material.facultyName || '',
+    departmentName: material.departmentName || '',
       level: material.level || '',
       semester: material.semester || '',
-      course: material.courseName || '',
+      course: material.courseName,
+    courseId: material.courseId,
       session: material.session || '',
       uploadedFileUrl: material.fileUrl || '',
       files: null,
@@ -391,7 +431,7 @@ export default function MaterialList({ defaultMaterialInfo, userProfile }: Mater
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex justify-between items-center">
             <p className="text-red-700">{error}</p>
-            <button onClick={clearError} className="text-red-500 hover:text-red-700">×</button>
+            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">×</button>
           </div>
         </div>
       )}

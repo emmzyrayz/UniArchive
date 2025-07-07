@@ -1,23 +1,11 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { MaterialCategory, MaterialSubcategory } from '@/types/materialUpload';
+import { MaterialCategory, MaterialSubcategory, MaterialInfo } from '@/types/materialUpload';
 import { User } from '@/context/userContext';
 
 export type InfoFormProps = {
-  materialInfo: {
-    school: string;
-    faculty: string;
-    department: string;
-    level: string;
-    course: string;
-
-    authorName?: string;
-    authorEmail?: string;
-    authorRole?: string;
-    session?: string;
-    metadata?: Record<string, unknown>;
-  };
+  materialInfo: MaterialInfo;
   userProfile?: User | null;
   onChange: (name: string, value: string) => void;
   onMetadataChange: (name: string, value: string) => void;
@@ -151,12 +139,11 @@ export const InfoForm = ({
         
         // Map user profile fields to form fields
         const fieldsToPopulate = [
-          { formField: 'authorName', userField: userProfile.fullName || '' },
-          { formField: 'authorEmail', userField: userProfile.email || '' },
-          { formField: 'authorRole', userField: userProfile.role || 'student' },
-          { formField: 'university', userField: userProfile.school || '' }, // Map school to university
-          { formField: 'faculty', userField: userProfile.faculty || '' },
-          { formField: 'department', userField: userProfile.department || '' },
+          { formField: 'uploaderName', userField: userProfile.fullName || '' },
+          { formField: 'uploaderRole', userField: userProfile.role || 'student' },
+          { formField: 'schoolName', userField: userProfile.school || '' },
+          { formField: 'facultyName', userField: userProfile.faculty || '' },
+          { formField: 'departmentName', userField: userProfile.department || '' },
           { formField: 'level', userField: userProfile.level || '' },
         ];
 
@@ -202,7 +189,7 @@ export const InfoForm = ({
    // Validation function
   const validateField = (name: string, value: string): string => {
     switch (name) {
-      case 'title':
+      case 'materialTitle':
         if (!value.trim()) return 'Title is required';
         if (value.length < 5) return 'Title must be at least 5 characters';
         return '';
@@ -210,21 +197,22 @@ export const InfoForm = ({
         if (!value.trim()) return 'Description is required';
         if (value.length < 10) return 'Description must be at least 10 characters';
         return '';
-      case 'authorName':
+        case 'materialDescription':
+  if (value.length > 500) return 'Description must be less than 500 characters';
+  return '';
+      case 'uploaderName':
         if (!value.trim()) return 'Author name is required';
         return '';
-      case 'authorEmail':
-        if (!value.trim()) return 'Author email is required';
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) return 'Please enter a valid email address';
+      case 'courseId':
+        if (!value.trim()) return 'Course ID is required';
         return '';
-      case 'school':
+      case 'schoolName':
         if (!value.trim()) return 'School is required';
         return '';
-      case 'faculty':
+      case 'facultyName':
         if (!value.trim()) return 'Faculty is required';
         return '';
-      case 'department':
+      case 'departmentName':
         if (!value.trim()) return 'Department is required';
         return '';
       case 'level':
@@ -253,20 +241,14 @@ export const InfoForm = ({
     }));
   };
 
-  // Handle metadata changes
-  const handleMetadataChange = (name: string, value: string) => {
-    if (onMetadataChange) {
-      onMetadataChange(name, value);
-    }
-  };
 
    // Memoize the form completion check function
-  const checkFormCompletion = useCallback(() => {
-    const { school, course, authorName, authorEmail } = materialInfo;
-    return school?.trim() !== '' && 
+   const checkFormCompletion = useCallback(() => {
+    const { schoolName, course, courseId, uploaderName } = materialInfo;
+    return schoolName?.trim() !== '' && 
            course?.trim() !== '' && 
-           authorName?.trim() !== '' && 
-           authorEmail?.trim() !== '';
+           courseId?.trim() !== '' && 
+           uploaderName?.trim() !== '';
   }, [materialInfo]);
 
   // Update form completion status
@@ -334,43 +316,22 @@ export const InfoForm = ({
         <h3 className="text-lg font-medium mb-4 text-gray-800">Author Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="authorName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="uploaderName" className="block text-sm font-medium text-gray-700 mb-1">
               Author Name <span className="text-red-500">*</span>
             </label>
             <input 
-              id="authorName"
-              name="authorName" 
-              value={materialInfo.authorName || ''}
-              onChange={(e) => handleChange('authorName', e.target.value)} 
+              id="uploaderName"
+              name="uploaderName" 
+              value={materialInfo.uploaderName || ''}
+              onChange={(e) => handleChange('uploaderName', e.target.value)} 
               placeholder="e.g., John Doe" 
               className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
-                errors.authorName ? 'border-red-300' : 'border-gray-300'
+                errors.uploaderName ? 'border-red-300' : 'border-gray-300'
               }`}
               required
             />
-            {errors.authorName && (
-              <p className="text-red-500 text-xs mt-1">{errors.authorName}</p>
-            )}
-          </div>
-          
-          <div>
-            <label htmlFor="authorEmail" className="block text-sm font-medium text-gray-700 mb-1">
-              Author Email <span className="text-red-500">*</span>
-            </label>
-            <input 
-              id="authorEmail"
-              name="authorEmail" 
-              type="email"
-              value={materialInfo.authorEmail || ''}
-              onChange={(e) => handleChange('authorEmail', e.target.value)} 
-              placeholder="e.g., john.doe@university.edu" 
-              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
-                errors.authorEmail ? 'border-red-300' : 'border-gray-300'
-              }`}
-              required
-            />
-            {errors.authorEmail && (
-              <p className="text-red-500 text-xs mt-1">{errors.authorEmail}</p>
+            {errors.uploaderName && (
+              <p className="text-red-500 text-xs mt-1">{errors.uploaderName}</p>
             )}
           </div>
         </div>
@@ -381,22 +342,22 @@ export const InfoForm = ({
         <h3 className="text-lg font-medium mb-4 text-gray-800">Academic Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="university" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="schoolName" className="block text-sm font-medium text-gray-700 mb-1">
               University/School <span className="text-red-500">*</span>
             </label>
             <input 
-              id="university"
-              name="university" 
-              value={materialInfo.school}
-              onChange={(e) => handleChange('university', e.target.value)} 
+              id="schoolName"
+              name="schoolName" 
+              value={materialInfo.schoolName}
+              onChange={(e) => handleChange('schoolName', e.target.value)} 
               placeholder="e.g., Harvard University" 
               className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
-                errors.university ? 'border-red-300' : 'border-gray-300'
+                errors.schoolName ? 'border-red-300' : 'border-gray-300'
               }`}
               required
             />
-            {errors.university && (
-              <p className="text-red-500 text-xs mt-1">{errors.university}</p>
+            {errors.schoolName && (
+              <p className="text-red-500 text-xs mt-1">{errors.schoolName}</p>
             )}
           </div>
           
@@ -407,7 +368,7 @@ export const InfoForm = ({
             <input 
               id="faculty"
               name="faculty" 
-              value={materialInfo.faculty}
+              value={materialInfo.facultyName}
               onChange={(e) => handleChange('faculty', e.target.value)} 
               placeholder="e.g., Engineering" 
               className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
@@ -421,13 +382,13 @@ export const InfoForm = ({
           </div>
           
           <div>
-            <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="departmentName" className="block text-sm font-medium text-gray-700 mb-1">
               Department <span className="text-red-500">*</span>
             </label>
             <input 
               id="department"
               name="department" 
-              value={materialInfo.department}
+              value={materialInfo.departmentName}
               onChange={(e) => handleChange('department', e.target.value)}
               placeholder="e.g., Computer Science" 
               className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
@@ -480,6 +441,27 @@ export const InfoForm = ({
             )}
           </div>
 
+           {/* Course ID */}
+          <div>
+            <label htmlFor="courseId" className="block text-sm font-medium text-gray-700 mb-1">
+              Course ID <span className="text-red-500">*</span>
+            </label>
+            <input 
+              id="courseId"
+              name="courseId" 
+              value={materialInfo.courseId || ''}
+              onChange={(e) => handleChange('courseId', e.target.value)}
+              placeholder="e.g., CSC101" 
+              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300 ${
+                errors.courseId ? 'border-red-300' : 'border-gray-300'
+              }`}
+              required
+            />
+            {errors.courseId && (
+              <p className="text-red-500 text-xs mt-1">{errors.courseId}</p>
+            )}
+          </div>
+
           <div>
             <label htmlFor="session" className="block text-sm font-medium text-gray-700 mb-1">
               Academic Session <span className="text-red-500">*</span>
@@ -504,16 +486,17 @@ export const InfoForm = ({
 
       {/* Example usage of metadata change */}
       <div className="mb-6">
-        <label htmlFor="additional-info" className="block text-sm font-medium text-gray-700 mb-1">
-          Additional Information
+        <label htmlFor="materialDescription" className="block text-sm font-medium text-gray-700 mb-1">
+          Material Description
         </label>
         <textarea 
-          id="additional-info"
-          name="additional-info" 
+          id="materialDescription"
+          name="materialDescription" 
+          value={materialInfo.materialDescription || ''}
           placeholder="Any additional details about the material" 
           className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:border-blue-300" 
           rows={3}
-          onChange={(e) => handleMetadataChange('additionalInfo', e.target.value)}
+          onChange={(e) => handleChange('materialDescription', e.target.value)}
         />
       </div>
 
