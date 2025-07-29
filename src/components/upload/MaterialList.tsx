@@ -217,6 +217,13 @@ export default function MaterialList({ defaultMaterialInfo, userProfile }: Mater
     }));
   };
 
+  const handleCloseEditor = () => {
+    setShowCreateEditor(false);
+    resetFormState();
+    console.log("editor is closed")
+  };
+
+
   // Handle content change
   const handleContentChange = (content: string) => {
     setMaterialInfo(prev => ({
@@ -419,31 +426,31 @@ for (const [key, value] of formData.entries()) {
     setShowCreateEditor(true);
   };
 
-  // Handle closing editor
-  const handleCloseEditor = () => {
-    setShowCreateEditor(false);
-    resetFormState();
-  };
-
   return (
     <div className="max-w-6xl mx-auto">
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex justify-between items-center">
             <p className="text-red-700">{error}</p>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">×</button>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-500 hover:text-red-700"
+            >
+              ×
+            </button>
           </div>
         </div>
       )}
-      
+
       {/* Debug info */}
       <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
         <p className="text-blue-700">
-          Debug: Initialized: {isInitialized ? 'Yes' : 'No'} | Materials: {materials.length} | Filtered: {filteredMaterials.length}
+          Debug: Initialized: {isInitialized ? "Yes" : "No"} | Materials:{" "}
+          {materials.length} | Filtered: {filteredMaterials.length}
           {userProfile && ` | User: ${userProfile.fullName}`}
         </p>
       </div>
-      
+
       {/* Search bar */}
       <div className="mb-6">
         <input
@@ -451,10 +458,10 @@ for (const [key, value] of formData.entries()) {
           placeholder="Search by material title, course, or uploader..."
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
-      
+
       {/* Action buttons */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <button
@@ -462,32 +469,42 @@ for (const [key, value] of formData.entries()) {
           disabled={isLoading}
           className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded text-sm"
         >
-          {isLoading ? 'Refreshing...' : 'Refresh Data'}
+          {isLoading ? "Refreshing..." : "Refresh Data"}
         </button>
-        
+
         {/* Create new material dropdown */}
         <div className="relative group">
           <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm flex items-center space-x-2">
             <span>+ New Material</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
           <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
             <button
-              onClick={() => handleCreateNewMaterial('file')}
+              onClick={() => handleCreateNewMaterial("file")}
               className="w-full text-left px-4 py-2 hover:bg-gray-50 rounded-t-lg"
             >
               📄 File Material
             </button>
             <button
-              onClick={() => handleCreateNewMaterial('text')}
+              onClick={() => handleCreateNewMaterial("text")}
               className="w-full text-left px-4 py-2 hover:bg-gray-50"
             >
               📝 Text Material
             </button>
             <button
-              onClick={() => handleCreateNewMaterial('video')}
+              onClick={() => handleCreateNewMaterial("video")}
               className="w-full text-left px-4 py-2 hover:bg-gray-50 rounded-b-lg"
             >
               🎥 Video Material
@@ -495,7 +512,7 @@ for (const [key, value] of formData.entries()) {
           </div>
         </div>
       </div>
-      
+
       {/* Pagination info */}
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="text-sm text-gray-600">
@@ -504,7 +521,7 @@ for (const [key, value] of formData.entries()) {
         {pageCount > 1 && (
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
               className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >
@@ -514,7 +531,9 @@ for (const [key, value] of formData.entries()) {
               Page {currentPage} of {pageCount}
             </span>
             <button
-              onClick={() => setCurrentPage(prev => Math.min(pageCount, prev + 1))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(pageCount, prev + 1))
+              }
               disabled={currentPage === pageCount}
               className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >
@@ -531,22 +550,36 @@ for (const [key, value] of formData.entries()) {
             <div className="bg-white rounded-lg shadow-xl my-8">
               <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white rounded-t-lg z-10">
                 <h2 className="text-xl font-bold text-gray-900">
-                  {editingMaterial ? 'Edit Material' : `Create New ${editorType.charAt(0).toUpperCase() + editorType.slice(1)} Material`}
+                  {editingMaterial
+                    ? "Edit Material"
+                    : `Create New ${
+                        editorType.charAt(0).toUpperCase() + editorType.slice(1)
+                      } Material`}
                 </h2>
                 <button
                   onClick={handleCloseEditor}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
-              
+
               {/* Material Editor */}
               <div className="p-6">
                 <MaterialEditor
-                  mode={editingMaterial ? 'edit' : 'edit'}
+                  mode={editingMaterial ? "edit" : "edit"}
                   type={editorType}
                   materialInfo={materialInfo}
                   userProfile={userProfile}
@@ -557,14 +590,17 @@ for (const [key, value] of formData.entries()) {
                   onVideoSelected={handleVideoSelected}
                   onTopicChange={handleTopicChange}
                   onContentChange={handleContentChange}
-                  acceptedTypes={editorType === 'file' ? '.pdf,.jpg,.jpeg,.png' : undefined}
+                  acceptedTypes={
+                    editorType === "file" ? ".pdf,.jpg,.jpeg,.png" : undefined
+                  }
                   maxFileSizeMB={50}
                   subcategory={materialInfo.subcategory}
                   initialTopic={materialInfo.topic}
                   initialContent={materialInfo.textContent}
-                  fileType={editorType === 'file' ? 'pdf' : undefined}
+                  fileType={editorType === "file" ? "pdf" : undefined}
                   autoPopulateUserData={true}
                   onSubmit={handleSubmitMaterial}
+                  onCancel={handleCloseEditor}
                 />
               </div>
             </div>
@@ -577,57 +613,83 @@ for (const [key, value] of formData.entries()) {
         {currentItems.length === 0 ? (
           <div className="text-center py-10 text-gray-500">
             <p className="text-lg mb-2">
-              {searchTerm ? 'No materials found matching your search' : 'No materials found'}
+              {searchTerm
+                ? "No materials found matching your search"
+                : "No materials found"}
             </p>
             <p className="text-sm">
-              {searchTerm ? 'Try a different search term or clear your search to see all materials.' : 'Create your first material using the button above.'}
+              {searchTerm
+                ? "Try a different search term or clear your search to see all materials."
+                : "Create your first material using the button above."}
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {currentItems.map(material => (
-              <div key={material.muid} className="p-6 border rounded-lg bg-white shadow hover:shadow-md transition-shadow">
+            {currentItems.map((material) => (
+              <div
+                key={material.muid}
+                className="p-6 border rounded-lg bg-white shadow hover:shadow-md transition-shadow"
+              >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="font-bold text-lg text-gray-900">{material.materialTitle}</h3>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        material.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                        material.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                        material.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {material.status || 'Unknown'}
+                      <h3 className="font-bold text-lg text-gray-900">
+                        {material.materialTitle}
+                      </h3>
+                      <span
+                        className={`px-2 py-1 text-xs rounded-full ${
+                          material.status === "APPROVED"
+                            ? "bg-green-100 text-green-800"
+                            : material.status === "PENDING"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : material.status === "REJECTED"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {material.status || "Unknown"}
                       </span>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 mb-3">
                       <div>
-                        <span className="font-medium">Course:</span> {material.courseName}
+                        <span className="font-medium">Course:</span>{" "}
+                        {material.courseName}
                       </div>
                       <div>
-                        <span className="font-medium">Uploader:</span> {material.uploaderName}
+                        <span className="font-medium">Uploader:</span>{" "}
+                        {material.uploaderName}
                       </div>
                       <div>
-                        <span className="font-medium">Type:</span> {material.materialType}
+                        <span className="font-medium">Type:</span>{" "}
+                        {material.materialType}
                       </div>
                       <div>
-                        <span className="font-medium">Department:</span> {material.departmentName}
+                        <span className="font-medium">Department:</span>{" "}
+                        {material.departmentName}
                       </div>
                     </div>
-                    
+
                     {material.materialDescription && (
-                      <p className="text-sm text-gray-700 mb-3">{material.materialDescription}</p>
+                      <p className="text-sm text-gray-700 mb-3">
+                        {material.materialDescription}
+                      </p>
                     )}
-                    
+
                     <div className="text-xs text-gray-400">
-                      Created: {new Date(material.createdAt).toLocaleDateString()}
-                      {material.updatedAt && material.updatedAt !== material.createdAt && (
-                        <span> • Updated: {new Date(material.updatedAt).toLocaleDateString()}</span>
-                      )}
+                      Created:{" "}
+                      {new Date(material.createdAt).toLocaleDateString()}
+                      {material.updatedAt &&
+                        material.updatedAt !== material.createdAt && (
+                          <span>
+                            {" "}
+                            • Updated:{" "}
+                            {new Date(material.updatedAt).toLocaleDateString()}
+                          </span>
+                        )}
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col space-y-2 ml-4">
                     <button
                       onClick={() => handleEditMaterial(material)}
@@ -649,7 +711,7 @@ for (const [key, value] of formData.entries()) {
           </div>
         )}
       </div>
-      
+
       {/* Loading overlay */}
       {isLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

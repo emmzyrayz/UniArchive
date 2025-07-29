@@ -91,6 +91,7 @@ export const MaterialEditor = (props: MaterialEditorProps) => {
     materialInfo,
     userProfile,
     onChange,
+    onCancel,
     onSuccess,
     onMetadataChange,
     onFilesSelected,
@@ -594,13 +595,15 @@ export const MaterialEditor = (props: MaterialEditorProps) => {
   };
 
   const handleSubmit = async () => {
-    if (handleInternalSubmit) {
+    if (handleInternalSubmit || props.onSubmit) {
       setIsLoading(true);
       try {
         const success = await handleInternalSubmit();
         if (success) {
-          setCurrentStep(1);
+          // setCurrentStep(1);
           onSuccess?.();
+          onCancel?.();
+          props.onCancel?.();
         }
       } catch (err) {
         const errorMessage =

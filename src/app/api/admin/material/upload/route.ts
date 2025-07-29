@@ -30,6 +30,12 @@ const getMaterialModel = (materialType: string) => {
   }
 };
 
+const headers = new Headers({
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+});
+
 // Type for the incoming request data
 interface MaterialUploadData extends Partial<MaterialInput> {
   materialTitle: string;
@@ -382,6 +388,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       {
+        success: true,
         message: "Material uploaded successfully",
         material: {
           _id: newMaterial._id,
@@ -393,7 +400,13 @@ export async function POST(req: NextRequest) {
           isApproved: newMaterial.isApproved,
         },
       },
-      { status: 201 }
+      {
+        status: 200,
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+      }
     );
   } catch (error) {
     console.error("Material upload error:", error);
