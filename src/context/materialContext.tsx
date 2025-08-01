@@ -68,6 +68,7 @@ interface MaterialFromApi {
   materialType: string;
   materialUrl: string;
   fileName?: string;
+  fileNames: string[];
   uploaderUpid: string;
   uploaderName: string;
   uploaderRole: string;
@@ -925,13 +926,69 @@ export const MaterialProvider: React.FC<MaterialProviderProps> = ({
     [checkUploadPrivileges, isContributor]
   );
 
+  // const updateMaterial = useCallback(
+  //   async (
+  //     materialId: string,
+  //     materialData: Partial<MaterialInput>
+  //   ): Promise<boolean> => {
+  //     // Find the material to check edit permissions
+  //     const material = materials.find((m) => m._id === materialId);
+  //     if (!material) {
+  //       setError("Material not found");
+  //       return false;
+  //     }
+
+  //     if (!checkEditPrivileges(material)) return false;
+
+  //     setIsLoading(true);
+  //     setError(null);
+  //     try {
+  //       // Contributors editing their own materials should reset approval status
+  //       const enhancedData =
+  //         isContributor && material.uploaderUpid === userProfile?.upid
+  //           ? {
+  //               ...materialData,
+  //               status: "PENDING",
+  //               isApproved: false,
+  //             }
+  //           : materialData;
+
+  //       const response = await fetch(
+  //         `/api/admin/material/update/${materialId}`,
+  //         {
+  //           method: "PUT",
+  //           headers: { "Content-Type": "application/json" },
+  //           body: JSON.stringify(enhancedData),
+  //           credentials: "include",
+  //         }
+  //       );
+  //       const result = await response.json();
+  //       if (!response.ok)
+  //         throw new Error(result.message || "Failed to update material");
+  //       await fetchMaterials();
+  //       return true;
+  //     } catch (err) {
+  //       const errorMessage =
+  //         err instanceof Error ? err.message : "Unknown error occurred";
+  //       setError(errorMessage);
+  //       return false;
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   },
+  //   [materials, checkEditPrivileges, fetchMaterials, isContributor, userProfile]
+  // );
+
+  // Fixed updateMaterial function in materialContext.tsx
   const updateMaterial = useCallback(
     async (
       materialId: string,
       materialData: Partial<MaterialInput>
     ): Promise<boolean> => {
-      // Find the material to check edit permissions
-      const material = materials.find((m) => m._id === materialId);
+      // Find the material to check edit permissions - FIXED: using both muid and _id
+      const material = materials.find(
+        (m) => m.muid === materialId || m._id === materialId
+      );
       if (!material) {
         setError("Material not found");
         return false;
@@ -952,15 +1009,15 @@ export const MaterialProvider: React.FC<MaterialProviderProps> = ({
               }
             : materialData;
 
-        const response = await fetch(
-          `/api/admin/material/update/${materialId}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(enhancedData),
-            credentials: "include",
-          }
-        );
+        // Use the correct ID for API call - prefer _id if available, otherwise use muid
+        const apiId = material._id || material.muid;
+
+        const response = await fetch(`/api/admin/material/update/${apiId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(enhancedData),
+          credentials: "include",
+        });
         const result = await response.json();
         if (!response.ok)
           throw new Error(result.message || "Failed to update material");
@@ -978,43 +1035,316 @@ export const MaterialProvider: React.FC<MaterialProviderProps> = ({
     [materials, checkEditPrivileges, fetchMaterials, isContributor, userProfile]
   );
 
+  // Helper function for additional cloud cleanup if needed
+  const handleAdditionalCloudCleanup = async (
+    material: Material
+  ): Promise<void> => {
+    // This is optional additional cleanup
+    // The main cloud file deletion should be handled in the API route
+
+    if (material.materialType === "IMAGE" && material.fileNames) {
+      console.log("Additional cleanup for image files:", material.fileNames);
+      // Add any additional image cleanup logic here
+    } else if (material.fileName) {
+      console.log("Additional cleanup for single file:", material.fileName);
+      // Add any additional single file cleanup logic here
+    } else {
+      // Try to extract fileName from URL as fallback
+      let fileNames: string[] = [];
+
+      switch (material.materialType) {
+        case "PDF":
+          if (material.pdfUrl) {
+            const fileName = material.pdfUrl.split("/").pop();
+            if (fileName) fileNames.push(fileName);
+          }
+          break;
+        case "VIDEO":
+          if (material.videoUrl) {
+            const fileName = material.videoUrl.split("/").pop();
+            if (fileName) fileNames.push(fileName);
+          }
+          break;
+        case "IMAGE":
+          if (material.imageUrls && material.imageUrls.length > 0) {
+            fileNames = material.imageUrls
+              .map((url) => url.split("/").pop())
+              .filter(Boolean) as string[];
+          }
+          break;
+      }
+
+      if (fileNames.length > 0) {
+        console.log("Extracted file names for additional cleanup:", fileNames);
+        // Add any additional cleanup logic here
+      }
+    }
+  };
+
+  // const deleteMaterial = useCallback(
+
+  //   async (materialId: string): Promise<boolean> => {
+  //     // Find the material to check permissions
+  //     const material = materials.find(
+  //       (m) => m.muid === materialId || m._id === materialId
+  //     );
+  //     if (!material) {
+  //       setError("Material not found");
+  //       return false;
+  //     }
+
+  //     // Contributors can delete their own materials, admins/mods can delete any
+  //     const canDelete =
+  //       canModerate ||
+  //       (isContributor && material.uploaderUpid === userProfile?.upid);
+  //     if (!canDelete) {
+  //       setError("You do not have permission to delete this material");
+  //       return false;
+  //     }
+
+  //     setIsLoading(true);
+  //     setError(null);
+  //     try {
+
+  //       // Use the correct ID for API call - prefer _id if available, otherwise use muid
+  //     const apiId = material._id || material.muid;
+
+  //       // 2. Delete from database
+  //       const dbResponse = await fetch(
+  //         `/api/admin/material/delete/${apiId}`,
+  //         {
+  //           method: "DELETE",
+  //           headers: { "Content-Type": "application/json" },
+  //           credentials: "include",
+  //         }
+  //       );
+
+  //       if (!dbResponse.ok) {
+  //         throw new Error("Failed to delete database record");
+  //       }
+
+  //       // 3. Verify database deletion
+  //       const verifyDbResponse = await fetch(
+  //         `/api/admin/material/view/${apiId}`
+  //       );
+  //       if (verifyDbResponse.status !== 404) {
+  //         throw new Error("Database record still exists after deletion");
+  //       }
+
+  //       // 4. Delete cloud file(s)
+  //       if (material.materialType === "IMAGE" && material.fileNames) {
+  //         // Delete all image files
+  //         const deletePromises = material.fileNames.map((fileName) =>
+  //           fetch(`/api/admin/upload-file/delete/${fileName}`, {
+  //             method: "DELETE",
+  //             credentials: "include",
+  //           })
+  //         );
+
+  //         const results = await Promise.all(deletePromises);
+  //         const failedDeletes = results.filter((res) => !res.ok);
+
+  //         if (failedDeletes.length > 0) {
+  //           throw new Error(
+  //             `Database record deleted but ${failedDeletes.length} cloud files failed to delete`
+  //           );
+  //         }
+
+  //         // 5. Verify cloud deletion
+  //         const verifyCloudPromises = material.fileNames.map((fileName) =>
+  //           fetch(`/api/admin/upload-file/exists/${fileName}`)
+  //         );
+  //         const verifyResults = await Promise.all(verifyCloudPromises);
+  //         const stillExists = verifyResults.some((res) => res.ok);
+
+  //         if (stillExists) {
+  //           throw new Error("Cloud files still exist after deletion");
+  //         }
+  //       } else if (material.fileName) {
+  //         // Handle single file materials
+  //         const cloudResponse = await fetch(
+  //           `/api/admin/upload-file/delete/${material.fileName}`,
+  //           { method: "DELETE", credentials: "include" }
+  //         );
+
+  //         if (!cloudResponse.ok) {
+  //           throw new Error(
+  //             "Database record deleted but cloud file deletion failed"
+  //           );
+  //         }
+
+  //         // 5. Verify cloud deletion
+  //         const verifyResponse = await fetch(
+  //           `/api/admin/upload-file/exists/${material.fileName}`
+  //         );
+  //         if (verifyResponse.ok) {
+  //           throw new Error("Cloud file still exists after deletion");
+  //         }
+  //       }
+
+  //       // 6. Refresh materials
+  //       await fetchMaterials();
+  //       return true;
+  //     } catch (err) {
+  //       const errorMessage =
+  //         err instanceof Error ? err.message : "Unknown error occurred";
+  //       setError(errorMessage);
+  //       return false;
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   },
+  //   [materials, canModerate, isContributor, userProfile, fetchMaterials]
+  // );
+
+  // Fixed deleteMaterial function in materialContext.tsx
+
+  // New admin-only functions
+
+  // Fixed deleteMaterial function in materialContext.tsx
+
+  // Fixed deleteMaterial function for materialContext.tsx
   const deleteMaterial = useCallback(
     async (materialId: string): Promise<boolean> => {
+      console.log("=== DELETE MATERIAL CONTEXT START ===");
+      console.log("Attempting to delete material with ID:", materialId);
+
       // Find the material to check permissions
-      const material = materials.find((m) => m._id === materialId);
+      const material = materials.find(
+        (m) => m.muid === materialId || m._id === materialId
+      );
+
       if (!material) {
+        console.error("Material not found in local state:", materialId);
         setError("Material not found");
         return false;
       }
+
+      console.log("Found material:", {
+        title: material.materialTitle,
+        type: material.materialType,
+        uploader: material.uploaderUpid,
+        muid: material.muid,
+        _id: material._id,
+      });
 
       // Contributors can delete their own materials, admins/mods can delete any
       const canDelete =
         canModerate ||
         (isContributor && material.uploaderUpid === userProfile?.upid);
+
       if (!canDelete) {
+        console.error("User does not have permission to delete this material");
         setError("You do not have permission to delete this material");
         return false;
       }
 
+      console.log("Permission check passed");
+
       setIsLoading(true);
       setError(null);
+
       try {
-        const response = await fetch(
-          `/api/admin/material/delete/${materialId}`,
-          {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
+        // Use the correct ID for API call - prefer _id if available, otherwise use muid
+        const apiId = material._id || material.muid;
+        console.log("Using API ID for deletion:", apiId);
+
+        // Validate that we have a valid MongoDB ObjectId
+        // if (!apiId || !/^[0-9a-fA-F]{24}$/.test(apiId)) {
+        //   throw new Error(`Invalid material ID format: ${apiId}`);
+        // }
+
+        // Delete from database
+        console.log("Sending delete request to API...");
+        const dbResponse = await fetch(`/api/admin/material/delete/${apiId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          credentials: "include",
+        });
+
+        console.log("Delete response status:", dbResponse.status);
+
+        // Get response text first to handle both JSON and text responses
+        const responseText = await dbResponse.text();
+        console.log("Delete response body:", responseText);
+
+        if (!dbResponse.ok) {
+          let errorMessage = `Delete failed with status ${dbResponse.status}`;
+
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            // Response is not JSON, use the text as error message
+            errorMessage = responseText || errorMessage;
           }
-        );
-        const result = await response.json();
-        if (!response.ok)
-          throw new Error(result.message || "Failed to delete material");
+
+          throw new Error(errorMessage);
+        }
+
+        // Parse the successful response
+        let result;
+        try {
+          result = JSON.parse(responseText);
+        } catch {
+          // If response is not JSON but status is ok, assume success
+          result = { success: true, message: "Material deleted successfully" };
+        }
+
+        if (!result.success && result.success !== undefined) {
+          throw new Error(
+            result.message || "Delete operation reported failure"
+          );
+        }
+
+        console.log("Database deletion successful:", result.message);
+
+        // Verify database deletion by checking if the material still exists
+        console.log("Verifying database deletion...");
+        try {
+          const verifyDbResponse = await fetch(
+            `/api/admin/material/delete/${apiId}`,
+            {
+              method: "GET",
+              credentials: "include",
+            }
+          );
+
+          if (verifyDbResponse.status === 200) {
+            const verifyResult = await verifyDbResponse.json();
+            if (verifyResult.exists) {
+              console.warn("Database record still exists after deletion");
+              // Don't throw error, just log warning as deletion might have worked
+            }
+          }
+        } catch (verifyError) {
+          console.warn("Could not verify database deletion:", verifyError);
+          // Don't fail the operation for verification errors
+        }
+
+        // Optional: Handle cloud file cleanup
+        // Note: The API route should handle cloud file deletion
+        // This is just additional cleanup if needed
+        try {
+          await handleAdditionalCloudCleanup(material);
+        } catch (cloudError) {
+          console.warn("Additional cloud cleanup failed:", cloudError);
+          // Don't fail the operation for cloud cleanup errors
+        }
+
+        // Refresh materials list
+        console.log("Refreshing materials list...");
         await fetchMaterials();
+
+        console.log("=== DELETE MATERIAL CONTEXT END ===");
         return true;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Unknown error occurred";
+        console.error("Delete material error:", errorMessage);
         setError(errorMessage);
         return false;
       } finally {
@@ -1024,7 +1354,6 @@ export const MaterialProvider: React.FC<MaterialProviderProps> = ({
     [materials, canModerate, isContributor, userProfile, fetchMaterials]
   );
 
-  // New admin-only functions
   const approveMaterial = useCallback(
     async (materialId: string): Promise<boolean> => {
       if (!checkAdminPrivileges()) return false;

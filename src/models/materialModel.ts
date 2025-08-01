@@ -7,26 +7,27 @@ export interface IBaseMaterial {
   // Unique Material Identifiers
   muid: string;
   pmuid: string;
-  
+
   // Uploader info
   uploaderName: string;
   uploaderUpid: string;
   uploaderRole: "admin" | "mod" | "contributor";
-  
+
   // Course info
   courseName: string;
   courseId: string;
-  
+
   // Material metadata
   materialTitle: string;
   materialDescription: string;
   materialType: "PDF" | "IMAGE" | "VIDEO" | "TEXT";
-  
+
   // File metadata
   fileSize: number;
   format: string;
   originalFileName: string;
-  
+  fileName?: string;
+
   // Status and visibility
   isApproved: boolean;
   isPublic: boolean;
@@ -39,7 +40,7 @@ export interface IBaseMaterial {
   approvedAt?: Date;
   rejectedBy?: string; // Admin/mod who rejected
   rejectedAt?: Date;
-  
+
   // Content organization
   tableOfContent: string[];
   tags: string[];
@@ -47,20 +48,20 @@ export interface IBaseMaterial {
   schoolName: string;
   facultyName: string;
   departmentName: string;
-  
+
   // Ratings and Comments
   comments: IComment[];
   ratings: IRating[];
   averageRating: number;
   totalRatings: number;
-  
+
   // Analytics
   analytics: IAnalytics;
-  
+
   // Timestamps
   createdAt: Date;
   updatedAt?: Date;
-  
+
   // Moderation
   reportCount: number;
   isReported: boolean;
@@ -170,7 +171,7 @@ export interface IImageMaterial extends IBaseMaterial, Document {
   materialType: "IMAGE";
   topic: string;
   imageUrls: string[];
-  fileNames: string[]; // Array of Backblaze storage file names
+  fileNames: string[]; // Array of Backblaze storage file name
   signedUrls?: string[]; // Array of signed URLs for secure access
   thumbnailUrls?: string[];
   dimensions?: { width: number; height: number }[];

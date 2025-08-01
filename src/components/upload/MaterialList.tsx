@@ -48,6 +48,9 @@ export default function MaterialList({ defaultMaterialInfo, userProfile }: Mater
   const [showCreateEditor, setShowCreateEditor] = useState(false);
   const [editorType, setEditorType] = useState<MaterialEditorType>('file');
   const [editingMaterial, setEditingMaterial] = useState<MaterialItem | null>(null);
+  const [deletionInProgress, setDeletionInProgress] = useState<
+    Record<string, boolean>
+  >({});
   const itemsPerPage = 10;
 
   // Initialize material info with defaults or provided values
@@ -426,6 +429,17 @@ for (const [key, value] of formData.entries()) {
     setShowCreateEditor(true);
   };
 
+  const handleDelete = async (materialId: string) => {
+    setDeletionInProgress((prev) => ({ ...prev, [materialId]: true }));
+    try {
+      await deleteMaterial(materialId);
+    } finally {
+      setDeletionInProgress((prev) => ({ ...prev, [materialId]: false }));
+    }
+  };
+
+  
+
   return (
     <div className="max-w-6xl mx-auto">
       {error && (
@@ -698,11 +712,13 @@ for (const [key, value] of formData.entries()) {
                       Edit
                     </button>
                     <button
-                      onClick={() => deleteMaterial(material.muid)}
+                      onClick={() => handleDelete(material.muid)}
                       className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-xs transition-colors"
-                      disabled={isLoading}
+                      disabled={isLoading || deletionInProgress[material.muid]}
                     >
-                      Delete
+                      {deletionInProgress[material.muid]
+                        ? "Deleting..."
+                        : "Delete"}
                     </button>
                   </div>
                 </div>

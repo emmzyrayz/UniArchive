@@ -8,9 +8,10 @@ interface ApiResponse {
   data?: {
     deletedFiles: string[];
     deletedCount: number;
-    failedFiles: string[];
+    failedFiles: Array<{ fileName: string; error: string }>;
     failedCount: number;
     deletedAt: string;
+    processingTime: number;
   };
   message?: string;
   error?: string;
@@ -126,12 +127,12 @@ function validateFileIds(fileIds: unknown): {
     };
   }
 
-  // Limit batch size to prevent abuse
-  if (fileIds.length > 100) {
+  // Limit batch size to prevent abuse (B2 supports up to 1000 per batch)
+  if (fileIds.length > 1000) {
     return {
       isValid: false,
       validIds: [],
-      error: "Maximum 100 files can be deleted at once",
+      error: "Maximum 1000 files can be deleted at once",
     };
   }
 
@@ -171,6 +172,8 @@ function validateFileIds(fileIds: unknown): {
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<ApiResponse>> {
+  const startTime = Date.now();
+
   try {
     console.log("Delete All Files: Starting batch file deletion process");
 
@@ -214,75 +217,40 @@ export async function POST(
     // Create B2 client
     const b2Client = createB2Client();
 
-    console.log("Delete All Files: Deleting files from Backblaze B2");
+    console.log(
+      "Delete All Files: Deleting files from Backblaze B2 using batch operation"
+    );
 
-    // Track successful and failed deletions
-    const deletedFiles: string[] = [];
-    const failedFiles: string[] = [];
+    // Use the new batch delete method for much better performance
+    const batchResult = await b2Client.batchDeleteFiles(validation.validIds);
 
-    // Process deletions with some parallelization but not too aggressive
-    const batchSize = 10; // Process in smaller batches to avoid overwhelming B2
-
-    for (let i = 0; i < validation.validIds.length; i += batchSize) {
-      const batch = validation.validIds.slice(i, i + batchSize);
-
-      const batchPromises = batch.map(async (fileId) => {
-        try {
-          console.log(`Delete All Files: Deleting file ${fileId}`);
-          const deleteResult = await b2Client.deleteFile(fileId);
-
-          if (deleteResult.success) {
-            deletedFiles.push(fileId);
-            console.log(`Delete All Files: Successfully deleted ${fileId}`);
-          } else {
-            failedFiles.push(fileId);
-            console.warn(
-              `Delete All Files: Failed to delete ${fileId}:`,
-              deleteResult.error
-            );
-          }
-        } catch (error) {
-          failedFiles.push(fileId);
-          console.error(`Delete All Files: Error deleting ${fileId}:`, error);
-        }
-      });
-
-      // Wait for current batch to complete before moving to next
-      await Promise.all(batchPromises);
-
-      // Small delay between batches to be respectful to B2
-      if (i + batchSize < validation.validIds.length) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-
-    const totalRequested = validation.validIds.length;
-    const successCount = deletedFiles.length;
-    const failureCount = failedFiles.length;
+    const processingTime = Date.now() - startTime;
 
     console.log(
       `Delete All Files: Batch deletion completed by admin: ${user.email}`,
       {
-        totalRequested,
-        successCount,
-        failureCount,
-        deletedFiles: deletedFiles.slice(0, 10), // Log first 10 for reference
-        failedFiles: failedFiles.slice(0, 10),
+        totalRequested: validation.validIds.length,
+        successCount: batchResult.totalDeleted,
+        failureCount: batchResult.totalFailed,
+        processingTime: `${processingTime}ms`,
+        deletedFiles: batchResult.deletedFiles.slice(0, 10), // Log first 10 for reference
+        failedFiles: batchResult.failedFiles.slice(0, 10),
       }
     );
 
     // Determine response based on results
-    if (successCount === 0) {
+    if (batchResult.totalDeleted === 0 && batchResult.totalFailed > 0) {
       return NextResponse.json(
         {
           success: false,
           message: "Failed to delete any files",
           data: {
-            deletedFiles,
-            deletedCount: successCount,
-            failedFiles,
-            failedCount: failureCount,
+            deletedFiles: batchResult.deletedFiles,
+            deletedCount: batchResult.totalDeleted,
+            failedFiles: batchResult.failedFiles,
+            failedCount: batchResult.totalFailed,
             deletedAt: new Date().toISOString(),
+            processingTime,
           },
         },
         { status: 500 }
@@ -290,23 +258,25 @@ export async function POST(
     }
 
     // Partial success or complete success
-    const isCompleteSuccess = failureCount === 0;
+    const isCompleteSuccess = batchResult.totalFailed === 0;
     const message = isCompleteSuccess
-      ? `Successfully deleted all ${successCount} files`
-      : `Partially successful: deleted ${successCount} files, failed to delete ${failureCount} files`;
+      ? `Successfully deleted all ${batchResult.totalDeleted} files in ${processingTime}ms`
+      : `Partially successful: deleted ${batchResult.totalDeleted} files, failed to delete ${batchResult.totalFailed} files`;
 
     return NextResponse.json({
-      success: true,
+      success: batchResult.success,
       message,
       data: {
-        deletedFiles,
-        deletedCount: successCount,
-        failedFiles,
-        failedCount: failureCount,
+        deletedFiles: batchResult.deletedFiles,
+        deletedCount: batchResult.totalDeleted,
+        failedFiles: batchResult.failedFiles,
+        failedCount: batchResult.totalFailed,
         deletedAt: new Date().toISOString(),
+        processingTime,
       },
     });
   } catch (error) {
+    const processingTime = Date.now() - startTime;
     console.error("Batch file deletion error:", error);
 
     // Handle specific errors
@@ -316,6 +286,14 @@ export async function POST(
           {
             success: false,
             message: "Cloud storage configuration error",
+            data: {
+              deletedFiles: [],
+              deletedCount: 0,
+              failedFiles: [],
+              failedCount: 0,
+              deletedAt: new Date().toISOString(),
+              processingTime,
+            },
           },
           { status: 500 }
         );
@@ -337,6 +315,14 @@ export async function POST(
         success: false,
         message: "Failed to delete files",
         error: error instanceof Error ? error.message : "Unknown error",
+        data: {
+          deletedFiles: [],
+          deletedCount: 0,
+          failedFiles: [],
+          failedCount: 0,
+          deletedAt: new Date().toISOString(),
+          processingTime,
+        },
       },
       { status: 500 }
     );

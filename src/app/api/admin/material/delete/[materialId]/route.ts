@@ -13,22 +13,45 @@ interface MaterialResult {
 
 // Helper function to find material across all collections
 const findMaterialById = async (materialId: string): Promise<MaterialResult | null> => {
-  let material = await PdfMaterial.findById(materialId);
-  if (material) return { material, type: 'PDF', Model: PdfMaterial };
-  
-  material = await ImageMaterial.findById(materialId);
-  if (material) return { material, type: 'IMAGE', Model: ImageMaterial };
-  
-  material = await VideoMaterial.findById(materialId);
-  if (material) return { material, type: 'VIDEO', Model: VideoMaterial };
-  
-  return null;
+  try {
+    console.log(`Searching for material with ID: ${materialId}`);
+    
+    // Try to find in PDF collection
+    let material = await PdfMaterial.findById(materialId);
+    if (material) {
+      console.log(`Found PDF material: ${material.materialTitle}`);
+      return { material, type: 'PDF', Model: PdfMaterial };
+    }
+    
+    // Try to find in Image collection
+    material = await ImageMaterial.findById(materialId);
+    if (material) {
+      console.log(`Found IMAGE material: ${material.materialTitle}`);
+      return { material, type: 'IMAGE', Model: ImageMaterial };
+    }
+    
+    // Try to find in Video collection
+    material = await VideoMaterial.findById(materialId);
+    if (material) {
+      console.log(`Found VIDEO material: ${material.materialTitle}`);
+      return { material, type: 'VIDEO', Model: VideoMaterial };
+    }
+    
+    console.log(`No material found with ID: ${materialId}`);
+    return null;
+  } catch (error) {
+    console.error('Error searching for material:', error);
+    return null;
+  }
 };
+
 
 // Helper function to delete cloud storage files
 const deleteCloudFiles = async (material: Material, materialType: 'PDF' | 'IMAGE' | 'VIDEO'): Promise<boolean> => {
   try {
     const filesToDelete: string[] = [];
+
+    console.log(`Preparing to delete cloud files for ${materialType} material`);
     
     if (materialType === 'PDF') {
       const pdfMaterial = material as IPdfMaterial;
@@ -76,31 +99,57 @@ const deleteCloudFiles = async (material: Material, materialType: 'PDF' | 'IMAGE
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { materialId: string } }
 ) {
   try {
+    console.log("=== DELETE MATERIAL API START ===");
+
     // Connect to UniPlatformDB
     await connectUniPlatformDB();
-    
-    const materialId = params.id;
-    
+
+    const materialId = params.materialId;
+    console.log(`Received delete request for material ID: ${materialId}`);
+
     // Validate material ID
     if (!materialId) {
-      return NextResponse.json({ 
-        message: 'Material ID is required' 
-      }, { status: 400 });
+      console.error("Material ID is missing from request");
+      return NextResponse.json(
+        {
+          message: "Material ID is required",
+          success: false,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate that materialId is a valid MongoDB ObjectId
+    if (!/^[0-9a-fA-F]{24}$/.test(materialId)) {
+      console.error(`Invalid MongoDB ObjectId format: ${materialId}`);
+      return NextResponse.json(
+        {
+          message: "Invalid material ID format",
+          success: false,
+        },
+        { status: 400 }
+      );
     }
 
     // Find the material across all collections
     const result = await findMaterialById(materialId);
-    
+
     if (!result) {
-      return NextResponse.json({ 
-        message: 'Material not found' 
-      }, { status: 404 });
+      console.error(`Material not found with ID: ${materialId}`);
+      return NextResponse.json(
+        {
+          message: "Material not found",
+          success: false,
+        },
+        { status: 404 }
+      );
     }
 
     const { material, type, Model } = result;
+    console.log(`Found material: ${material.materialTitle} (Type: ${type})`);
 
     // Store material info for response before deletion
     const materialInfo = {
@@ -113,26 +162,37 @@ export async function DELETE(
       uploaderUpid: material.uploaderUpid,
       courseName: material.courseName,
       courseId: material.courseId,
-      createdAt: material.createdAt
+      createdAt: material.createdAt,
     };
 
     // Delete associated cloud storage files
+    console.log("Attempting to delete cloud files...");
     const cloudDeletionSuccess = await deleteCloudFiles(material, type);
-    
+
     if (!cloudDeletionSuccess) {
-      console.warn(`Failed to delete cloud files for material ${materialId}, but proceeding with database deletion`);
+      console.warn(
+        `Failed to delete cloud files for material ${materialId}, but proceeding with database deletion`
+      );
       // You might want to handle this differently based on your requirements
       // For now, we'll proceed with database deletion even if cloud deletion fails
     }
 
     // Delete the material from database
+    console.log("Attempting to delete from database...");
     const deletedMaterial = await Model.findByIdAndDelete(materialId);
-    
+
     if (!deletedMaterial) {
-      return NextResponse.json({ 
-        message: 'Failed to delete material from database' 
-      }, { status: 500 });
+      console.error("Failed to delete material from database");
+      return NextResponse.json(
+        {
+          message: "Failed to delete material from database",
+          success: false,
+        },
+        { status: 500 }
+      );
     }
+
+    console.log("Material deleted successfully from database");
 
     // Log the deletion for audit purposes
     console.log(`Material deleted successfully:`, {
@@ -141,21 +201,82 @@ export async function DELETE(
       materialTitle: material.materialTitle,
       uploaderUpid: material.uploaderUpid,
       deletedAt: new Date().toISOString(),
-      cloudDeletionSuccess
+      cloudDeletionSuccess,
     });
 
-    return NextResponse.json({ 
-      message: 'Material deleted successfully',
-      deletedMaterial: materialInfo,
-      cloudFilesDeleted: cloudDeletionSuccess
-    }, { status: 200 });
+    console.log("=== DELETE MATERIAL API END ===");
 
+    return NextResponse.json(
+      {
+        message: "Material deleted successfully",
+        success: true,
+        deletedMaterial: materialInfo,
+        cloudFilesDeleted: cloudDeletionSuccess,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error('Material deletion error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to delete material';
     
-    return NextResponse.json({ 
-      message: errorMessage
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        message: errorMessage,
+        success: false,
+        error: process.env.NODE_ENV === "development" ? error : undefined,
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { materialId: string } }
+) {
+  try {
+    console.log("=== DELETE MATERIAL API START ===");
+
+    await connectUniPlatformDB();
+
+    const materialId = params.materialId;
+    console.log(`Received delete request for material ID: ${materialId}`);
+
+    // Validate material ID format
+    if (!materialId || !/^[0-9a-fA-F]{24}$/.test(materialId)) {
+      return NextResponse.json(
+        {
+          exists: false,
+          error: "Invalid material ID format",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check all material collections
+    const pdf = await PdfMaterial.findById(materialId);
+    const image = await ImageMaterial.findById(materialId);
+    const video = await VideoMaterial.findById(materialId);
+
+    if (pdf || image || video) {
+      return NextResponse.json(
+        {
+          exists: true,
+          materialType: pdf ? "PDF" : image ? "IMAGE" : "VIDEO",
+        },
+        { status: 200 }
+      );
+    }
+
+    return NextResponse.json({ exists: false }, { status: 404 });
+  } catch (error) {
+    console.error("Material existence check error:", error);
+    return NextResponse.json(
+      {
+        exists: false,
+        error: "Failed to check material existence",
+      },
+      { status: 500 }
+    );
   }
 }
