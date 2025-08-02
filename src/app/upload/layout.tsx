@@ -1,7 +1,9 @@
 'use client';
 
 import { Loading } from '@/components/reuse/loading';
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext,
+  //  useContext 
+  } from 'react';
 
 interface UploadLayoutProps {
   children: React.ReactNode;
@@ -14,13 +16,13 @@ const GuidelinesContext = createContext<{
 } | null>(null);
 
 // Hook to use guidelines context
-export const useGuidelines = () => {
-  const context = useContext(GuidelinesContext);
-  if (!context) {
-    throw new Error('useGuidelines must be used within GuidelinesProvider');
-  }
-  return context;
-};
+// export const useGuidelines = () => {
+//   const context = useContext(GuidelinesContext);
+//   if (!context) {
+//     throw new Error('useGuidelines must be used within GuidelinesProvider');
+//   }
+//   return context;
+// };
 
 export default function UploadLayout({ children }: UploadLayoutProps) {
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(true);
