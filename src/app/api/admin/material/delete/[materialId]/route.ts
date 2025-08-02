@@ -99,7 +99,7 @@ const deleteCloudFiles = async (material: Material, materialType: 'PDF' | 'IMAGE
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     console.log("=== DELETE MATERIAL API START ===");
@@ -107,7 +107,7 @@ export async function DELETE(
     // Connect to UniPlatformDB
     await connectUniPlatformDB();
 
-    const materialId = params.id;
+    const materialId = (await params).id;
     console.log(`Received delete request for material ID: ${materialId}`);
 
     // Validate material ID
@@ -232,17 +232,15 @@ export async function DELETE(
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     console.log("=== DELETE MATERIAL API START ===");
 
     await connectUniPlatformDB();
 
-    const materialId = params.id;
+    const materialId = (await params).id;
     console.log(`Received delete request for material ID: ${materialId}`);
-
-    
 
     // Validate material ID format
     if (!materialId || !/^[0-9a-fA-F]{24}$/.test(materialId)) {
