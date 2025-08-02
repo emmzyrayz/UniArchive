@@ -116,7 +116,7 @@ function deleteFromCloudinary(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { fileId: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     console.log("Delete Image: Starting image deletion process");
@@ -135,7 +135,7 @@ export async function DELETE(
     console.log("Delete Image: Auth successful for user:", user.email);
 
     // Get the file ID from params
-    const { fileId } = params;
+    const fileId = (await params).id;
 
     if (!fileId) {
       return NextResponse.json(

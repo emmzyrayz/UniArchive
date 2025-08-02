@@ -133,7 +133,7 @@ function validateFileId(fileId: string): { isValid: boolean; error?: string } {
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { fileId: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ApiResponse>> {
   try {
     console.log("Delete File: Starting file deletion process");
@@ -155,7 +155,7 @@ export async function DELETE(
     console.log("Delete File: Auth successful for user:", user.email);
 
     // Validate file ID
-    const { fileId } = params;
+    const fileId = (await params).id;
     const validation = validateFileId(fileId);
     if (!validation.isValid) {
       return NextResponse.json(

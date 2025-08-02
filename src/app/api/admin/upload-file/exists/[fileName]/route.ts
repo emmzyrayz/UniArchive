@@ -3,10 +3,10 @@ import { createB2Client } from "@/lib/backblaze.b2";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { fileName: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const fileName = params.fileName;
+    const fileName = (await params).id;
     if (!fileName) {
       return NextResponse.json(
         { success: false, message: "File name is required" },
