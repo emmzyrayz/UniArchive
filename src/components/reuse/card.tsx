@@ -50,7 +50,7 @@ export const CardOne = ({
           alt={title}
           width={layout === "left" ? 100 : 400}
           height={layout === "left" ? 100 : 500}
-          className={`object-fit ${
+          className={` bg-black/30 object-contain ${
             layout === "left"
               ? "min-w-[40%] h-full"
               : "w-full min-h-[60%] rounded-b-[8px]"

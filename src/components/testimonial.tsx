@@ -4,15 +4,6 @@ import React, {useEffect, useRef} from "react";
 import Image, {StaticImageData} from "next/image";
 import Link from "next/link";
 
-// Images
-// import Lego from "@/assets/img/gallery/lego.jpg";
-// import Leica from "@/assets/img/gallery/leica.jpg";
-// import Nashville from "@/assets/img/gallery/nashville.jpg";
-// import surf from "@/assets/img/gallery/surf.jpg";
-// import Post from "@/assets/img/post/post_5.png";
-// import Blog from "@/assets/img/people/gallery/g5.jpg";
-// import Post1 from "@/assets/img/post/post_9.png";
-// import RedBull from "@/assets/img/gallery/red-bull.jpg";
 
 // avatars
 import Ava1 from "@/assets/img/people/avatar/comment_1.png";
@@ -41,18 +32,6 @@ export const Testimonial: React.FC<TestimonialProps> = ({
   institutionLink = "#",
   rating = 5,
 }) => {
-  // Helper function to handle different avatar types
-  // const renderAvatar = () => {
-  //   return (
-  //     <Image
-  //       src={avatar}
-  //       alt={`Avatar of ${name}`}
-  //       className="rounded-full object-cover"
-  //       width={80}
-  //       height={80}
-  //     />
-  //   );
-  // };
 
   // Render star ratings
   const renderStars = () => {
@@ -227,91 +206,6 @@ export const TestimonialCarousel: React.FC<TestimonialCarouselProps> = ({
     </div>
   );
 };
-
-// export const TestimonialsPage: React.FC = () => {
-//   // Create testimonial data array
-//   const testimonials = [
-//     {
-//       name: "John Doe",
-//       content:
-//         "I learned so much from the educational website. It helped me excel in my studies and achieve my academic goals.",
-//       avatar: Ava1, // Use your imported avatar directly
-//       role: "Student",
-//       institution: "UNILAG",
-//       institutionLink: "#",
-//       rating: 5,
-//       highlight: true,
-//     },
-//     {
-//       name: "Jane Smith",
-//       content:
-//         "The educational website provided me with valuable resources that enhanced my learning experience.",
-//       avatar: Ava2, // Use your imported avatar directly
-//       role: "Professor",
-//       institution: "Harvard",
-//       rating: 4,
-//     },
-//     {
-//       name: "Alex Johnson",
-//       content:
-//         "The interactive learning modules made difficult subjects approachable and fun.",
-//       avatar: Ava3, // Use your imported avatar directly
-//       role: "High School Student",
-//       rating: 5,
-//     },
-//   ];
-
-//   return (
-//     <div className="container mx-auto px-4 py-12">
-//       <h1 className="text-3xl font-bold text-center mb-12">Testimonials</h1>
-
-//       {/* Basic Horizontal Layout */}
-//       <div className="mb-16">
-//         <h2 className="text-2xl font-semibold mb-6">Featured Testimonial</h2>
-//         <Testimonial
-//           name={testimonials[0].name}
-//           content={testimonials[0].content}
-//           avatar={testimonials[0].avatar}
-//           role={testimonials[0].role}
-//           institution={testimonials[0].institution}
-//           rating={testimonials[0].rating}
-//           highlight={testimonials[0].highlight}
-//         />
-//       </div>
-
-//       {/* Grid Layout */}
-//       <div className="mb-16">
-//         <h2 className="text-2xl font-semibold mb-6">More Success Stories</h2>
-//         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-//           {testimonials.map((testimonial, index) => (
-//             <Testimonial
-//               key={index}
-//               name={testimonial.name}
-//               content={testimonial.content}
-//               avatar={testimonial.avatar}
-//               role={testimonial.role}
-//               institution={testimonial.institution}
-//               rating={testimonial.rating}
-//               layout="vertical"
-//             />
-//           ))}
-//         </div>
-//       </div>
-
-//       {/* Optional: Carousel Layout */}
-//       <div>
-//         <h2 className="text-2xl font-semibold mb-6">Testimonial Showcase</h2>
-//         <TestimonialCarousel
-//           testimonials={testimonials}
-//           autoplay={true}
-//           interval={5000}
-//           showArrows={true}
-//           showDots={true}
-//         />
-//       </div>
-//     </div>
-//   );
-// };
 
 // Example usage component with multiple testimonials
 export const TestimonialsSection: React.FC = () => {

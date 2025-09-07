@@ -6,6 +6,8 @@ import "./globals.css";
 import { baseMetadata } from "@/utils/metadata";
 
 import ClientWrapper from "@/components/clientWrapper";
+import ContextWrapper from "@/config/advancedContextWrapper";
+
 
 import { NavigationWrapper } from "@/context/navigationWrapper";
 import { AuthProvider } from "@/context/authContext";
@@ -16,6 +18,7 @@ import DebugUserContext from "@/utils/DebugUserContext";
 import { SchoolProvider } from "@/context/schoolContext";
 import { CourseProvider } from "@/context/courseContext";
 import { MaterialProvider } from "@/context/materialContext";
+import { PublicProvider } from "@/context/publicContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -50,6 +53,18 @@ const sora = localFont({
 
 const metadata: Metadata = baseMetadata;
 
+const contextProviders = [
+  AuthProvider,
+  UserProvider,
+  RouteProtectionProvider,
+  AdminProvider,
+  SchoolProvider,
+  CourseProvider,
+  MaterialProvider,
+  PublicProvider,
+];
+
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -72,26 +87,12 @@ export default function RootLayout({
         <meta name="description" content={metadata.description as string} />
       </head>
       <body className="bg-[whitesmoke] font-sora relative">
-        <AuthProvider>
-          <UserProvider>
-            <RouteProtectionProvider>
-              <DebugUserContext />
-              <AdminProvider>
-                <SchoolProvider>
-                  {" "}
-                  {/* Wrap with SchoolProvider */}
-                  <CourseProvider>
-                    <MaterialProvider>
-                      <ClientWrapper>
-                        <NavigationWrapper>{children}</NavigationWrapper>
-                      </ClientWrapper>
-                    </MaterialProvider>
-                  </CourseProvider>
-                </SchoolProvider>
-              </AdminProvider>
-            </RouteProtectionProvider>
-          </UserProvider>
-        </AuthProvider>
+      <ContextWrapper providers={contextProviders}>
+          <DebugUserContext />
+          <ClientWrapper>
+            <NavigationWrapper>{children}</NavigationWrapper>
+          </ClientWrapper>
+        </ContextWrapper>
       </body>
     </html>
   );

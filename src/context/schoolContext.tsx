@@ -42,7 +42,7 @@ export function SchoolProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('/api/public/schools', {
+      const response = await fetch('/api/public/universities', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });

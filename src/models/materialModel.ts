@@ -27,6 +27,7 @@ export interface IBaseMaterial {
   format: string;
   originalFileName: string;
   fileName?: string;
+  materialUrl?: string;
 
   // Status and visibility
   isApproved: boolean;
@@ -314,32 +315,32 @@ const AnalyticsSchema = new Schema({
 
 export const BaseMaterialFields = {
   // Unique Material Identifiers
-  muid: { 
-    type: String, 
-    required: true, 
+  muid: {
+    type: String,
+    required: true,
     unique: true,
-    index: true // For faster queries
+    index: true, // For faster queries
   }, // Material Unique ID
-  pmuid: { 
-    type: String, 
-    required: true, 
+  pmuid: {
+    type: String,
+    required: true,
     unique: true,
-    index: true // For faster queries
+    index: true, // For faster queries
   }, // Platform Material Unique ID
-  
+
   // Uploader info
   uploaderName: { type: String, required: true },
   uploaderUpid: { type: String, required: true, index: true },
   uploaderRole: {
     type: String,
     enum: ["admin", "mod", "contributor"],
-    required: true
+    required: true,
   },
-  
+
   // Course info
   courseName: { type: String, required: true },
   courseId: { type: String, required: true, index: true },
-  
+
   // Material metadata
   materialTitle: { type: String, required: true },
   materialDescription: { type: String, required: true, maxlength: 2000 },
@@ -347,14 +348,15 @@ export const BaseMaterialFields = {
     type: String,
     enum: ["PDF", "IMAGE", "VIDEO", "TEXT"],
     required: true,
-    index: true
+    index: true,
   },
-  
+
   // File metadata
   fileSize: { type: Number, required: true }, // Size in bytes
   format: { type: String, required: true }, // File format (e.g., 'pdf', 'jpg', 'mp4')
   originalFileName: { type: String, required: true },
-  
+  materialUrl: { type: String },
+
   // Status and visibility
   isApproved: { type: Boolean, default: false, index: true },
   isPublic: { type: Boolean, default: true, index: true },
@@ -362,27 +364,29 @@ export const BaseMaterialFields = {
     type: String,
     enum: ["PENDING", "APPROVED", "REJECTED", "ARCHIVED"],
     default: "PENDING",
-    index: true
+    index: true,
   },
 
   // NEW: Approval workflow fields
-  approvalHistory: [{
-    actionType: {
-      type: String,
-      enum: ["SUBMITTED", "APPROVED", "REJECTED", "RESUBMITTED"],
-      required: true
+  approvalHistory: [
+    {
+      actionType: {
+        type: String,
+        enum: ["SUBMITTED", "APPROVED", "REJECTED", "RESUBMITTED"],
+        required: true,
+      },
+      performedBy: { type: String, required: true },
+      performedByName: { type: String, required: true },
+      performedByRole: {
+        type: String,
+        enum: ["admin", "mod", "contributor"],
+        required: true,
+      },
+      timestamp: { type: Date, default: Date.now },
+      notes: { type: String },
+      reason: { type: String },
     },
-    performedBy: { type: String, required: true },
-    performedByName: { type: String, required: true },
-    performedByRole: {
-      type: String,
-      enum: ["admin", "mod", "contributor"],
-      required: true
-    },
-    timestamp: { type: Date, default: Date.now },
-    notes: { type: String },
-    reason: { type: String }
-  }],
+  ],
   rejectionReason: { type: String },
   moderatorNotes: { type: String },
   approvedBy: { type: String },
@@ -392,22 +396,24 @@ export const BaseMaterialFields = {
 
   // NEW: Version control fields
   version: { type: Number, default: 1 },
-  editHistory: [{
-    editedBy: { type: String, required: true },
-    editedByName: { type: String, required: true },
-    editedByRole: {
-      type: String,
-      enum: ["admin", "mod", "contributor"],
-      required: true
+  editHistory: [
+    {
+      editedBy: { type: String, required: true },
+      editedByName: { type: String, required: true },
+      editedByRole: {
+        type: String,
+        enum: ["admin", "mod", "contributor"],
+        required: true,
+      },
+      timestamp: { type: Date, default: Date.now },
+      changedFields: [{ type: String }],
+      previousVersion: { type: Number, required: true },
+      reason: { type: String },
     },
-    timestamp: { type: Date, default: Date.now },
-    changedFields: [{ type: String }],
-    previousVersion: { type: Number, required: true },
-    reason: { type: String }
-  }],
+  ],
   lastEditedBy: { type: String },
   lastEditedAt: { type: Date },
-  
+
   // Content organization
   tableOfContent: [String],
   tags: [{ type: String, index: true }], // For better searchability
@@ -415,24 +421,24 @@ export const BaseMaterialFields = {
   schoolName: { type: String, required: true },
   facultyName: { type: String, required: true },
   departmentName: { type: String, required: true },
-  
+
   // Ratings and Comments
   comments: [CommentSchema],
   ratings: [RatingSchema],
   averageRating: { type: Number, default: 0, min: 0, max: 5 },
   totalRatings: { type: Number, default: 0 },
-  
+
   // Analytics
   analytics: { type: AnalyticsSchema, default: () => ({}) },
-  
+
   // Timestamps
   createdAt: { type: Date, default: Date.now, index: true },
   updatedAt: { type: Date },
-  
+
   // Moderation
   reportCount: { type: Number, default: 0 },
   isReported: { type: Boolean, default: false },
-  moderationNotes: { type: String }
+  moderationNotes: { type: String },
 };
 
 // PDF Material Schema
