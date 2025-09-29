@@ -1,9 +1,14 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { CardOne } from "./reuse/card";
-import { motion, useAnimationControls } from "framer-motion";
+import {
+  AnimationPlaybackControls,
+  PanInfo,
+  motion,
+  useAnimationControls,
+} from "framer-motion";
 import { usePublic } from "@/context/publicContext";
 
 interface CourseCardData {
@@ -23,11 +28,17 @@ interface CourseCardData {
 export const TopCourse = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
-  const controls = useAnimationControls();
+  const [isInteracting, setIsInteracting] = useState(false);
+  const [currentPosition, setCurrentPosition] = useState(0);
+  const [pausedPosition, setPausedPosition] = useState(0);
+  const lastDragInfoRef = useRef({ x: 0 });
 
   // Fetch data from public context
-  const { unifiedData, isLoading, error } = usePublic();
+  const { unifiedData, isLoading } = usePublic();
   const [courseData, setCourseData] = useState<CourseCardData[]>([]);
+  const controls = useAnimationControls();
+  const animationRef = useRef<AnimationPlaybackControls | null>(null);
+  const error = usePublic().error;
 
   // Process unified data to extract top 10 courses
   useEffect(() => {
@@ -68,33 +79,109 @@ export const TopCourse = () => {
   // Animation settings
   const animationDuration = 30; // seconds
 
-  useEffect(() => {
-    const startAnimation = async () => {
-      if (isHovering) {
-        controls.stop();
-        return;
-      }
+  // Start continuous animation
+  const startContinuousAnimation = useCallback(async () => {
+    if (isInteracting || courseData.length === 0) {
+      return;
+    }
 
-      // Get width of the scroll container for proper animation
-      if (!containerRef.current) return;
+    try {
+      // Calculate remaining duration based on current position
+      const progress = Math.abs(pausedPosition) / 50; // 50% is full cycle
+      const remainingDuration = animationDuration * (1 - progress);
 
-      // Only start animation if we have data
-      if (courseData.length === 0) return;
-
-      // Animation sequence for infinite loop
-      await controls.start({
-        x: [0, "-50%"],
+      const animationPromise = controls.start({
+        x: [pausedPosition + "%", "-50%", "0%"],
         transition: {
-          duration: animationDuration,
+          duration: remainingDuration,
           ease: "linear",
           repeat: Infinity,
           repeatType: "loop",
         },
       });
-    };
 
-    startAnimation();
-  }, [controls, isHovering, courseData]);
+      animationRef.current = await animationPromise;
+    } catch (error) {
+      // Animation was stopped/interrupted
+      console.log("Animation interrupted:", error);
+    }
+  }, [
+    controls,
+    isInteracting,
+    courseData.length,
+    pausedPosition,
+    animationDuration,
+  ]);
+
+  // Pause animation and store current position
+  const pauseAnimation = useCallback(() => {
+    if (animationRef.current) {
+      controls.stop();
+      // Store the current position from state instead of trying to get it from controls
+      setPausedPosition(currentPosition);
+    }
+  }, [controls, currentPosition]);
+
+  // Handle hover states
+  useEffect(() => {
+    if (isHovering || isInteracting) {
+      pauseAnimation();
+    } else if (courseData.length > 0) {
+      // Small delay to ensure smooth transition
+      const timer = setTimeout(() => {
+        startContinuousAnimation();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    isHovering,
+    isInteracting,
+    courseData.length,
+    startContinuousAnimation,
+    pauseAnimation,
+  ]);
+
+  // Initialize animation when departments are loaded
+  useEffect(() => {
+    if (courseData.length > 0 && !isHovering && !isInteracting) {
+      const timer = setTimeout(() => {
+        startContinuousAnimation();
+      }, 500); // Small delay for initialization
+      return () => clearTimeout(timer);
+    }
+  }, [courseData.length, startContinuousAnimation, isHovering, isInteracting]);
+
+  const handleInteractionStart = () => {
+    pauseAnimation();
+    setIsInteracting(true);
+  };
+
+  const handleInteractionEnd = () => {
+    setPausedPosition(currentPosition);
+    setIsInteracting(false);
+  };
+
+  const handleDrag = (
+    _event: MouseEvent | TouchEvent | PointerEvent,
+    info: PanInfo
+  ) => {
+    // Convert pixel movement to percentage (approximation)
+    const containerWidth = containerRef.current?.offsetWidth || 1000;
+    const percentDelta = (info.delta.x / containerWidth) * 100;
+
+    // Calculate new position
+    const newPosition = currentPosition + percentDelta;
+
+    // Constrain position between 0 and -50%
+    const constrainedPosition = Math.min(0, Math.max(-50, newPosition));
+
+    // Update position
+    setCurrentPosition(constrainedPosition);
+    controls.set({ x: `${constrainedPosition}%` });
+
+    // Save last drag info
+    lastDragInfoRef.current = { x: info.delta.x };
+  };
 
   const handleMouseEnter = () => {
     setIsHovering(true);
@@ -188,7 +275,19 @@ export const TopCourse = () => {
             className="flex flex-nowrap"
             animate={controls}
             initial={{ x: 0 }}
-            style={{ display: "flex", width: "200%" }} // Double width for seamless loop
+            style={{ display: "flex", width: "200%" }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
+            onDragStart={handleInteractionStart}
+            onDragEnd={handleInteractionEnd}
+            onDrag={handleDrag}
+            dragMomentum={false}
+            onTouchStart={handleInteractionStart}
+            onTouchEnd={handleInteractionEnd}
+            onMouseDown={handleInteractionStart}
+            onMouseUp={handleInteractionEnd}
+            onMouseLeave={handleInteractionEnd}
           >
             {/* First set of cards */}
             {courseData.map((course) => (

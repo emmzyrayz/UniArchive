@@ -1,15 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectUniPlatformDB } from '@/lib/database';
-import { getCourseModel } from '@/models/courseModel';
+// /api/public/courses/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { connectUniPlatformDB } from "@/lib/database";
+import { getCourseModel } from "@/models/courseModel";
 
-// Define proper types
-interface CourseFilter {
+// Define proper types for public course filter
+interface PublicCourseFilter {
   schoolId?: string;
   facultyId?: string;
   departmentId?: string;
   level?: string;
   semester?: string;
-  status?: string;
+  status: string; // Always 'approved' for public access
   $or?: Array<{
     [key: string]: { $regex: string; $options: string };
   }>;
@@ -17,14 +18,18 @@ interface CourseFilter {
 
 export async function GET(req: NextRequest) {
   try {
+    console.log("🎓 Public courses API called");
+
     // Connect to UniPlatformDB
     await connectUniPlatformDB();
     const CourseModel = await getCourseModel();
 
     const { searchParams } = new URL(req.url);
-    const filter: CourseFilter = {};
+    const filter: PublicCourseFilter = {
+      status: "approved", // Always filter only approved courses for public access
+    };
 
-    // Apply filters
+    // Apply filters (no admin-specific filters)
     const filterableFields = [
       "schoolId",
       "facultyId",
@@ -32,6 +37,7 @@ export async function GET(req: NextRequest) {
       "level",
       "semester",
     ] as const;
+
     filterableFields.forEach((field) => {
       const value = searchParams.get(field);
       if (value) filter[field] = value;
@@ -68,42 +74,59 @@ export async function GET(req: NextRequest) {
       query,
     ]);
 
-    // Build pagination response
-    const totalPages = limit > 0 ? Math.ceil(total / limit) : 1;
-    const pagination = {
-      currentPage: page,
-      totalPages,
-      totalItems: total,
-      itemsPerPage: limit || total,
-      hasNextPage: limit > 0 ? page < totalPages : false,
-      hasPrevPage: page > 1,
-    };
-
-    console.log("Course API Response:", {
+    console.log("🎓 Public Course API Response:", {
       coursesCount: courses.length,
       total,
       filter,
-      limit,
-      pagination,
     });
+
+    // Build pagination response
+    // const totalPages = limit > 0 ? Math.ceil(total / limit) : 1;
+    // const pagination = {
+    //   currentPage: page,
+    //   totalPages: limit > 0 ? Math.ceil(total / limit) : 1,
+    //   totalItems: total,
+    //   itemsPerPage: limit || total,
+    //   hasNextPage: limit > 0 ? page < totalPages : false,
+    //   hasPrevPage: page > 1,
+    // };
 
     return NextResponse.json(
       {
         courses,
-        pagination,
+        pagination: {
+          currentPage: page,
+          totalPages: limit > 0 ? Math.ceil(total / limit) : 1,
+          totalItems: total,
+          itemsPerPage: limit || total,
+          hasNextPage: limit > 0 ? page < Math.ceil(total / limit) : false,
+          hasPrevPage: page > 1,
+        },
         statistics: {
           totalCourses: total,
-          approvedCourses: total, // Adjust based on your needs
+          approvedCourses: total,
           pendingCourses: 0,
         },
       },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          // Add CORS headers for public access
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      }
     );
   } catch (error) {
-    console.error('Course fetch error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch courses';
-    return NextResponse.json({ 
-      message: errorMessage
-    }, { status: 500 });
+    console.error("Public course fetch error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to fetch courses";
+    return NextResponse.json(
+      {
+        message: errorMessage,
+      },
+      { status: 500 }
+    );
   }
 }

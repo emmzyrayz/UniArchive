@@ -105,8 +105,7 @@ export const PublicProvider: React.FC<PublicProviderProps> = ({ children }) => {
   } = useSchool();
 
   const {
-    courses,
-    fetchCourses,
+    fetchPublicCourses,
     isLoading: coursesLoading,
     error: coursesError,
   } = useCourse();
@@ -163,6 +162,33 @@ export const PublicProvider: React.FC<PublicProviderProps> = ({ children }) => {
     },
     [CACHE_DURATION]
   );
+
+  // NEW: Direct material fetching function to bypass materialContext limitations
+  const fetchPublicMaterials = useCallback(async (): Promise<Material[]> => {
+    try {
+      console.log("📚 Fetching public materials directly...");
+
+      const response = await fetch("/api/public/materials?limit=0", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch materials: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log(
+        "📚 Public materials fetched:",
+        result.materials?.length || 0
+      );
+
+      return result.materials || [];
+    } catch (error) {
+      console.error("❌ Error fetching public materials:", error);
+      return [];
+    }
+  }, []);
 
   // Type guards for material types
   const isPdfMaterial = (material: Material): material is IPdfMaterial => {
@@ -242,8 +268,7 @@ export const PublicProvider: React.FC<PublicProviderProps> = ({ children }) => {
 
       // Step 2: Fetch all approved courses (no pagination for complete dataset)
       console.log("Fetching courses data...");
-      await fetchCourses({
-        status: "approved",
+      const coursesData = await fetchPublicCourses({
         limit: 0, // No pagination limit to get all courses
       });
 
@@ -258,7 +283,7 @@ export const PublicProvider: React.FC<PublicProviderProps> = ({ children }) => {
       console.log("Building unified structure...");
       console.log("Available data:", {
         universities: universities?.length || 0,
-        courses: courses?.length || 0,
+        courses: coursesData?.length || 0,
         materials: materials?.length || 0,
       });
 
@@ -287,7 +312,7 @@ export const PublicProvider: React.FC<PublicProviderProps> = ({ children }) => {
                   console.log(`    Processing department: ${department.name}`);
 
                   // Filter courses for this department
-                  const departmentCourses = courses.filter(
+                  const departmentCourses = coursesData.filter(
                     (course: ICourse) => course.departmentId === department.id
                   );
 
@@ -314,7 +339,6 @@ export const PublicProvider: React.FC<PublicProviderProps> = ({ children }) => {
                         name: course.courseName,
                         code: course.courseCode,
                         departmentId: course.departmentId,
-                        // description: course.courseDescription,
                         level: course.level,
                         semester: course.semester,
                         // creditUnits: course.creditUnits,
@@ -383,8 +407,11 @@ export const PublicProvider: React.FC<PublicProviderProps> = ({ children }) => {
         totalMaterials,
       });
 
-      // Cache the unified data
-      setCachedData(unifiedUniversities);
+      // Cache the unified data only if we have meaningful data
+      if (totalCourses > 0 || unifiedUniversities.length > 0) {
+        setCachedData(unifiedUniversities);
+      }
+
       setUnifiedData(unifiedUniversities);
     } catch (err) {
       const errorMessage =
@@ -399,10 +426,9 @@ export const PublicProvider: React.FC<PublicProviderProps> = ({ children }) => {
   }, [
     getCachedData,
     refreshSchools,
-    fetchCourses,
+    fetchPublicCourses,
     fetchMaterials,
     universities,
-    courses,
     materials,
     setCachedData,
     getMaterialUrl,
@@ -422,10 +448,10 @@ export const PublicProvider: React.FC<PublicProviderProps> = ({ children }) => {
   useEffect(() => {
     console.log("PublicContext useEffect triggered:", {
       universitiesCount: universities?.length || 0,
-      coursesCount: courses?.length || 0,
       materialsCount: materials?.length || 0,
       isInitialized,
       isLoading,
+      schoolsLoading,
     });
 
     // Only build data if we have universities data and we haven't initialized yet
@@ -433,23 +459,28 @@ export const PublicProvider: React.FC<PublicProviderProps> = ({ children }) => {
       universities &&
       universities.length > 0 &&
       !isInitialized &&
-      !isLoading
+      !isLoading &&
+      !schoolsLoading
     ) {
       console.log("Conditions met, building unified data...");
       buildUnifiedData();
     }
   }, [
     universities,
-    courses,
     materials,
     isInitialized,
     isLoading,
+    schoolsLoading,
     buildUnifiedData,
   ]);
 
   // Combined loading state
   const combinedLoading =
-    isLoading || schoolsLoading || coursesLoading || materialsLoading;
+    isLoading ||
+    schoolsLoading ||
+    coursesLoading ||
+    schoolsLoading ||
+    materialsLoading;
 
   // Combined error state
   const combinedError = error || schoolsError || coursesError || materialsError;

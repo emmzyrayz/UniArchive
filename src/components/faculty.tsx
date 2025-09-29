@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
 import { StaticImageData } from "next/image";
 import { CardOne } from "./reuse/card";
-import { motion, useAnimationControls, PanInfo } from "framer-motion";
+import { AnimationPlaybackControls, PanInfo, motion, useAnimationControls } from "framer-motion";
 import { usePublic } from "@/context/publicContext";
 
 // Default placeholder image - you can replace with your default faculty image
@@ -26,13 +26,16 @@ export const TopFaculty = () => {
   const [isHovering, setIsHovering] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
   const [currentPosition, setCurrentPosition] = useState(0);
+  const [pausedPosition, setPausedPosition] = useState(0);
   const lastDragInfoRef = useRef({ x: 0 });
-  const [dragX, setDragX] = useState(0);
+  // const [dragX, setDragX] = useState(0);
   const controls = useAnimationControls();
+  const animationRef = useRef<AnimationPlaybackControls | null>(null);
 
   // Fetch data from public context
-  const { unifiedData, isLoading, error } = usePublic();
+  const { unifiedData, isLoading } = usePublic();
   const [facultyData, setFacultyData] = useState<FacultyCardData[]>([]);
+  const error = usePublic().error;
 
   // Process unified data to extract top 10 faculties
   useEffect(() => {
@@ -71,49 +74,83 @@ export const TopFaculty = () => {
   // Animation settings
   const animationDuration = 30; // seconds
 
-  useEffect(() => {
-    const startAnimation = async () => {
-      if (isHovering) {
-        controls.stop();
-        return;
-      }
+    // Start continuous animation
+  const startContinuousAnimation = useCallback(async () => {
+    if (isInteracting || facultyData.length === 0) {
+      return;
+    }
 
-      if (isInteracting) {
-        // Stop auto-animation when user is interacting
-        return;
-      }
+    try {
+      // Calculate remaining duration based on current position
+      const progress = Math.abs(pausedPosition) / 50; // 50% is full cycle
+      const remainingDuration = animationDuration * (1 - progress);
 
-      setCurrentPosition(dragX);
-
-      // Get width of the scroll container for proper animation
-      if (!containerRef.current) return;
-
-      // Animation sequence for infinite loop
-      await controls.start({
-        x: [dragX + "%", "-50%"],
+      const animationPromise = controls.start({
+        x: [pausedPosition + "%", "-50%", "0%"],
         transition: {
-          duration: animationDuration * (1 - Math.abs(dragX) / -50),
+          duration: remainingDuration,
           ease: "linear",
           repeat: Infinity,
           repeatType: "loop",
         },
       });
-    };
 
-    // Only start animation if we have data
-    if (facultyData.length > 0) {
-      startAnimation();
+      animationRef.current = await animationPromise;
+    } catch (error) {
+      // Animation was stopped/interrupted
+      console.log("Animation interrupted:", error);
     }
-  }, [controls, isHovering, isInteracting, dragX, facultyData]);
+  }, [
+    controls,
+    isInteracting,
+    facultyData.length,
+    pausedPosition,
+    animationDuration,
+  ]);
+
+    // Pause animation and store current position
+  const pauseAnimation = useCallback(() => {
+    if (animationRef.current) {
+      controls.stop();
+      // Store the current position from state instead of trying to get it from controls
+      setPausedPosition(currentPosition);
+    }
+  }, [controls, currentPosition]);
+
+  useEffect(() => {
+    if (isHovering || isInteracting) {
+      pauseAnimation();
+    } else if (facultyData.length > 0) {
+      // Small delay to ensure smooth transition
+      const timer = setTimeout(() => {
+        startContinuousAnimation();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    isHovering,
+    isInteracting,
+    facultyData.length,
+    startContinuousAnimation,
+    pauseAnimation,
+  ]);
+
+  useEffect(() => {
+    if (facultyData.length > 0 && !isHovering && !isInteracting) {
+      const timer = setTimeout(() => {
+        startContinuousAnimation();
+      }, 500); // Small delay for initialization
+      return () => clearTimeout(timer);
+    }
+  }, [facultyData.length, startContinuousAnimation, isHovering, isInteracting]);
 
   const handleInteractionStart = () => {
-    controls.stop();
+    pauseAnimation();
     setIsInteracting(true);
   };
 
   const handleInteractionEnd = () => {
-    // When interaction ends, update dragX with final position
-    setDragX(currentPosition);
+    setPausedPosition(currentPosition);
     setIsInteracting(false);
   };
 

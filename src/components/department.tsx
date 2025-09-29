@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { CardOne } from "./reuse/card";
-import { PanInfo, motion, useAnimationControls } from "framer-motion";
+import { AnimationPlaybackControls, PanInfo, motion, useAnimationControls } from "framer-motion";
 import { usePublic } from "@/context/publicContext"; // Import your public context
 
 interface DepartmentData {
@@ -20,13 +20,16 @@ export const TopDepartment = () => {
   const [isHovering, setIsHovering] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
   const [currentPosition, setCurrentPosition] = useState(0);
+  const [pausedPosition, setPausedPosition] = useState(0);
   const lastDragInfoRef = useRef({ x: 0 });
-  const [dragX, setDragX] = useState(0);
+  // const [dragX, setDragX] = useState(0);
   const [departments, setDepartments] = useState<DepartmentData[]>([]);
   const controls = useAnimationControls();
+  const animationRef = useRef<AnimationPlaybackControls | null>(null);
 
   // Use the public context
-  const { unifiedData, isLoading, error, refreshData } = usePublic();
+  const { unifiedData, isLoading, refreshData } = usePublic();
+  const error = usePublic().error;
 
   const getRandomDepartments = useCallback(
     (data: typeof unifiedData): DepartmentData[] => {
@@ -74,44 +77,85 @@ export const TopDepartment = () => {
   // Animation settings
   const animationDuration = 30; // seconds
 
-  useEffect(() => {
-    const startAnimation = async () => {
-      if (isHovering || departments.length === 0) {
-        controls.stop();
-        return;
-      }
+  // Start continuous animation
+  const startContinuousAnimation = useCallback(async () => {
+    if (isInteracting || departments.length === 0) {
+      return;
+    }
 
-      if (isInteracting) {
-        // Stop auto-animation when user is interacting
-        return;
-      }
+    try {
+      // Calculate remaining duration based on current position
+      const progress = Math.abs(pausedPosition) / 50; // 50% is full cycle
+      const remainingDuration = animationDuration * (1 - progress);
 
-      setCurrentPosition(dragX);
-
-      if (!containerRef.current) return;
-
-      await controls.start({
-        x: [dragX + "%", "-50%"],
+      const animationPromise = controls.start({
+        x: [pausedPosition + "%", "-50%", "0%"],
         transition: {
-          duration: animationDuration * (1 - Math.abs(dragX) / -50),
+          duration: remainingDuration,
           ease: "linear",
           repeat: Infinity,
           repeatType: "loop",
         },
       });
-    };
 
-    startAnimation();
-  }, [controls, isHovering, departments.length, isInteracting, dragX]);
+      animationRef.current = await animationPromise;
+    } catch (error) {
+      // Animation was stopped/interrupted
+      console.log("Animation interrupted:", error);
+    }
+  }, [
+    controls,
+    isInteracting,
+    departments.length,
+    pausedPosition,
+    animationDuration,
+  ]);
+
+  // Pause animation and store current position
+  const pauseAnimation = useCallback(() => {
+    if (animationRef.current) {
+      controls.stop();
+      // Store the current position from state instead of trying to get it from controls
+      setPausedPosition(currentPosition);
+    }
+  }, [controls, currentPosition]);
+
+  // Handle hover states
+  useEffect(() => {
+    if (isHovering || isInteracting) {
+      pauseAnimation();
+    } else if (departments.length > 0) {
+      // Small delay to ensure smooth transition
+      const timer = setTimeout(() => {
+        startContinuousAnimation();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    isHovering,
+    isInteracting,
+    departments.length,
+    startContinuousAnimation,
+    pauseAnimation,
+  ]);
+
+  // Initialize animation when departments are loaded
+  useEffect(() => {
+    if (departments.length > 0 && !isHovering && !isInteracting) {
+      const timer = setTimeout(() => {
+        startContinuousAnimation();
+      }, 500); // Small delay for initialization
+      return () => clearTimeout(timer);
+    }
+  }, [departments.length, startContinuousAnimation, isHovering, isInteracting]);
 
   const handleInteractionStart = () => {
-    controls.stop();
+    pauseAnimation();
     setIsInteracting(true);
   };
 
   const handleInteractionEnd = () => {
-    // When interaction ends, update dragX with final position
-    setDragX(currentPosition);
+    setPausedPosition(currentPosition);
     setIsInteracting(false);
   };
 
