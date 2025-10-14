@@ -18,6 +18,9 @@ import {
   FiAward,
   FiBook,
 } from "react-icons/fi";
+// import Loading from "@/components/reuse/loading";
+import { TopContent } from "@/components/reuse";
+import Breadcrumbs from "@/components/reuse/breadcrumbs";
 
 
 export default function Home() {
@@ -84,12 +87,10 @@ export default function Home() {
         onChange={(value) => setGender(value)}
         error={!gender ? "Please select a plan" : ""}
       />
-
       <Card variant="elevated" className="text-center">
         <div className="text-4xl font-bold text-indigo-600">1,234</div>
         <div className="text-sm text-gray-500 mt-1">Total Students</div>
       </Card>
-
       <Card
         variant="outlined"
         header={<h2 className="text-xl font-bold">Course Title</h2>}
@@ -97,7 +98,6 @@ export default function Home() {
       >
         <p>This is an amazing course about web development...</p>
       </Card>
-
       {/* Modal */}
       <>
         <Button label="Open Modal" onClick={() => setConfirmOpen(true)} />
@@ -125,27 +125,23 @@ export default function Home() {
           </p>
         </Modal>
       </>
-
       {/* Error Alert with Title */}
       <Alert
         type="error"
         title="Upload Failed"
         message="There was an error uploading your file. Please try again."
       />
-
       {/* Warning Alert */}
       <Alert
         type="warning"
         title="Low Storage"
         message="You are running out of storage space. Please upgrade your plan."
       />
-
       {/* Info Alert */}
       <Alert
         type="info"
         message="New features have been added to the dashboard. Check them out!"
       />
-
       {/* Avatar Group (Overlapping) */}
       <div className="flex -space-x-2">
         <Avatar
@@ -172,7 +168,6 @@ export default function Home() {
           className="ring-2 ring-white bg-gray-600"
         />
       </div>
-
       {/* Profile Header */}
       <div className="flex items-center gap-4 bg-white/50 p-2 rounded-md shadow-lg">
         <Avatar
@@ -186,7 +181,6 @@ export default function Home() {
           <p className="text-gray-600">Web Developer</p>
         </div>
       </div>
-
       <div className="p-6 space-y-6 bg-white">
         {/* Course Status Badges */}
         <div className="space-y-4">
@@ -231,7 +225,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
       <div className="p-6 space-y-8 bg-white dark:bg-gray-900">
         {/* Course Card Skeletons */}
         <div className="space-y-4">
@@ -432,7 +425,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
       <div className="p-6 space-y-8 bg-white">
         {/* Course Action Buttons with Tooltips */}
         <div className="space-y-4">
@@ -587,7 +579,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
       <div className="p-6 space-y-8 bg-white max-w-4xl mx-auto">
         {/* Course Content Sections */}
         <div className="space-y-4">
@@ -736,6 +727,43 @@ export default function Home() {
           </div>
         </div>
       </div>
+      {/* // Educational (with book icon) */}
+      {/* <Loading
+        variant="pulse"
+        size="xl"
+        message="Preparing course..."
+        messageAnimVariant="waveFade"
+        messageSize="xl"
+      /> */}
+
+      <TopContent
+        title="Recent Uploads"
+        subtitle="View all recently uploaded materials"
+      />
+
+      <TopContent
+        title="Dashboard Overview"
+        subtitle="Welcome back, Emmanuel!"
+        description="Here's what's happening with your courses and materials this week."
+        action={<Button label="Upload New" variant="primary" />}
+        secondaryAction={<Button label="View Stats" variant="outline" />}
+      />
+
+      <TopContent
+        title="Introduction to Algorithms"
+        subtitle="CS 301 - Fall 2024"
+        breadcrumbs={
+          <Breadcrumbs
+            showHome
+            items={[
+              { label: "Courses", href: "/courses" },
+              { label: "Computer Science", href: "/courses/cs" },
+              { label: "CS 301" },
+            ]}
+          />
+        }
+        action={<Button label="Enroll" />}
+      />
     </div>
   );
 }

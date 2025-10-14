@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
 interface BadgeProps {
-  label: string | number;
+  label: string | number | ReactElement;
   color?:
     | "blue"
     | "green"
@@ -31,6 +31,18 @@ export default function Badge({
   closeable = false,
   pulse = false,
 }: BadgeProps) {
+  // Add this helper at the top
+const dotColors = {
+  blue: "bg-blue-600",
+  green: "bg-green-600",
+  red: "bg-red-600",
+  yellow: "bg-yellow-500",
+  gray: "bg-gray-500",
+  indigo: "bg-indigo-600",
+  white: "bg-white",
+  black: "bg-gray-900",
+};
+
   // Complete color mappings with all variants
   const colorClasses = {
     blue: {
@@ -105,7 +117,7 @@ export default function Badge({
         <span
           className={`rounded-full ${dotSize} ${
             colorClasses[color].solid.split(" ")[0]
-          }`}
+          } ${dotColors[color]}`}
         />
       )}
       {icon && <span className="flex-shrink-0">{icon}</span>}

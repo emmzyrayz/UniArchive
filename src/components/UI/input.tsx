@@ -8,6 +8,7 @@ interface InputProps {
   value?: string;
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
   onBlur?: (e: ChangeEvent<HTMLInputElement>) => void;
+  onFocus?: (e: ChangeEvent<HTMLInputElement>) => void;
   onKeyPress?: (e: KeyboardEvent<HTMLInputElement>) => void;
   disabled?: boolean;
   required?: boolean;
@@ -31,6 +32,7 @@ export default function Input({
   value,
   onChange,
   onBlur,
+  onFocus,
   onKeyPress,
   disabled = false,
   required = false,
@@ -97,6 +99,7 @@ export default function Input({
           placeholder={placeholder}
           onChange={onChange}
           onBlur={onBlur}
+          onFocus={onFocus}
           onKeyPress={onKeyPress}
           disabled={disabled}
           required={required}
