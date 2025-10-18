@@ -5,7 +5,7 @@ interface ButtonProps {
   label: ReactNode;
   variant?: "primary" | "secondary" | "outline" | "none";
   base?: "on" | "off";
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
   className?: string;
   error?: string;

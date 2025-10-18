@@ -1,4 +1,4 @@
-import { ReactElement, ReactNode } from "react";
+import { ReactElement, ReactNode, useMemo } from "react";
 
 interface AlertProps {
   type?: "success" | "warning" | "error" | "info";
@@ -11,6 +11,59 @@ interface AlertProps {
   showIcon?: boolean;
 }
 
+const ICON_MAP = {
+  success: (
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+      <path
+        fillRule="evenodd"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+        clipRule="evenodd"
+      />
+    </svg>
+  ),
+  warning: (
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+      <path
+        fillRule="evenodd"
+        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+        clipRule="evenodd"
+      />
+    </svg>
+  ),
+  error: (
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+      <path
+        fillRule="evenodd"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+        clipRule="evenodd"
+      />
+    </svg>
+  ),
+  info: (
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+      <path
+        fillRule="evenodd"
+        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+        clipRule="evenodd"
+      />
+    </svg>
+  ),
+};
+
+const CLOSE_ICON = (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path d="M6 18L18 6M6 6l12 12"></path>
+  </svg>
+);
+
 export default function Alert({
   type = "info",
   message,
@@ -21,84 +74,51 @@ export default function Alert({
   className = "",
   showIcon = true,
 }: AlertProps) {
-  const colorStyles = {
-    success: {
-      bg: "bg-green-50",
-      border: "border-green-400",
-      text: "text-green-800",
-      icon: "text-green-600",
-    },
-    warning: {
-      bg: "bg-yellow-50",
-      border: "border-yellow-400",
-      text: "text-yellow-800",
-      icon: "text-yellow-600",
-    },
-    error: {
-      bg: "bg-red-50",
-      border: "border-red-400",
-      text: "text-red-800",
-      icon: "text-red-600",
-    },
-    info: {
-      bg: "bg-blue-50",
-      border: "border-blue-400",
-      text: "text-blue-800",
-      icon: "text-blue-600",
-    },
-  };
+  // Theme-aware color mapping for educational platform
+  const colorStyles = useMemo(
+    () => ({
+      success: {
+        bg: "bg-emerald-50 dark:bg-emerald-950/40",
+        border: "border-emerald-300 dark:border-emerald-700",
+        text: "text-emerald-800 dark:text-emerald-200",
+        icon: "text-emerald-600 dark:text-emerald-400",
+        closeHover: "hover:bg-emerald-100 dark:hover:bg-emerald-900/30",
+      },
+      warning: {
+        bg: "bg-amber-50 dark:bg-amber-950/40",
+        border: "border-amber-300 dark:border-amber-700",
+        text: "text-amber-800 dark:text-amber-200",
+        icon: "text-amber-600 dark:text-amber-400",
+        closeHover: "hover:bg-amber-100 dark:hover:bg-amber-900/30",
+      },
+      error: {
+        bg: "bg-red-50 dark:bg-red-950/40",
+        border: "border-red-300 dark:border-red-700",
+        text: "text-red-800 dark:text-red-200",
+        icon: "text-red-600 dark:text-red-400",
+        closeHover: "hover:bg-red-100 dark:hover:bg-red-900/30",
+      },
+      info: {
+        bg: "bg-indigo-50 dark:bg-indigo-950/40",
+        border: "border-indigo-300 dark:border-indigo-700",
+        text: "text-indigo-800 dark:text-indigo-200",
+        icon: "text-indigo-600 dark:text-indigo-400",
+        closeHover: "hover:bg-indigo-100 dark:hover:bg-indigo-900/30",
+      },
+    }),
+    []
+  );
 
   const colors = colorStyles[type];
-
-  // Default icons for each type
-  const defaultIcons = {
-    success: (
-      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-        <path
-          fillRule="evenodd"
-          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-          clipRule="evenodd"
-        />
-      </svg>
-    ),
-    warning: (
-      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-        <path
-          fillRule="evenodd"
-          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-          clipRule="evenodd"
-        />
-      </svg>
-    ),
-    error: (
-      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-        <path
-          fillRule="evenodd"
-          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-          clipRule="evenodd"
-        />
-      </svg>
-    ),
-    info: (
-      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-        <path
-          fillRule="evenodd"
-          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-          clipRule="evenodd"
-        />
-      </svg>
-    ),
-  };
-
-  const displayIcon = icon || (showIcon ? defaultIcons[type] : null);
+  const displayIcon = icon || (showIcon ? ICON_MAP[type] : null);
 
   return (
     <div
       className={`
         ${colors.bg} ${colors.border} ${colors.text}
-        border-l-4 rounded-lg p-4 
+        border-l-4 rounded-lg p-4
         flex items-start gap-3
-        shadow-sm
+        shadow-sm backdrop-blur-sm
         animate-in slide-in-from-top-2 fade-in duration-300
         ${className}
       `}
@@ -123,30 +143,20 @@ export default function Alert({
           onClick={onClose}
           className={`
             ${colors.icon}
-            hover:opacity-70
-            flex-shrink-0 p-0.5 rounded
-            transition-opacity duration-200
+            ${colors.closeHover}
+            flex-shrink-0 p-1 rounded
+            transition-colors duration-200
+            focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-current
           `}
           aria-label="Close alert"
+          type="button"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+          {CLOSE_ICON}
         </button>
-        
       )}
     </div>
   );
 }
-
 
 // Usage Example
 

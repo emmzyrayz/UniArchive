@@ -252,7 +252,7 @@ export default function ActivityFeed({
 // Usage Example
 
 // 1. Basic Activity Feed
-// tsxconst activities = [
+// const activities = [
 //   {
 //     id: "1",
 //     type: "enrollment" as const,
@@ -282,7 +282,7 @@ export default function ActivityFeed({
 
 // <ActivityFeed activities={activities} />
 // 2. Dashboard Widget (Limited Items)
-// tsx<ActivityFeed
+// <ActivityFeed
 //   activities={recentActivities}
 //   title="Recent Activity"
 //   maxItems={5}
@@ -291,7 +291,7 @@ export default function ActivityFeed({
 //   onItemClick={(activity) => console.log("Clicked:", activity)}
 // />
 // 3. Complete Example with All Features
-// tsxconst activities = [
+// const activities = [
 //   {
 //     id: "1",
 //     type: "achievement" as const,

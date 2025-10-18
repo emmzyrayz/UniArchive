@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { useState } from "react";
+import { useState,  } from "react";
 
 interface AvatarProps {
   src?: string;
