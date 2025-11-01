@@ -1,5 +1,5 @@
 // assets/data/blogData.ts
-// import { getImageByID } from './imagesData';
+import { getImageByID, type ImageAsset } from "./imagesData";
 
 export type BlogType = "platform" | "teacher" | "student";
 export type ReactionType = "like" | "love" | "haha" | "wow" | "sad" | "angry";
@@ -37,7 +37,7 @@ export interface BlogPost {
   title: string;
   excerpt: string;
   date: string;
-  images: string[];
+  imageIds: string[];
   author: string;
   authorId: number; // Reference to user ID
   tags: string[];
@@ -237,10 +237,7 @@ export const BLOG_DATA: BlogPost[] = [
     excerpt:
       "Discover advanced techniques for building scalable applications with Next.js. Learn about SSR, SSG, and API routes.",
     date: "2024-03-15",
-    images: [
-      "/images/blog/tech-workspace.jpg",
-      "/images/blog/code-screen.jpg",
-    ],
+    imageIds: ["blog-tech-1", "blog-code-1"],
     author: "Sarah Johnson",
     authorId: 1,
     tags: ["Web Development", "Next.js", "TypeScript"],
@@ -334,10 +331,7 @@ By implementing these techniques, you'll be able to build highly performant, sca
     excerpt:
       "Explore the latest trends shaping web development, from AI integration to WebAssembly advancements.",
     date: "2024-03-14",
-    images: [
-      "/images/blog/team-meeting.jpg",
-      "/images/posts/design-mockup.jpg",
-    ],
+    imageIds: ["blog-meeting-1", "post-design-1"],
     author: "Michael Chen",
     authorId: 2,
     tags: ["Technology", "Trends", "Web Development"],
@@ -390,14 +384,11 @@ By embracing these trends, developers can create more powerful, efficient, and u
     excerpt:
       "Learn how to write maintainable and type-safe code with these TypeScript pro tips.",
     date: "2024-03-13",
-    images: [
-      "/images/posts/mobile-app.jpg",
-      "/images/posts/design-mockup.jpg",
-    ],
+    imageIds: ["post-mobile-1", "post-design-1"],
     author: "Emma Wilson",
     authorId: 3,
     tags: ["TypeScript", "Programming", "Best Practices"],
-   content: `
+    content: `
 TypeScript has transformed how developers write and maintain JavaScript code. Here are best practices to help you write cleaner, more maintainable TypeScript code.
 
 ## Leverage Type Inference
@@ -514,14 +505,12 @@ By following these practices, you'll write more maintainable, bug-resistant Type
     excerpt:
       "Create beautiful responsive layouts using Tailwind CSS utility-first approach.",
     date: "2024-03-12",
-    images: [
-      "/images/posts/design-mockup.jpg",
-      "/images/blog/code-screen.jpg",
-    ],
+    imageIds: ["post-design-1", "blog-code-1"],
     author: "David Martinez",
     authorId: 4,
     tags: ["CSS", "Tailwind", "Frontend"],
-    content: "Tailwind CSS has revolutionized how we approach responsive design with its utility-first methodology. Rather than writing custom CSS, developers can compose designs directly in their markup using predefined utility classes. This article explores best practices for creating responsive layouts with Tailwind.",
+    content:
+      "Tailwind CSS has revolutionized how we approach responsive design with its utility-first methodology. Rather than writing custom CSS, developers can compose designs directly in their markup using predefined utility classes. This article explores best practices for creating responsive layouts with Tailwind.",
     likes: 42,
     shares: 12,
     comments: 0,
@@ -542,14 +531,12 @@ By following these practices, you'll write more maintainable, bug-resistant Type
     excerpt:
       "Essential tips for creating web applications that are accessible to everyone.",
     date: "2024-03-11",
-    images: [
-      "/images/posts/campus-event.jpg",
-      "/images/blog/team-meeting.jpg",
-    ],
+    imageIds: ["post-event-1", "blog-meeting-1"],
     author: "Linda Thompson",
     authorId: 5,
     tags: ["Accessibility", "Web Standards", "Inclusion"],
-    content: "Web accessibility is not just a legal requirement in many countries—it's a fundamental aspect of ethical web development. This article covers practical strategies for making your web applications accessible to users with various disabilities, including visual, auditory, motor, and cognitive impairments.",
+    content:
+      "Web accessibility is not just a legal requirement in many countries—it's a fundamental aspect of ethical web development. This article covers practical strategies for making your web applications accessible to users with various disabilities, including visual, auditory, motor, and cognitive impairments.",
     likes: 42,
     shares: 12,
     comments: 0,
@@ -570,14 +557,12 @@ By following these practices, you'll write more maintainable, bug-resistant Type
     excerpt:
       "Explore different architectural approaches for large-scale frontend applications.",
     date: "2024-03-10",
-    images: [
-      "/images/blog/code-screen.jpg",
-      "/images/blog/tech-workspace.jpg",
-    ],
+    imageIds: ["blog-code-1", "blog-tech-1"],
     author: "Robert Williams",
     authorId: 6,
     tags: ["Architecture", "Frontend", "Scalability"],
-    content: "As frontend applications grow in complexity, choosing the right architectural pattern becomes increasingly important. This article examines modern approaches such as Component-Based Architecture, Micro-Frontends, and State Management patterns, helping you select the best approach for your specific project requirements.",
+    content:
+      "As frontend applications grow in complexity, choosing the right architectural pattern becomes increasingly important. This article examines modern approaches such as Component-Based Architecture, Micro-Frontends, and State Management patterns, helping you select the best approach for your specific project requirements.",
     likes: 42,
     shares: 12,
     comments: 0,
@@ -609,3 +594,456 @@ export const getUserById = (userId: number): User | undefined => {
 export const getBlogsByUserId = (userId: number): BlogPost[] => {
   return BLOG_DATA.filter(blog => blog.authorId === userId);
 };
+
+// Helper function to get actual image sources from image IDs
+export const getBlogImages = (imageIds: string[]): ImageAsset[] => {
+  return imageIds
+    .map(id => getImageByID(id))
+    .filter((img): img is ImageAsset => img !== undefined);
+};
+
+import { BannerData } from "@/components/banner/types";
+import  { SearchSuggestion } from "@/components/reuse/searchbar"
+import { About1, About2, Avatar1, Avatar2, Avatar3, Avatar4, Avatar5, Avatar6, Avatar7, Featured1, Gallery1, Gallery2, Gallery3, Gallery4, Gallery5, Gallery6, Gallery7, Gallery8, Gallery9 } from "../img";
+
+export const activities = [
+  {
+    id: "1",
+    type: "enrollment" as const,
+    user: {
+      name: "John Doe",
+      avatar: Avatar1,
+    },
+    title: "Enrolled in Introduction to Algorithms",
+    timestamp: new Date().toISOString(),
+  },
+  {
+    id: "2",
+    type: "completion" as const,
+    user: {
+      name: "Jane Smith",
+      avatar: Avatar2,
+    },
+    title: "Completed Data Structures Course",
+    description: "Scored 95% on the final exam",
+    timestamp: new Date(Date.now() - 3600000).toISOString(),
+    metadata: {
+      points: 500,
+      course: "CS 201",
+    },
+  },
+];
+
+export const fullActivities = [
+  {
+    id: "1",
+    type: "achievement" as const,
+    user: {
+      name: "Emmanuel Okoro",
+      avatar: Avatar3,
+    },
+    title: "Earned 'Algorithm Master' Badge",
+    description: "Completed all algorithm courses with perfect scores",
+    timestamp: new Date().toISOString(),
+    metadata: {
+      points: 1000,
+      category: "Algorithms",
+      level: "Advanced",
+    },
+  },
+  {
+    id: "2",
+    type: "upload" as const,
+    user: {
+      name: "Sarah Williams",
+      avatar: Avatar4,
+    },
+    title: "Uploaded new study material",
+    description: "CS 301 - Final Exam Preparation Notes",
+    target: "Computer Science Department",
+    timestamp: new Date(Date.now() - 1800000).toISOString(),
+    metadata: {
+      course: "CS 301",
+      category: "Notes",
+    },
+  },
+  {
+    id: "3",
+    type: "comment" as const,
+    user: {
+      name: "Mike Johnson",
+      avatar: Avatar5,
+    },
+    title: "Commented on your assignment",
+    description: "Great work! Your implementation is very efficient.",
+    target: "Binary Search Trees Assignment",
+    timestamp: new Date(Date.now() - 7200000).toISOString(),
+  },
+  {
+    id: "4",
+    type: "enrollment" as const,
+    user: {
+      name: "Lisa Chen",
+      avatar: Avatar6,
+    },
+    title: "Enrolled in Machine Learning Basics",
+    timestamp: new Date(Date.now() - 86400000).toISOString(),
+    metadata: {
+      course: "ML 101",
+      level: "Beginner",
+    },
+  },
+  {
+    id: "5",
+    type: "completion" as const,
+    user: {
+      name: "Tom Brown",
+      avatar: Avatar7,
+    },
+    title: "Completed Web Development Course",
+    description: "Built 5 projects including a full-stack application",
+    timestamp: new Date(Date.now() - 172800000).toISOString(),
+    metadata: {
+      points: 750,
+      course: "WEB 301",
+      level: "Intermediate",
+    },
+  },
+];
+
+export const welcomeBanners: BannerData[] = [
+  {
+    id: "welcome-1",
+    type: "welcome",
+    title: "Welcome to Uni Archive",
+    description:
+      "Your all-in-one academic resource hub for materials, courses, and community discussions.",
+    image: Gallery1,
+    badge: "NEW",
+    cta: {
+      text: "Get Started",
+      href: "/explore",
+      variant: "primary",
+    },
+  },
+  {
+    id: "welcome-2",
+    type: "welcome",
+    title: "Empower Your Learning Journey",
+    description:
+      "Discover thousands of study materials shared by top students and tutors.",
+    image: Gallery2,
+    cta: {
+      text: "Browse Materials",
+      href: "/materials",
+      variant: "secondary",
+    },
+  },
+  {
+    id: "welcome-3",
+    type: "welcome",
+    title: "Stay Ahead With Uni Archive",
+    description:
+      "Get early access to newly uploaded notes, assignments, and exam past questions.",
+    image: Gallery3,
+    badge: "HOT",
+    cta: {
+      text: "Join Community",
+      href: "/community",
+      variant: "outline",
+    },
+  },
+];
+
+export const featuredCourseBanners: BannerData[] = [
+  {
+    id: "course-1",
+    type: "featured-course",
+    title: "Master Web Development",
+    description:
+      "Learn HTML, CSS, JavaScript, and modern frameworks like React and Next.js.",
+    badge: "FEATURED",
+    icon: "💻",
+    cta: {
+      text: "Enroll Now",
+      href: "/courses/web-dev",
+      variant: "primary",
+    },
+  },
+  {
+    id: "course-2",
+    type: "featured-course",
+    title: "Data Science Bootcamp",
+    description:
+      "From Python to machine learning — gain practical skills with real datasets.",
+    badge: "TRENDING",
+    icon: "📊",
+    cta: {
+      text: "Start Learning",
+      href: "/courses/data-science",
+      variant: "secondary",
+    },
+  },
+  {
+    id: "course-3",
+    type: "featured-course",
+    title: "Cyber Security Fundamentals",
+    description:
+      "Protect systems from vulnerabilities and learn ethical hacking.",
+    badge: "HOT",
+    icon: "🛡️",
+    cta: {
+      text: "Secure Your Spot",
+      href: "/courses/cyber-security",
+      variant: "outline",
+    },
+  },
+];
+
+export const updateBanners: BannerData[] = [
+  {
+    id: "update-1",
+    type: "update",
+    title: "New Upload System Released",
+    description: "You can now drag & drop multiple materials at once.",
+    image: Gallery4,
+    cta: {
+      text: "Learn More",
+      href: "/updates/upload-system",
+      variant: "primary",
+    },
+  },
+  {
+    id: "update-2",
+    type: "update",
+    title: "Dark Mode Is Here",
+    description: "Switch themes easily from your profile settings.",
+    image: Gallery5,
+    badge: "BETA",
+    cta: {
+      text: "Try It",
+      href: "/updates/dark-mode",
+      variant: "secondary",
+    },
+  },
+  {
+    id: "update-3",
+    type: "update",
+    title: "Community Forum Improved",
+    description: "Experience faster load times and new tagging options.",
+    image: Gallery6,
+    cta: {
+      text: "Check It Out",
+      href: "/community",
+      variant: "outline",
+    },
+  },
+];
+
+export const achievementBanners: BannerData[] = [
+  {
+    id: "achieve-1",
+    type: "achievement",
+    title: "Top Contributor of the Week",
+    description: "Kelechi Okafor uploaded 15 verified materials this week 🎉",
+    icon: "🏅",
+    badge: "WEEKLY WINNER",
+    cta: {
+      text: "View Profile",
+      href: "/user/kelechi-okafor",
+      variant: "primary",
+    },
+  },
+  {
+    id: "achieve-2",
+    type: "achievement",
+    title: "Community Helper",
+    description: "You’ve answered 50+ student questions in the forum.",
+    icon: "🤝",
+    badge: "GOLD",
+    cta: {
+      text: "Keep Helping",
+      href: "/community",
+      variant: "secondary",
+    },
+  },
+  {
+    id: "achieve-3",
+    type: "achievement",
+    title: "5K Active Users",
+    description:
+      "Uni Archive has reached a milestone — thank you for being part of our journey!",
+    icon: "🎊",
+    badge: "MILESTONE",
+    cta: {
+      text: "Celebrate With Us",
+      href: "/updates/5k-users",
+      variant: "outline",
+    },
+  },
+];
+
+export const advertisementBanners: BannerData[] = [
+  {
+    id: "ad-1",
+    type: "ad",
+    title: "Get 20% Off on Premium Plans",
+    description:
+      "Upgrade your account to access advanced analytics and unlimited uploads.",
+    image: Gallery7,
+    badge: "LIMITED OFFER",
+    cta: {
+      text: "Upgrade Now",
+      href: "/pricing",
+      variant: "primary",
+    },
+  },
+  {
+    id: "ad-2",
+    type: "ad",
+    title: "Partner With Uni Archive",
+    description:
+      "Reach thousands of students and educators by promoting your brand.",
+    image: Gallery8,
+    cta: {
+      text: "Contact Us",
+      href: "/contact",
+      variant: "secondary",
+    },
+  },
+  {
+    id: "ad-3",
+    type: "ad",
+    title: "Study Smarter with PandaNotes",
+    description:
+      "Get organized with AI-generated summaries from your uploaded materials.",
+    image: Gallery9,
+    badge: "NEW",
+    cta: {
+      text: "Try Free",
+      href: "/tools/pandanotes",
+      variant: "outline",
+    },
+  },
+];
+
+export const randomBanners = [
+  ...welcomeBanners,
+  ...featuredCourseBanners,
+  ...updateBanners,
+  ...achievementBanners,
+  ...advertisementBanners,
+];
+
+// Mock data
+export const mockCourses: SearchSuggestion[] = [
+  {
+    id: "course-1",
+    title: "Introduction to React",
+    description: "Learn the basics of React and build interactive UIs",
+    type: "course",
+    image: About1.src,
+    metadata: {
+      level: "Beginner",
+      instructor: "John Doe",
+      students: 1250,
+    },
+  },
+  {
+    id: "course-2",
+    title: "Advanced React Patterns",
+    description: "Master advanced React patterns and best practices",
+    type: "course",
+    image: About2.src,
+    metadata: {
+      level: "Advanced",
+      instructor: "Jane Smith",
+      students: 450,
+    },
+  },
+  {
+    id: "course-3",
+    title: "Node.js Backend Development",
+    description: "Build scalable backend applications with Node.js",
+    type: "course",
+    image: Featured1.src,
+    metadata: {
+      level: "Intermediate",
+      instructor: "Mike Johnson",
+      students: 890,
+    },
+  },
+];
+
+export const mockLessons: SearchSuggestion[] = [
+  {
+    id: "lesson-1",
+    title: "Understanding Components",
+    description: "Deep dive into React components and their lifecycle",
+    type: "lesson",
+    metadata: {
+      course: "Introduction to React",
+      duration: 45,
+    },
+  },
+  {
+    id: "lesson-2",
+    title: "State Management with Redux",
+    description: "Learn how to manage application state effectively",
+    type: "lesson",
+    metadata: {
+      course: "Advanced React Patterns",
+      duration: 60,
+    },
+  },
+];
+
+export const mockInstructors: SearchSuggestion[] = [
+  {
+    id: "instructor-1",
+    title: "John Doe",
+    description: "React and Frontend Development Expert",
+    type: "instructor",
+    image: Avatar1.src,
+    metadata: {
+      expertise: "Frontend",
+      courses: 5,
+      students: 3200,
+    },
+  },
+  {
+    id: "instructor-2",
+    title: "Jane Smith",
+    description: "Full Stack Developer and Mentor",
+    type: "instructor",
+    image: Avatar2.src,
+    metadata: {
+      expertise: "Full Stack",
+      courses: 8,
+      students: 4500,
+    },
+  },
+];
+
+export const mockCategories: SearchSuggestion[] = [
+  {
+    id: "category-1",
+    title: "Web Development",
+    description: "Explore frontend and backend web development courses",
+    type: "category",
+    metadata: {
+      courses: 24,
+      students: 15000,
+    },
+  },
+  {
+    id: "category-2",
+    title: "Mobile Development",
+    description: "Build iOS and Android applications",
+    type: "category",
+    metadata: {
+      courses: 18,
+      students: 8500,
+    },
+  },
+];

@@ -2,6 +2,7 @@ import { ReactElement, useCallback, useState } from "react";
 import { 
   // Card,
    Button, Input, Alert } from "@/components/UI";
+   import { IconType } from "react-icons";
 
 interface FooterLink {
   label: string;
@@ -20,7 +21,7 @@ interface FooterProps {
   sections: FooterSection[];
   socialLinks?: Array<{
     name: string;
-    icon: ReactElement;
+    icon: IconType;
     href: string;
   }>;
   copyright?: string;
@@ -85,7 +86,7 @@ export default function Footer({
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className={`bg-black text-white ${className}`} role="contentinfo">
+    <footer className={`bg-black text-white ${className}`} role="contentinfo w-full rounded-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
@@ -112,7 +113,8 @@ export default function Footer({
                       aria-label={`Follow us on ${social.name}`}
                       title={social.name}
                     >
-                      {social.icon}
+                      {/* {social.icon} */}
+                      <social.icon className="text-xl" />
                     </a>
                   ))}
                 </div>
@@ -206,7 +208,9 @@ export default function Footer({
         {/* Bottom Bar */}
         <div className="border-t border-gray-800 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-gray-400 text-xs md:text-sm">{copyright} : {currentYear}</p>
+            <p className="text-gray-400 text-xs md:text-sm">
+              {copyright} : {currentYear}
+            </p>
 
             {/* Legal Links */}
             {legalLinks && legalLinks.length > 0 && (

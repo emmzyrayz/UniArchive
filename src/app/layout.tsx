@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { baseMetadata } from "@/utils/metadata";
+import ClientWrapper from "@/hooks/clientwrapper";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -56,7 +57,9 @@ export default function RootLayout({
         <title>{metadata.title as string}</title>
         <meta name="description" content={metadata.description as string} />
       </head>
-      <body className="bg-[whitesmoke] font-sora relative antialiased">{children}</body>
+      <body className="bg-[whitesmoke] font-sora relative antialiased">
+        <ClientWrapper>{children}</ClientWrapper>
+      </body>
     </html>
   );
 }

@@ -11,4 +11,5 @@ export { default as Badge } from "./badge";
 export { default as Avatar } from "./avatar";
 export { default as Skeleton } from "./skeleton"
 export { default as Tooltip } from "./tooltip";
-export { default as Divider } from "./divider"
+export { default as Divider } from "./divider";
+export { default as InfoRibbon } from "./inforibbon";

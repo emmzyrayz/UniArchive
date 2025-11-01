@@ -4,13 +4,14 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Loading } from "@/components/reuse";
+import LayoutManager from "@/components/layoutManager";
 
 const LoadingContext = createContext<{
   isLoading: boolean;
-  setIsLoading: (loading: boolean) => void; // Updated to use 'loading' instead of '_loading'
+  setIsLoading: (loading: boolean) => void;
 }>({
   isLoading: true,
-  setIsLoading: () => {}, // Default function
+  setIsLoading: () => {},
 });
 
 export const useLoading = () => useContext(LoadingContext);
@@ -41,9 +42,13 @@ export default function ClientWrapper({
           message="Preparing course..."
           messageAnimVariant="waveFade"
           messageSize="xl"
+          className="flex w-full h-full items-center justify-center"
+          fullScreen
         />
       )}
-      <div className={isLoading ? "hidden" : "block"}>{children}</div>
+      <div className={isLoading ? "hidden" : "block"}>
+        <LayoutManager>{children}</LayoutManager>
+      </div>
     </LoadingContext.Provider>
   );
 }

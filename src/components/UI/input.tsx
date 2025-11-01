@@ -22,6 +22,8 @@ interface InputProps {
   id?: string;
   autoComplete?: string;
   autoFocus?: boolean;
+  showCancelButton?: boolean;
+  onCancel?: () => void;
 }
 
 export default function Input({
@@ -46,10 +48,11 @@ export default function Input({
   id,
   autoComplete,
   autoFocus = false,
+  showCancelButton = false,
+  onCancel,
 }: InputProps) {
-
   const baseStyles =
-    "w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 focus:outline-none font-normal text-black";
+    "w-full px-4 py-3 h-full rounded-lg border-2 transition-all duration-200 focus:outline-none font-normal text-black";
 
   const normalStyles =
     "border-gray-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 hover:border-gray-400";
@@ -62,14 +65,18 @@ export default function Input({
     ? "bg-gray-100 cursor-not-allowed opacity-60"
     : "bg-white";
 
-  const iconPaddingStyles = icon
-    ? iconPosition === "left"
-      ? "pl-11"
-      : "pr-11"
-    : "";
+  // Adjusted padding for icons and cancel button
+  let paddingStyles = "";
+  if (icon && showCancelButton) {
+    paddingStyles = iconPosition === "left" ? "pl-11 pr-11" : "pl-11 pr-11";
+  } else if (icon) {
+    paddingStyles = iconPosition === "left" ? "pl-11" : "pr-11";
+  } else if (showCancelButton) {
+    paddingStyles = "pr-11";
+  }
 
   return (
-    <div className="flex flex-col gap-1.5 w-full">
+    <div className="flex flex-col gap-1.5 w-full h-full">
       {/* Label */}
       {label && (
         <label
@@ -85,7 +92,7 @@ export default function Input({
       <div className="relative w-full">
         {/* Icon - Left */}
         {icon && iconPosition === "left" && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-50">
             {icon}
           </div>
         )}
@@ -94,7 +101,7 @@ export default function Input({
         <input
           id={id || name}
           name={name}
-          type={type}
+          type={showCancelButton ? "text" : type}
           value={value}
           placeholder={placeholder}
           onChange={onChange}
@@ -111,28 +118,54 @@ export default function Input({
             ${baseStyles}
             ${error ? errorStyles : normalStyles}
             ${disabledStyles}
-            ${iconPaddingStyles}
+            ${paddingStyles}
             ${className}
+            z-30
           `}
         />
 
         {/* Icon - Right */}
         {icon && iconPosition === "right" && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 z-50">
             {icon}
           </div>
+        )}
+
+        {/* Cancel Button */}
+        {showCancelButton && value && (
+          <button
+            onClick={onCancel}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Clear input"
+            type="button"
+            tabIndex={-1}
+          >
+            <svg
+              className="w-4 h-4 text-gray-400 hover:text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         )}
       </div>
 
       {/* Footer: Helper text or Error */}
-      <div className="min-h-[20px]">
-        {error && (
-          <span className="text-red-500 text-sm font-medium">{error}</span>
-        )}
-        {!error && helperText && (
-          <span className="text-gray-500 text-sm">{helperText}</span>
-        )}
-      </div>
+      {error && (
+        <span className="text-red-500 text-sm font-medium min-h-[20px]">
+          {error}
+        </span>
+      )}
+      {!error && helperText && (
+        <span className="text-gray-500 text-sm min-h-[20px]">{helperText}</span>
+      )}
     </div>
   );
 }
