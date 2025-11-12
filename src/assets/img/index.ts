@@ -135,3 +135,8 @@ export {default as Flags5} from "@/assets/img/flag/f5.jpg"
 export {default as Flags6} from "@/assets/img/flag/f6.jpg"
 export {default as Flags7} from "@/assets/img/flag/f7.jpg"
 export {default as Flags8} from "@/assets/img/flag/f8.jpg"
+
+
+// SVG
+export { default as AboutSVG } from "@/assets/svgs/about.svg";
+export { default as IconSVG1 } from "@/assets/svgs/icon1.svg";
