@@ -1,6 +1,8 @@
 "use client"
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, 
+  // useMemo
+ } from 'react';
 import Image from 'next/image';
 import { 
   LuBookOpen, 
@@ -42,8 +44,8 @@ const MaterialDetailPage = ({ materialId }: { materialId: number }) => {
   
   // Audio player state
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(245); // Mock duration in seconds
+  const [currentTime] = useState(0);
+  const [duration] = useState(245); // Mock duration in seconds
 
   // Get material data
   const material = BLOG_DATA.find(post => post.id === materialId);

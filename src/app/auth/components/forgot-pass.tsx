@@ -229,7 +229,7 @@ export default function ForgotPass({ onNavigate }: AuthNavigationProps) {
               placeholder="Enter your email address*"
               value={email}
               onChange={handleEmailChange}
-              onkeypress={handleKeyPress}
+              onKeyPress={handleKeyPress}
               disabled={isLoading}
               required
             />

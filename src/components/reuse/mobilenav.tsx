@@ -32,7 +32,7 @@ export default function MobileNav({
   user,
   onProfileClick,
   onLogin,
-  className = "",
+  // className = "",
 }: MobileNavProps) {
   // Prevent body scroll when mobile nav is open
   useEffect(() => {
