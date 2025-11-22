@@ -722,7 +722,7 @@ export const welcomeBanners: BannerData[] = [
     badge: "NEW",
     cta: {
       text: "Get Started",
-      href: "/explore",
+      href: "/auth?view=signup",
       variant: "primary",
     },
   },
@@ -735,7 +735,7 @@ export const welcomeBanners: BannerData[] = [
     image: Gallery2,
     cta: {
       text: "Browse Materials",
-      href: "/materials",
+      href: "/auth?view=signin",
       variant: "secondary",
     },
   },

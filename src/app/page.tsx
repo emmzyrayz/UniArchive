@@ -2,32 +2,40 @@
 "use client";
 
 import {
-  BLOG_DATA,
-  BlogPost,
-  USERS_DATA,
-  User,
-  mockCategories,
-  mockCourses,
+  // BLOG_DATA,
+  // BlogPost,
+  // USERS_DATA,
+  // User,
+  // mockCategories,
+  // mockCourses,
 } from "@/assets/data/blogData";
 import {
-  updateBanners,
+  // updateBanners,
   welcomeBanners,
-  featuredCourseBanners,
+  // featuredCourseBanners,
 } from "@/assets/data/blogData";
-import { getImageByID } from "@/assets/data/imagesData";
-import { Banner3, Banner4 } from "@/components/banner/banneritem";
-import { BannerCarousel, ScaleUp } from "@/components/banner/bannersection";
-import DynamicSection from "@/components/reuse/dynamicsection";
+// import { getImageByID } from "@/assets/data/imagesData";
+import { 
+  // Banner3,
+   Banner4 } from "@/components/banner/banneritem";
+import { BannerCarousel,
+  //  ScaleUp
+   } from "@/components/banner/bannersection";
+import { IoBookOutline } from "react-icons/io5";
+// import DynamicSection from "@/components/reuse/dynamicsection";
 
 export default function Home() {
-  const teachers = USERS_DATA.filter((user) => user.role === "teacher");
+  // const teachers = USERS_DATA.filter((user) => user.role === "teacher");
 
   
   return (
     <div className="flex flex-col justify-center items-center w-[100vw] h-full p-2">
-      
       <BannerCarousel
-        data={[updateBanners, welcomeBanners, featuredCourseBanners]}
+        data={[
+          // updateBanners,
+          welcomeBanners,
+          // featuredCourseBanners
+        ]}
         autoRotate={true}
         autoRotateInterval={5000}
         duration={0.6}
@@ -56,16 +64,55 @@ export default function Home() {
         </span>
       </div>
 
+      {/* Intro Section */}
+      <div className="intro-sect flex flex-wrap gap-5 mt-5 w-full h-full items-center justify-center py-4 px-3 rounded-md">
+        <div className="card flex flex-col items-center justify-center p-2 rounded-lg shadow-lg hover:shadow-2xl min-w-[150px] min-h-[150px] bg-black/10 hover:bg-black/30 cursor-pointer hover:scale-[1.05] duration-500 ">
+          <div className="flex text-[26px] font-extrabold">
+            <IoBookOutline />
+          </div>
+          <div className="bottom flex flex-col w-full items-center justify-center">
+            <span className="text-[18px] font-bold">Organized Courses</span>
+            <p className="text-[14px]">
+              Upload, create and organize your study material{" "}
+            </p>
+          </div>
+        </div>
+
+        <div className="card flex flex-col items-center justify-center p-2 rounded-lg shadow-lg hover:shadow-2xl min-w-[150px] min-h-[150px] bg-black/10 hover:bg-black/30 cursor-pointer hover:scale-[1.05] duration-500 ">
+          <div className="flex text-[26px] font-extrabold">
+            <IoBookOutline />
+          </div>
+          <div className="bottom flex flex-col w-full items-center justify-center">
+            <span className="text-[18px] font-bold">Organized Courses</span>
+            <p className="text-[14px]">
+              Upload, create and organize your study material{" "}
+            </p>
+          </div>
+        </div>
+
+        <div className="card flex flex-col items-center justify-center p-2 rounded-lg shadow-lg hover:shadow-2xl min-w-[150px] min-h-[150px] bg-black/10 hover:bg-black/30 cursor-pointer hover:scale-[1.05] duration-500 ">
+          <div className="flex text-[26px] font-extrabold">
+            <IoBookOutline />
+          </div>
+          <div className="bottom flex flex-col w-full items-center justify-center">
+            <span className="text-[18px] font-bold">Organized Courses</span>
+            <p className="text-[14px]">
+              Upload, create and organize your study material{" "}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Registered Universities */}
-      <div className="topic-sect flex flex-col w-full h-full items-center justify-center py-4 px-3 rounded-md gap-3">
+      {/* <div className="topic-sect flex flex-col w-full h-full items-center justify-center py-4 px-3 rounded-md gap-3">
         <span className="flex w-full text-2xl font-bold">Trending Topics</span>
         <ScaleUp duration={0.5} delay={1} className="py-3">
           <Banner3 data={featuredCourseBanners} />
         </ScaleUp>
-      </div>
+      </div> */}
 
       {/* Blogs Section */}
-      <div className="blog-sect flex flex-col w-full h-full items-center justify-center rounded-md px-3">
+      {/* <div className="blog-sect flex flex-col w-full h-full items-center justify-center rounded-md px-3">
         <DynamicSection<BlogPost>
           title="Latest Blog Posts"
           subtitle="Read our latest articles and tutorials"
@@ -97,9 +144,10 @@ export default function Home() {
           onItemClick={(post) => console.log("View post:", post.title)}
           onViewAll={() => console.log("View all blogs")}
         />
-      </div>
+      </div> */}
 
-      <div className="instructors flex flex-col w-full h-full items-center justify-center rounded-md px-3">
+      {/* Instructors Section */}
+      {/* <div className="instructors flex flex-col w-full h-full items-center justify-center rounded-md px-3">
         <DynamicSection<User>
           title="Top Instructors"
           subtitle="Learn from our experienced educators"
@@ -130,9 +178,10 @@ export default function Home() {
           onItemClick={(user) => console.log("View profile:", user.displayName)}
           onViewAll={() => console.log("View all instructors")}
         />
-      </div>
+      </div> */}
 
-      <div className="popular-courses flex flex-col h-full items-center justify-center rounded-md px-3 w-[95vw]">
+      {/* Popular Section */}
+      {/* <div className="popular-courses flex flex-col h-full items-center justify-center rounded-md px-3 w-[95vw]">
         <DynamicSection
           title="Popular Courses"
           subtitle="Start learning today"
@@ -147,9 +196,10 @@ export default function Home() {
           onItemClick={(course) => console.log("Enroll in:", course.title)}
           onViewAll={() => console.log("View all courses")}
         />
-      </div>
+      </div> */}
 
-      <div className="categories-sect flex flex-col w-full h-full items-center justify-center rounded-md px-3">
+      {/* Categories Section */}
+      {/* <div className="categories-sect flex flex-col w-full h-full items-center justify-center rounded-md px-3">
         <DynamicSection
           title="Browse Categories"
           subtitle="Explore topics that interest you"
@@ -161,7 +211,7 @@ export default function Home() {
           }
           onViewAll={() => console.log("View all categories")}
         />
-      </div>
+      </div> */}
 
       
     </div>
