@@ -4,7 +4,7 @@ interface InputProps {
   label?: string;
   placeholder?: string;
   name: string;
-  type?: "text" | "email" | "password" | "number" | "tel" | "url" | "search";
+  type?: "text" | "email" | "password" | "number" | "tel" | "url" | "search" | "date";
   value?: string;
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
   onBlur?: (e: ChangeEvent<HTMLInputElement>) => void;
