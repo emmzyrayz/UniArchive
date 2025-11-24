@@ -1,36 +1,136 @@
 @import "tailwindcss";
 
+/* Define theme variables using the proper @theme syntax */
+@theme {
+  /* Breakpoints */
+  --breakpoint-sm: 320px;
+  --breakpoint-md: 550px;
+  --breakpoint-lg: 950px;
+  --breakpoint-xl: 1200px;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  /* Colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
 
-/* *{
-  outline: 2px solid red;
-} */
-
-
-@theme inline {
-  /* --color-background: var(--background); */
-  /* --color-foreground: var(--foreground); */
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-poppins: var(--font-poppins);
+  /* Font families */
+  --font-sans: var(--font-sora), var(--font-geist-sans);
   --font-sora: var(--font-sora);
+
+  /* Animation keyframes */
+  @keyframes shadow-pulse {
+
+    0%,
+    100% {
+      filter: drop-shadow(0 0 8px rgba(200, 111, 255, 0.3));
+    }
+
+    50% {
+      filter: drop-shadow(0 0 15px rgba(200, 111, 255, 0.5));
+    }
+  }
+
+  @keyframes glow {
+
+    0%,
+    100% {
+      filter: drop-shadow(0 0 10px rgba(200, 111, 255, 0.5)) blur(2px);
+    }
+
+    50% {
+      filter: drop-shadow(0 0 20px rgba(200, 111, 255, 0.8)) blur(4px);
+    }
+  }
+
+  @keyframes wiggle {
+
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+
+    25% {
+      transform: rotate(-5deg);
+    }
+
+    75% {
+      transform: rotate(5deg);
+    }
+  }
+
+  @keyframes slideDown {
+    0% {
+      transform: translateY(-100%);
+    }
+
+
+    100% {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideUp {
+    0% {
+      transform: translateY(0);
+    }
+
+
+    100% {
+      transform: translateY(-100%);
+    }
+  }
+
+  /* Animations */
+  --animate-shadow-pulse: shadow-pulse 2s ease-in-out infinite;
+  --animate-glow: glow 3s ease-in-out infinite;
+  --animate-wiggle: wiggle 0.5s ease-in-out;
+  --animate-slideDown: slideDown 0.5s ease-in-out;
+  --animate-slideUp: slideUp 0.5s ease-in-out;
+
+  /* Blur */
+  --blur-lg: 24px;
 }
 
-/* @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-} */
+/* Define root CSS variables for light mode */
 
+* {
+  box-sizing: border-box;
+  font-family: var(--font-sora);
+}
+
+
+/* Basic styling */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  width: 100vw;
-  overflow-x: hidden;
+  padding: 0;
+  margin: 0;
+  /* background: var(--background);
+  color: var(--foreground); */
+  /* font-family: Arial, Helvetica, sans-serif;  */
+}
+
+/* Utility classes defined outside @theme */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Optional: Custom styles for react-pdf */
+.react-pdf__Page {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.react-pdf__Page__canvas {
+  max-width: 100%;
+  height: auto !important;
+}
+
+.react-pdf__Page__textContent {
+  user-select: text;
+}
+
+.react-pdf__Page__annotations {
+  pointer-events: auto;
 }

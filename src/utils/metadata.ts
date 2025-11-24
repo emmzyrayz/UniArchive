@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+import {Metadata} from "next";
 
 interface PageParams {
   page?: string;
@@ -84,7 +84,7 @@ export const baseMetadata: Metadata = {
   },
 };
 
-export function generateMetadata({ params }: { params: PageParams }): Metadata {
+export function generateMetadata({params}: {params: PageParams}): Metadata {
   const pageSpecificMetadata: Record<string, Partial<Metadata>> = {
     resources: {
       title: "Resources | UniArchive",
@@ -146,27 +146,12 @@ export function generateMetadata({ params }: { params: PageParams }): Metadata {
           "Find answers to common questions about using UniArchive and contributing academic materials.",
       },
     },
-    auth: {
-      title: "Auth | UniArchive",
-      description:
-        "Join us today to find answers to common questions about using UniArchive and contributing academic materials.",
-      openGraph: {
-        title: "Auth | UniArchive",
-        description:
-          "Join us today to find answers to common questions about using UniArchive and contributing academic materials.",
-      },
-      twitter: {
-        title: "Auth | UniArchive",
-        description:
-          "Join us today to find answers to common questions about using UniArchive and contributing academic materials.",
-      },
-    },
   };
 
   const pageName = params.page?.toLowerCase();
   const pageMetadata: Metadata =
     pageName && pageSpecificMetadata[pageName]
-      ? { ...baseMetadata, ...pageSpecificMetadata[pageName] }
+      ? {...baseMetadata, ...pageSpecificMetadata[pageName]}
       : baseMetadata;
 
   return pageMetadata;

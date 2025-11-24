@@ -1,17 +1,37 @@
-"use client"
+// import {CardOne, CardTwo, CardThree} from "@/components/ui/card";
+import React from "react";
 
-export default function Page() {
 
+import { Banner } from "@/components/banner";
+import { TopDepartment } from "@/components/department";
+import { TopFaculty } from "@/components/faculty";
+import { TopCourse} from "@/components/courses";
+import {TestimonialsSection} from "@/components/testimonial";
+import { ScrollableLecturer } from "@/components/featuredLecturer";
+import { StatsSection } from "@/components/statistic";
+import { NewsletterCTA } from "@/components/newsletter";
+import { ActivityFeed } from "@/components/activityfeed";
+// import { DarkModeToggle } from "@/components/darkmode";
+import { Leaderboard } from "@/components/leaderboardd";
+import { MobileAppPromo } from "@/components/mobileapppromo";
+import { HowItWorks } from "@/components/howitwork";
+
+export default function Home() {
   return (
-    <div className="flex flex-col w-full h-full p-2 gap-2 items-center justify-center">
-      <div className="welcome flex flex-col w-full min-h-[500px] h-[50%] bg-red-400 my-3 items-center justify-center gap-2 p-2 ">
-        <span className="font-poppins font-bold text-4xl">Organize Your Materials</span>
-        <p className="font-sora font-lg text-[18px] w-full items-center text-center">
-          CourseVault is your secure PDF organizer for courses. Create courses,
-          organize files into folders, and easily access all your study
-          materials in one place.
-        </p>
-      </div>
+    <div className="flex flex-col item-center justify-center w-full h-full relative overflow-hidden">
+      <Banner />
+      <TopDepartment />
+      <TopFaculty />
+      <TopCourse />
+      <TestimonialsSection />
+      <ScrollableLecturer />
+      <StatsSection />
+      <NewsletterCTA />
+      <ActivityFeed />
+      <HowItWorks />
+      <Leaderboard />
+      <MobileAppPromo />
+      {/* <DarkModeToggle /> */}
     </div>
   );
 }

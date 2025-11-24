@@ -36,6 +36,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# vscode
+.vscode
+.gitignore
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# package.json installation dependency "@next/swc-win32-x64-msvc": "^15.3.1",

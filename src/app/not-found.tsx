@@ -2,8 +2,8 @@
 
 // import {useEffect} from "react";
 import Link from "next/link";
-import { NotFoundIllustration } from "@/assets/svgs/notfound";
-import { motion } from "framer-motion";
+import {NotFoundIllustration} from "@/assets/svgs/notfound";
+import {motion} from "framer-motion";
 
 export default function NotFound() {
   return (
@@ -43,9 +43,9 @@ export default function NotFound() {
             repeatType: "reverse",
           }}
         >
-          <span className="">
-            <p className="">OOOPS!!!</p>
-            <p className="">Page not found try again next time</p>
+          <span className=''>
+            <p className=''>OOOPS!!!</p>
+            <p className=''>Page not found try again next time</p>
           </span>
           {/* This would contain your zero element if separated from the main illustration */}
         </motion.div>

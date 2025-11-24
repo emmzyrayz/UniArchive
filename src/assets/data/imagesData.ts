@@ -1,11 +1,5 @@
 // assets/data/imageData.ts
 
-import type { StaticImageData } from "next/image";
-import { Avatar1, Avatar2, Avatar3, Avatar4, Avatar5, Avatar6, Blog1, Blog2, Blog3, Blog4, Blog5, Blog6, FooterBG1, FooterBG2, Gallery1, Gallery2, Gallery3, SectionBG1 } from "../img";
-
-
-export type ImageSource = string | StaticImageData;
-
 export type ImageCategory =
   | "avatar"
   | "post"
@@ -16,7 +10,7 @@ export type ImageCategory =
 
 export interface ImageAsset {
   id: string;
-  src: ImageSource;
+  src: string;
   alt: string;
   category: ImageCategory;
   tags?: string[];
@@ -26,42 +20,42 @@ export interface ImageAsset {
 export const AVATAR_IMAGES: ImageAsset[] = [
   {
     id: "avatar-1",
-    src: Avatar1,
+    src: "/images/avatars/avatar-1.jpg",
     alt: "Profile avatar of a young woman with glasses",
     category: "avatar",
     tags: ["female", "professional", "student"],
   },
   {
     id: "avatar-2",
-    src: Avatar2,
+    src: "/images/avatars/avatar-2.jpg",
     alt: "Profile avatar of a man with beard",
     category: "avatar",
     tags: ["male", "teacher", "professional"],
   },
   {
     id: "avatar-3",
-    src: Avatar3,
+    src: "/images/avatars/avatar-3.jpg",
     alt: "Profile avatar of a woman with curly hair",
     category: "avatar",
     tags: ["female", "student"],
   },
   {
     id: "avatar-4",
-    src: Avatar4,
+    src: "/images/avatars/avatar-4.jpg",
     alt: "Profile avatar of a man with glasses",
     category: "avatar",
     tags: ["male", "student"],
   },
   {
     id: "avatar-5",
-    src: Avatar5,
+    src: "/images/avatars/avatar-5.jpg",
     alt: "Profile avatar of a woman with short hair",
     category: "avatar",
     tags: ["female", "teacher", "professional"],
   },
   {
     id: "avatar-default",
-    src: Avatar6,
+    src: "/images/avatars/default-avatar.jpg",
     alt: "Default profile avatar",
     category: "avatar",
     tags: ["default", "neutral"],
@@ -72,42 +66,42 @@ export const AVATAR_IMAGES: ImageAsset[] = [
 export const CONTENT_IMAGES: ImageAsset[] = [
   {
     id: "blog-tech-1",
-    src: Blog1,
+    src: "/images/blog/tech-workspace.jpg",
     alt: "Modern tech workspace with multiple screens",
     category: "blog",
     tags: ["technology", "workspace", "professional"],
   },
   {
     id: "blog-code-1",
-    src: Blog2,
+    src: "/images/blog/code-screen.jpg",
     alt: "Computer screen showing code",
     category: "blog",
     tags: ["code", "programming", "development"],
   },
   {
     id: "blog-meeting-1",
-    src: Blog3,
+    src: "/images/blog/team-meeting.jpg",
     alt: "Team meeting in modern office",
     category: "blog",
     tags: ["team", "meeting", "collaboration"],
   },
   {
     id: "post-design-1",
-    src: Blog4,
+    src: "/images/posts/design-mockup.jpg",
     alt: "Design mockup on tablet",
     category: "post",
     tags: ["design", "ux", "creative"],
   },
   {
     id: "post-mobile-1",
-    src: Blog5,
+    src: "/images/posts/mobile-app.jpg",
     alt: "Mobile app interface on smartphone",
     category: "post",
     tags: ["mobile", "app", "interface"],
   },
   {
     id: "post-event-1",
-    src: Blog6,
+    src: "/images/posts/campus-event.jpg",
     alt: "Students at campus event",
     category: "post",
     tags: ["campus", "event", "student"],
@@ -118,21 +112,21 @@ export const CONTENT_IMAGES: ImageAsset[] = [
 export const BACKGROUND_IMAGES: ImageAsset[] = [
   {
     id: "bg-pattern-1",
-    src: FooterBG1,
+    src: "/images/backgrounds/pattern-1.jpg",
     alt: "Abstract geometric pattern background",
     category: "background",
     tags: ["pattern", "abstract", "light"],
   },
   {
     id: "bg-gradient-1",
-    src: FooterBG2,
+    src: "/images/backgrounds/gradient-1.jpg",
     alt: "Soft color gradient background",
     category: "background",
     tags: ["gradient", "soft", "colorful"],
   },
   {
     id: "bg-campus-1",
-    src: SectionBG1,
+    src: "/images/backgrounds/campus-1.jpg",
     alt: "University campus background",
     category: "background",
     tags: ["campus", "education", "outdoor"],
@@ -143,21 +137,21 @@ export const BACKGROUND_IMAGES: ImageAsset[] = [
 export const BANNER_IMAGES: ImageAsset[] = [
   {
     id: "banner-welcome",
-    src: Gallery1,
+    src: "/images/banners/welcome-banner.jpg",
     alt: "Welcome to the platform banner",
     category: "banner",
     tags: ["welcome", "intro", "feature"],
   },
   {
     id: "banner-event",
-    src: Gallery2,
+    src: "/images/banners/event-banner.jpg",
     alt: "Upcoming events banner",
     category: "banner",
     tags: ["event", "announcement", "upcoming"],
   },
   {
     id: "banner-course",
-    src: Gallery3,
+    src: "/images/banners/course-banner.jpg",
     alt: "Featured courses banner",
     category: "banner",
     tags: ["course", "education", "feature"],
