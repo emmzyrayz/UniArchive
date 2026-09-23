@@ -43,3 +43,15 @@ yarn-error.log*
 next-env.d.ts
 
 old-uniarchive/
+
+# Generated files — recreated by postinstall
+public/pdf.worker.min.mjs
+public/sw.js
+public/workbox-*.js
+public/swe-worker-*.js
+
+# Test PDFs — don't commit binary fixtures
+public/mock/*.pdf
+
+# Old codebase reference — local only
+old-uniarchive/
