@@ -10,6 +10,8 @@ import { TagInput } from "@/components/UI/TagInput";
 import AuthInput from "@/app/auth/components/UI/AuthInput";
 import { Button } from "@/components/UI/Buttons";
 import { queueUpload } from "@/utils/uploadQueue";
+import { compressPdf, type CompressionResult } from "@/lib/compressPdf";
+import { formatFileSize } from "@/assets/data/libraryData";
 
 interface UploadFormState {
   title: string;
@@ -104,6 +106,10 @@ export default function UploadPage() {
   const [isComplete, setIsComplete] = useState(false);
   const [wasQueued, setWasQueued] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [compression, setCompression] = useState<CompressionResult | null>(
+    null,
+  );
+  const [isCompressing, setIsCompressing] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !hasActiveSession) {
@@ -113,13 +119,22 @@ export default function UploadPage() {
 
   // Auto-fill title from filename if the user hasn't typed one yet
   const titleTouched = useRef(false);
-  const handleFileSelect = (selected: File | null) => {
-    setFile(selected);
-    if (selected && !titleTouched.current) {
-      const nameWithoutExt = selected.name.replace(/\.pdf$/i, "");
-      setFormData((prev) => ({ ...prev, title: nameWithoutExt }));
-    }
-  };
+ const handleFileSelect = (selected: File | null) => {
+   setFile(selected);
+   setCompression(null);
+   if (selected && !titleTouched.current) {
+     const nameWithoutExt = selected.name.replace(/\.pdf$/i, "");
+     setFormData((prev) => ({ ...prev, title: nameWithoutExt }));
+   }
+   if (selected) {
+     setIsCompressing(true);
+     compressPdf(selected).then((result) => {
+       setFile(result.file); // replace with compressed version
+       setCompression(result);
+       setIsCompressing(false);
+     });
+   }
+ };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -236,6 +251,22 @@ export default function UploadPage() {
               error={errors.file}
             />
           </div>
+
+          {isCompressing && (
+            <p className="text-xs text-text-muted">Optimising file size...</p>
+          )}
+          {compression && compression.saving > 0 && (
+            <p className="text-xs text-success">
+              ✓ Compressed {formatFileSize(compression.originalSize)} →{" "}
+              {formatFileSize(compression.compressedSize)} (saved{" "}
+              {compression.saving}%)
+            </p>
+          )}
+          {compression && compression.saving === 0 && (
+            <p className="text-xs text-text-muted">
+              Already optimised — no size reduction possible.
+            </p>
+          )}
 
           <AuthInput
             name="title"
