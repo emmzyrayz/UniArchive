@@ -1,0 +1,157 @@
+// app/home/page.tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
+import { useUser } from "@/context/userContext";
+import { MOCK_BOOKS } from "@/assets/data/libraryData";
+import { BookCard } from "@/components/library/BookCard";
+import { EmptyLibrary } from "@/components/library/EmptyLibrary";
+import { Button } from "@/components/UI/Buttons";
+import { IS_MOCK_MODE } from "@/lib/mockMode";
+import type { Book } from "@/types/library";
+
+type LibraryState =
+  | { status: "loading" }
+  | { status: "ready"; books: Book[] }
+  | { status: "error" };
+
+export default function HomePage() {
+  const router = useRouter();
+  const { hasActiveSession, isLoading, getUserDisplayName } = useUser();
+  const [library, setLibrary] = useState<LibraryState>({ status: "loading" });
+
+  useEffect(() => {
+    if (!isLoading && !hasActiveSession) {
+      router.push("/auth?view=signin");
+    }
+  }, [isLoading, hasActiveSession, router]);
+
+  useEffect(() => {
+    if (isLoading || !hasActiveSession) return;
+    let cancelled = false;
+
+    fetch("/api/books?limit=50", { credentials: "same-origin" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`GET /api/books ${response.status}`);
+        const data = (await response.json()) as { books: Book[] };
+        if (!cancelled) setLibrary({ status: "ready", books: data.books });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        // Mock mode has no real session, so the API is expected to fail there
+        if (IS_MOCK_MODE) {
+          setLibrary({ status: "ready", books: MOCK_BOOKS });
+        } else {
+          console.error("Failed to load library:", error);
+          setLibrary({ status: "error" });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, hasActiveSession]);
+
+  if (isLoading || (hasActiveSession && library.status === "loading")) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-text-secondary text-sm">Loading your library...</p>
+      </div>
+    );
+  }
+
+  if (!hasActiveSession) {
+    return null; // redirect in flight
+  }
+
+  if (library.status === "error") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-text-secondary text-sm">
+          We couldn&apos;t load your library. Check your connection and try again.
+        </p>
+        <Button onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
+  }
+
+  const myBooks = library.status === "ready" ? library.books : [];
+  const recentlyOpened = myBooks
+    .filter((b) => b.lastOpenedAt)
+    .sort(
+      (a, b) =>
+        new Date(b.lastOpenedAt!).getTime() -
+        new Date(a.lastOpenedAt!).getTime(),
+    );
+
+  return (
+    <div className="min-h-screen mt-[60px] px-6 py-10">
+      <div className="mx-auto max-w-6xl">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8"
+        >
+          <div>
+            <h1 className="text-2xl font-bold text-text-primary">
+              Welcome back, {getUserDisplayName()}
+            </h1>
+            <p className="text-sm text-text-secondary mt-1">
+              {myBooks.length} document{myBooks.length !== 1 ? "s" : ""} in your
+              library
+            </p>
+          </div>
+          <Button href="/upload">Upload a document</Button>
+        </motion.div>
+
+        {myBooks.length === 0 ? (
+          <EmptyLibrary />
+        ) : (
+          <>
+            {recentlyOpened.length > 0 && (
+              <section className="mb-10">
+                <h2 className="text-lg font-semibold text-text-primary mb-4">
+                  Continue reading
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {recentlyOpened.map((book, i) => (
+                    <motion.div
+                      key={book.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.05 }}
+                    >
+                      <BookCard book={book} />
+                    </motion.div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section>
+              <h2 className="text-lg font-semibold text-text-primary mb-4">
+                All documents
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {myBooks.map((book, i) => (
+                  <motion.div
+                    key={book.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.05 }}
+                  >
+                    <BookCard book={book} />
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
