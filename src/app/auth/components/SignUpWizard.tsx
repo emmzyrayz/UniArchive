@@ -188,7 +188,7 @@ export default function SignUpWizard() {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-6 bg-primary-foreground p-10 rounded-2xl">
+    <div className="w-full max-w-md mx-auto space-y-6 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xl p-8 rounded-2xl">
       <StepProgress
         labels={FLOW.map((key) => STEP_META[key])}
         currentIndex={stepIndex}

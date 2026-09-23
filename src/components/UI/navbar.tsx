@@ -315,22 +315,18 @@ export const Navbar: React.FC = () => {
 
   // Detect ribbon height
   useEffect(() => {
-    const update = () => {
+    // Initial measurement (the ribbon may have reported before we listened)
+    const frame = requestAnimationFrame(() => {
       const ribbon = document.querySelector(".scroll-ribbon") as HTMLElement;
-      setRibbonHeight(ribbon ? ribbon.offsetHeight : 0);
-    };
-    update();
-    const observer = new MutationObserver(update);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["class", "style"],
+      if (ribbon) setRibbonHeight(ribbon.offsetHeight);
     });
-    window.addEventListener("resize", update);
+
+    const onHeight = (e: Event) =>
+      setRibbonHeight((e as CustomEvent<{ height: number }>).detail.height);
+    document.addEventListener("ribbonHeightChanged", onHeight);
     return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", update);
+      cancelAnimationFrame(frame);
+      document.removeEventListener("ribbonHeightChanged", onHeight);
     };
   }, []);
 

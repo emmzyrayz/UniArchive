@@ -49,7 +49,7 @@ export function OTPInput({ length, value, onChange, error }: OTPInputProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex w-full gap-2 md:justify-center lg:justify-between">
+      <div className="flex w-full gap-1.5 sm:gap-2 md:gap-2 justify-center">
         {digits.map((digit, i) => (
           <input
             key={i}
@@ -63,9 +63,9 @@ export function OTPInput({ length, value, onChange, error }: OTPInputProps) {
             onChange={(e) => handleChange(i, e)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             onPaste={handlePaste}
-            className={`lg:w-12 lg:h-14 md:w-7 md:h-8 text-center text-xl font-semibold md:rounded-md lg:rounded-lg border bg-surface-raised text-text-primary
-              focus:outline-none focus:ring-2 focus:ring-accent
-              ${error ? "border-error" : "border-border"}
+            className={`w-9 h-11 sm:w-11 sm:h-13 md:w-14 md:h-16 text-center text-xl font-semibold rounded-md md:rounded-md lg:rounded-lg border bg-neutral-50 dark:bg-neutral-700 text-neutral-900 dark:text-white
+              focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+              ${error ? "border-error" : "border-neutral-300 dark:border-neutral-500"}
             `}
           />
         ))}

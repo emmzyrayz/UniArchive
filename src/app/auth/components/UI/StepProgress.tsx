@@ -26,9 +26,9 @@ export function StepProgress({
               disabled={!isClickable}
               onClick={() => onStepClick(i)}
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors
-                ${isCurrent ? "bg-accent text-accent-foreground" : ""}
-                ${isComplete ? "bg-neutral-800 text-white" : ""}
-                ${!isCurrent && !isComplete ? "bg-neutral-200 text-neutral-400" : ""}
+                ${isCurrent ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : ""}
+                ${isComplete ? "bg-neutral-700 text-white dark:bg-neutral-300 dark:text-neutral-900" : ""}
+                ${!isCurrent && !isComplete ? "bg-neutral-200 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400" : ""}
                 ${isClickable ? "cursor-pointer" : "cursor-not-allowed"}
               `}
             >

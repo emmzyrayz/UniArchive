@@ -39,7 +39,7 @@ function SignupVerifyContent({ email }: { email: string }) {
 
   if (!email) {
     return (
-      <div className="space-y-6 bg-surface-raised p-8 rounded-xl border border-border shadow-sm">
+      <div className="space-y-6 bg-white dark:bg-neutral-800 p-8 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-xl">
         <Header />
         <p className="text-sm text-text-secondary">
           This verification link is missing an email address.{" "}
@@ -53,7 +53,7 @@ function SignupVerifyContent({ email }: { email: string }) {
   }
 
   return (
-    <div className="space-y-8 bg-surface-raised p-8 rounded-xl border border-border shadow-sm">
+    <div className="space-y-8 bg-white dark:bg-neutral-800 p-8 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-xl">
       <Header />
       <StepVerifyEmail
         email={email}
@@ -167,7 +167,7 @@ function ResetVerifyContent({
   // Magic-link path: show a lightweight "verifying..." state, no form at all
   if (magicToken) {
     return (
-      <div className="space-y-8 bg-surface-raised p-8 rounded-xl border border-border shadow-sm text-center">
+      <div className="space-y-8 bg-white dark:bg-neutral-800 p-8 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-xl text-center">
         <div className="flex justify-center">
           <BrandLogo size={48} />
         </div>
@@ -189,7 +189,7 @@ function ResetVerifyContent({
   }
 
   return (
-    <div className="space-y-8 bg-surface-raised p-8 rounded-xl border border-border shadow-sm">
+    <div className="space-y-8 bg-white dark:bg-neutral-800 p-8 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-xl">
       <Header />
 
       <div className="space-y-1">

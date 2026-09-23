@@ -48,7 +48,7 @@ export default function ForgotPasswordInstance() {
   };
 
   return (
-    <div className="space-y-8 bg-surface-raised p-8 rounded-xl border border-border shadow-sm">
+    <div className="space-y-8 bg-white dark:bg-neutral-800 p-8 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-xl">
       <div className="flex justify-between items-start">
         <BrandLogo size={48} />
         <div className="text-right">

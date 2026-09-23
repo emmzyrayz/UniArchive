@@ -44,8 +44,8 @@ export default function AuthInput({
         <input
           id={inputId}
           type={inputType}
-          className={`w-full px-4 py-3 border rounded-md text-text-primary bg-background focus:ring-2 focus:ring-primary focus:border-primary ${
-            error ? "border-error" : "border-border"
+          className={`w-full px-4 py-3 border rounded-md bg-neutral-50 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed ${
+            error ? "border-error" : "border-neutral-200 dark:border-neutral-600"
           } ${className || ""} ${isPassword ? "pr-12" : ""}`}
           {...props}
         />

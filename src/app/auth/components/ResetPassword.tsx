@@ -95,7 +95,7 @@ export default function ResetPasswordInstance() {
   // Waiting for the client to read sessionStorage
   if (!isClient) {
     return (
-      <div className="space-y-8 bg-surface-raised p-8 rounded-xl border border-border shadow-sm">
+      <div className="space-y-8 bg-white dark:bg-neutral-800 p-8 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-xl">
         {header}
       </div>
     );
@@ -103,7 +103,7 @@ export default function ResetPasswordInstance() {
 
   if (!resetSession) {
     return (
-      <div className="space-y-6 bg-surface-raised p-8 rounded-xl border border-border shadow-sm">
+      <div className="space-y-6 bg-white dark:bg-neutral-800 p-8 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-xl">
         {header}
         <div className="space-y-2">
           <h1 className="text-2xl font-extrabold text-text-primary">
@@ -125,7 +125,7 @@ export default function ResetPasswordInstance() {
   }
 
   return (
-    <div className="space-y-8 bg-surface-raised p-8 rounded-xl border border-border shadow-sm">
+    <div className="space-y-8 bg-white dark:bg-neutral-800 p-8 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-xl">
       {header}
 
       <div className="space-y-1">

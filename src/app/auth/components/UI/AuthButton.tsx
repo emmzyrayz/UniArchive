@@ -14,13 +14,13 @@ export default function AuthButton({
   ...props
 }: AuthButtonProps) {
   const baseClass =
-    "w-full py-3 px-6 rounded-md font-semibold transition-colors duration-200";
+    "w-full py-3 px-6 rounded-md font-semibold transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed";
 
      const primaryClass =
-       "bg-accent text-accent-foreground hover:bg-neutral-800";
+       "bg-neutral-900 text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100";
 
      const secondaryClass =
-       "bg-surface border border-border text-text-secondary hover:bg-neutral-100";
+       "bg-transparent border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-700";
 
   return (
     <button

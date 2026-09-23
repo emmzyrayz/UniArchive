@@ -1,384 +1,220 @@
 "use client";
 
-import React, {useState, useEffect, useRef} from "react";
-import {
-  FaNewspaper,
-  FaBullhorn,
-  FaBook,
-  FaChartLine,
-  FaExclamationTriangle,
-} from "react-icons/fa";
+import React, { useEffect, useRef, useState } from "react";
 
-// Define types for our news items
-type NewsItemType =
-  | "news"
-  | "announcement"
-  | "materials"
-  | "updates"
-  | "warning";
+// Platform announcements shown in the strip above the navbar
+type RibbonItemType = "announcement" | "news" | "materials" | "updates";
 
-interface NewsItem {
-  id: number;
-  type: NewsItemType;
+interface RibbonItem {
+  type: RibbonItemType;
   text: string;
 }
 
+const ITEMS: RibbonItem[] = [
+  {
+    type: "announcement",
+    text: "UniArchive is now live — upload and read your study materials in your browser.",
+  },
+  {
+    type: "news",
+    text: "PDF reader now supports vertical scroll and single-page modes. Try it on your next document.",
+  },
+  {
+    type: "materials",
+    text: "Sign up free — no school email required to get started.",
+  },
+  {
+    type: "updates",
+    text: "Dark mode, bookmarks, and highlights are available in the reader.",
+  },
+];
+
+const SCROLL_THRESHOLD = 50;
+
 interface ScrollRibbonProps {
-  displayTime?: number; // Time each item is shown in milliseconds
-  transitionTime?: number; // Transition time between items in milliseconds
+  displayTime?: number; // How long each item is shown, in ms
+  transitionTime?: number; // Fade-in of each item, in ms
   pauseOnHover?: boolean;
-  delayBetweenCycles?: number; // Delay in milliseconds before repeating
+  delayBetweenCycles?: number; // While scrolled: hidden for this long between cycles, in ms
   className?: string;
 }
 
+function RibbonIcon({ type }: { type: RibbonItemType }) {
+  const common = {
+    width: 16,
+    height: 16,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  switch (type) {
+    case "announcement": // megaphone
+      return (
+        <svg {...common} className="shrink-0 text-violet-400">
+          <path d="M3 11v2a1 1 0 001 1h2l5 4V6L6 10H4a1 1 0 00-1 1z" />
+          <path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13" />
+        </svg>
+      );
+    case "news": // newspaper
+      return (
+        <svg {...common} className="shrink-0 text-sky-400">
+          <path d="M4 5h13v14H6a2 2 0 01-2-2V5z" />
+          <path d="M17 9h3v8a2 2 0 01-2 2" />
+          <path d="M8 9h5M8 13h5M8 17h3" />
+        </svg>
+      );
+    case "materials": // book
+      return (
+        <svg {...common} className="shrink-0 text-emerald-400">
+          <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+        </svg>
+      );
+    case "updates": // chart
+      return (
+        <svg {...common} className="shrink-0 text-cyan-400">
+          <path d="M3 3v18h18" />
+          <path d="M7 15l4-4 3 3 5-6" />
+        </svg>
+      );
+  }
+}
+
 export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
-  displayTime = 5000, // Show each item for 5 seconds
-  transitionTime = 800, // 0.8 second transition between items
+  displayTime = 5000,
+  transitionTime = 400,
   pauseOnHover = true,
-  delayBetweenCycles = 8000, // 8 seconds delay between cycles
+  delayBetweenCycles = 8000,
   className = "",
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
-  // The hide/show cycle only applies while scrolled; at the top it's always shown.
-  const shown = !isScrolled || isVisible;
+  // Only used while scrolled; at the top of the page the ribbon is always shown
+  const [cycleVisible, setCycleVisible] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
-  const [activeItemIndex, setActiveItemIndex] = useState(0);
-  // const [ribbonHeight, setRibbonHeight] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const cycleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
   const ribbonRef = useRef<HTMLDivElement>(null);
+  const scrolledRef = useRef(false);
 
-  // Sample news items
-  const newsItems: NewsItem[] = [
-    {
-      id: 1,
-      type: "news",
-      text: "New courses available for the summer semester! Check the catalog for more information.",
-    },
-    {
-      id: 2,
-      type: "warning",
-      text: "Campus maintenance scheduled for this weekend. Some facilities may be temporarily unavailable.",
-    },
-    {
-      id: 3,
-      type: "announcement",
-      text: "Student council elections next week. Make your voice heard and vote!",
-    },
-    {
-      id: 4,
-      type: "materials",
-      text: "Library extended hours during finals week. Open until midnight Monday through Friday.",
-    },
-    {
-      id: 5,
-      type: "updates",
-      text: "New online learning platform launching next month. Training sessions available now.",
-    },
-  ];
+  const shown = !isScrolled || cycleVisible;
+  const current = ITEMS[activeIndex];
 
-  // Function to get icon based on item type with animation classes
-  const getIcon = (type: NewsItemType, isLeft: boolean = true) => {
-    // Base classes for all icons
-    let baseClasses = "inline-block";
-
-    // Animation classes based on type
-    switch (type) {
-      case "news":
-        baseClasses += " text-blue-500 animate-pulse";
-        return (
-          <FaNewspaper
-            className={`${baseClasses} text-[18px] lg:text-[20px] ${
-              isLeft ? "mr-3" : "ml-3"
-            }`}
-          />
-        );
-      case "announcement":
-        baseClasses += " text-purple-500 animate-bounce";
-        return (
-          <FaBullhorn
-            className={`${baseClasses} text-[18px] lg:text-[20px] ${isLeft ? "mr-3" : "ml-3"}`}
-          />
-        );
-      case "materials":
-        baseClasses += " text-green-500";
-        return (
-          <FaBook
-            className={`${baseClasses} text-[18px] lg:text-[20px] ${
-              isLeft ? "mr-3" : "ml-3"
-            } hover:scale-110 transition-transform`}
-          />
-        );
-      case "updates":
-        baseClasses += " text-cyan-500";
-        return (
-          <FaChartLine
-            className={`${baseClasses} text-[18px] lg:text-[20px] ${
-              isLeft ? "mr-3" : "ml-3"
-            } animate-pulse`}
-          />
-        );
-      case "warning":
-        return (
-          <div
-            className={`${baseClasses} inline-block text-[18px] lg:text-[20px] ${
-              isLeft ? "mr-3" : "ml-3"
-            }`}
-          >
-            <FaExclamationTriangle
-              className={`
-                animate-warning-flash 
-                animate-spin-slow 
-                animate-scale
-                text-yellow-500
-              `}
-            />
-          </div>
-        );
-    }
-  };
-
-  useEffect(() => {
-    // Capture the current ref value at the start of the effect
-    const currentRibbon = ribbonRef.current;
-
-    const updateRibbonHeight = () => {
-      if (currentRibbon) {
-        // Instead of storing height in state, just use it directly
-        const height = currentRibbon.offsetHeight;
-
-        // Dispatch custom event for Navbar to detect height change
-        const ribbonHeightEvent = new CustomEvent("ribbonHeightChanged", {
-          detail: {height},
-        });
-        document.dispatchEvent(ribbonHeightEvent);
-
-        // Also dispatch visibility state
-        const ribbonVisibilityEvent = new CustomEvent(
-          "ribbonVisibilityChanged",
-          {
-            detail: {isVisible: shown},
-          }
-        );
-        document.dispatchEvent(ribbonVisibilityEvent);
-      }
-    };
-
-    // Update height after component mounts
-    updateRibbonHeight();
-
-    // Set up resize observer to detect changes in the ribbon's height
-    const resizeObserver = new ResizeObserver(() => {
-      updateRibbonHeight();
-    });
-
-    if (currentRibbon) {
-      resizeObserver.observe(currentRibbon);
-    }
-
-    return () => {
-      // Use the captured ref value in cleanup
-      if (currentRibbon) {
-        resizeObserver.unobserve(currentRibbon);
-      }
-      resizeObserver.disconnect();
-    };
-  }, [isScrolled, shown]);
-
-  // Handle scroll events
+  // Scroll position -> fixed/relative mode. Only updates state when the
+  // threshold is crossed, not on every scroll event.
   useEffect(() => {
     const handleScroll = () => {
-      const scrollPosition = window.scrollY;
-      setIsScrolled(scrollPosition > 50); // Adjust threshold as needed
+      const scrolled = window.scrollY > SCROLL_THRESHOLD;
+      if (scrolled === scrolledRef.current) return;
+      scrolledRef.current = scrolled;
+      setIsScrolled(scrolled);
+      // Entering scrolled mode starts a fresh visible cycle
+      if (scrolled) setCycleVisible(true);
     };
-
-    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Manage item rotation
+  // Rotate through the items
   useEffect(() => {
-    const startItemRotation = () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+    if (isPaused) return;
+    const id = setInterval(
+      () => setActiveIndex((i) => (i + 1) % ITEMS.length),
+      displayTime,
+    );
+    return () => clearInterval(id);
+  }, [isPaused, displayTime]);
 
-      intervalRef.current = setInterval(() => {
-        if (!isPaused) {
-          setActiveItemIndex((prevIndex) => (prevIndex + 1) % newsItems.length);
-        }
-      }, displayTime);
-    };
-
-    startItemRotation();
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [isPaused, displayTime, newsItems.length]);
-
-  // Handle cycle visibility
+  // While scrolled: show for one full cycle, hide for delayBetweenCycles, repeat
   useEffect(() => {
-    const startCycle = () => {
-      setIsVisible(true);
+    if (!isScrolled) return;
+    const id = setTimeout(
+      () => setCycleVisible((visible) => !visible),
+      cycleVisible ? ITEMS.length * displayTime : delayBetweenCycles,
+    );
+    return () => clearTimeout(id);
+  }, [isScrolled, cycleVisible, displayTime, delayBetweenCycles]);
 
-      // Notify navbar that ribbon is visible
+  // Report the ribbon's height to anything laid out beneath it. Observes the
+  // ribbon element only, not the whole document.
+  useEffect(() => {
+    const ribbon = ribbonRef.current;
+    if (!ribbon) return;
+    const report = () =>
       document.dispatchEvent(
-        new CustomEvent("ribbonVisibilityChanged", {
-          detail: {isVisible: true},
-        })
+        new CustomEvent("ribbonHeightChanged", {
+          detail: { height: ribbon.offsetHeight },
+        }),
       );
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(ribbon);
+    return () => observer.disconnect();
+  }, []);
 
-      // Calculate total cycle time
-      const totalCycleTime = newsItems.length * displayTime;
-
-      // Clear any existing timeout
-      if (cycleTimeoutRef.current) {
-        clearTimeout(cycleTimeoutRef.current);
-      }
-
-      // Hide after cycle if page is scrolled
-      cycleTimeoutRef.current = setTimeout(() => {
-        if (isScrolled) {
-          setIsVisible(false);
-
-          // Notify navbar that ribbon is hidden
-          document.dispatchEvent(
-            new CustomEvent("ribbonVisibilityChanged", {
-              detail: {isVisible: false},
-            })
-          );
-
-          // Restart cycle after delay
-          cycleTimeoutRef.current = setTimeout(() => {
-            if (isScrolled) {
-              startCycle();
-            }
-          }, delayBetweenCycles);
-        }
-      }, totalCycleTime);
-    };
-
-    // Only restart the cycle when scroll state changes
-    if (isScrolled) {
-      startCycle();
-    } else {
-      // Always visible at the top of the page (see `shown`)
-
-      // Notify navbar that ribbon is visible when not scrolled
-      document.dispatchEvent(
-        new CustomEvent("ribbonVisibilityChanged", {
-          detail: {isVisible: true},
-        })
-      );
-    }
-
-    return () => {
-      if (cycleTimeoutRef.current) {
-        clearTimeout(cycleTimeoutRef.current);
-      }
-    };
-  }, [isScrolled, delayBetweenCycles, displayTime, newsItems.length]);
-
-  const currentItem = newsItems[activeItemIndex];
+  useEffect(() => {
+    document.dispatchEvent(
+      new CustomEvent("ribbonVisibilityChanged", {
+        detail: { isVisible: shown },
+      }),
+    );
+  }, [shown]);
 
   return (
-    <>
-      {/* Add custom animations to the global styles */}
-      <style jsx global>{`
-        @keyframes warning-flash {
-          0%,
-          100% {
-            color: #000;
-          }
-          50% {
-            color: #f59e0b;
-          }
-        }
+    // `scroll-ribbon` is how the navbar finds this element to measure it
+    <div
+      ref={ribbonRef}
+      role="region"
+      aria-label="Announcements"
+      className={`scroll-ribbon w-full overflow-hidden border-b border-white/10 transition-all duration-300 ${
+        isScrolled
+          ? "fixed top-0 left-0 z-50 h-8 bg-neutral-900/90 backdrop-blur-sm"
+          : "relative h-12 bg-neutral-900"
+      } ${shown ? "flex items-center justify-center opacity-100" : "hidden h-0 opacity-0"} ${className}`}
+      onMouseEnter={() => pauseOnHover && setIsPaused(true)}
+      onMouseLeave={() => pauseOnHover && setIsPaused(false)}
+    >
+      <div className="flex h-full w-full items-center justify-center px-4">
+        <p
+          key={activeIndex}
+          className="ribbon-item flex min-w-0 items-center gap-2"
+          style={{ animation: `ribbon-fade ${transitionTime}ms ease-in-out` }}
+        >
+          <RibbonIcon type={current.type} />
+          <span
+            className={`truncate text-white/90 transition-all duration-300 ${
+              isScrolled ? "text-[11px]" : "text-xs sm:text-[13px]"
+            }`}
+          >
+            {current.text}
+          </span>
+        </p>
+      </div>
 
-        @keyframes spin-slow {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
+      {/* Progress indicator */}
+      <div className="absolute bottom-0 left-0 h-0.5 w-full bg-white/10" aria-hidden>
+        <div
+          className="h-full bg-sky-400"
+          style={{
+            width: `${((activeIndex + 1) / ITEMS.length) * 100}%`,
+            transition: "width 0.3s linear",
+          }}
+        />
+      </div>
 
-        @keyframes scale {
-          0%,
-          100% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.3);
-          }
+      <style>{`
+        @keyframes ribbon-fade {
+          from { opacity: 0; transform: translateY(2px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-
-        .animate-warning-flash {
-          animation: warning-flash 1s infinite;
-        }
-
-        .animate-spin-slow {
-          animation: spin-slow 3s linear infinite;
-        }
-
-        .animate-scale {
-          animation: scale 2s ease-in-out infinite;
+        @media (prefers-reduced-motion: reduce) {
+          .ribbon-item { animation: none !important; }
         }
       `}</style>
-
-      <div
-        ref={ribbonRef}
-        className={`scroll-ribbon transition-all duration-300 overflow-hidden w-full py-2 ${
-          isScrolled
-            ? "fixed top-0 left-0 z-50 h-8 bg-gray-900/90 backdrop-blur-sm"
-            : "relative h-12 bg-gray-800"
-        } ${
-          shown
-            ? "opacity-100 flex items-center justify-center"
-            : "opacity-0 hidden h-0"
-        } ${className}`}
-        onMouseEnter={() => pauseOnHover && setIsPaused(true)}
-        onMouseLeave={() => pauseOnHover && setIsPaused(false)}
-      >
-        <div className="flex items-center justify-center h-full px-4">
-          <div
-            className="flex items-center justify-center w-full h-full"
-            style={{transition: `opacity ${transitionTime}ms ease-in-out`}}
-          >
-            <div className="flex items-center gap-2">
-              {getIcon(currentItem.type, true)}
-              <span
-                className={`${
-                  isScrolled ? "text-[9px]" : "text-[12px]"
-                } transition-all duration-300 ${
-                  currentItem.type === "warning"
-                    ? "text-yellow-100 font-semibold text-[9px]"
-                    : "text-white"
-                }`}
-              >
-                {currentItem.text}
-              </span>
-              {getIcon(currentItem.type, false)}
-            </div>
-          </div>
-        </div>
-
-        {/* Progress indicator */}
-        <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-700">
-          <div
-            className="h-full bg-blue-500"
-            style={{
-              width: `${((activeItemIndex + 1) / newsItems.length) * 100}%`,
-              transition: "width 0.3s linear",
-            }}
-          />
-        </div>
-      </div>
-    </>
+    </div>
   );
 };

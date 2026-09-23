@@ -93,7 +93,7 @@ export default function SignInInstance({
   };
 
   return (
-    <div className="space-y-8 bg-surface-raised p-8 rounded-xl border border-border shadow-sm">
+    <div className="space-y-8 bg-white dark:bg-neutral-800 p-8 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-xl">
       <div className="flex justify-between items-start">
         <BrandLogo size={48} />
         <div className="text-right">
@@ -184,7 +184,7 @@ export default function SignInInstance({
           <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
             <input
               type="checkbox"
-              className="accent-primary rounded border-border"
+              className="accent-primary rounded border-neutral-300 dark:border-neutral-500"
             />
             Remember Me
           </label>
@@ -205,9 +205,9 @@ export default function SignInInstance({
 
       <div className="relative text-center">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border"></div>
+          <div className="w-full border-t border-neutral-200 dark:border-neutral-700"></div>
         </div>
-        <span className="relative bg-surface-raised px-3 text-sm text-text-muted">
+        <span className="relative bg-white dark:bg-neutral-800 px-3 text-sm text-text-muted">
           Or continue with
         </span>
       </div>

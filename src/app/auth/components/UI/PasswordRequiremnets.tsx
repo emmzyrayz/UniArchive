@@ -41,7 +41,7 @@ export function PasswordRequirements({ value }: PasswordRequirementsProps) {
               className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors duration-200 ${
                 passed
                   ? "bg-success border-success text-white"
-                  : "border-border-strong"
+                  : "border-neutral-300 dark:border-neutral-500"
               }`}
             >
               {passed && (

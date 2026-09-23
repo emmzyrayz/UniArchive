@@ -49,7 +49,7 @@ export default function AuthSocial({ onProviderClick }: AuthSocialProps) {
           onClick={() => onProviderClick?.(provider.id)}
           whileHover={{ y: -2 }}
           whileTap={{ scale: 0.96 }}
-          className="group relative flex items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 py-3 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          className="group relative flex items-center justify-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-700 px-4 py-3 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary hover:bg-neutral-100 dark:hover:bg-neutral-800"
         >
           {/* Brand-colored glow — larger than the button, blurred, hidden until hover */}
           <span

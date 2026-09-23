@@ -126,7 +126,7 @@ export function StepPassword({
                 setErrors((prev) => ({ ...prev, terms: "" }));
               }
             }}
-            className="accent-primary rounded border-border mt-1"
+            className="accent-primary rounded border-neutral-300 dark:border-neutral-500 mt-1"
           />
           <span>
             I agree to the{" "}
