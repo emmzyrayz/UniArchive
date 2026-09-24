@@ -55,6 +55,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} h-full antialiased`}
     >
       <head>
+        {/* URL.parse polyfill (Chrome < 126, e.g. Kiwi Browser, which reports
+            a newer Chrome UA). pdf.js calls URL.parse on the main thread.
+            Runs before anything else in <head>. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+        try {
+          if (typeof URL.parse !== 'function') {
+            URL.parse = function (url, base) {
+              try { return new URL(url, base); } catch (e) { return null; }
+            };
+          }
+        } catch (e) {}
+      `,
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
