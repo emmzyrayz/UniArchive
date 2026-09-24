@@ -10,6 +10,7 @@ import { Watermark } from "@/components/reader/Watermark";
 import { HighlightLayer } from "@/components/reader/HighlighterLayer";
 import { EdgeNavOverlay } from "@/components/reader/EdgeNavOverlay";
 import type { Book } from "@/types/library";
+import { useDeviceCapability } from "@/hooks/useDeviceCapability";
 
 const PdfCanvas = dynamic(
   () => import("@/components/reader/PdfCanvas").then((mod) => mod.PdfCanvas),
@@ -27,6 +28,7 @@ type BookState =
   | { status: "error" };
 
 export default function ReadPage() {
+  const { capability } = useDeviceCapability();
   const { id } = useParams<{ id: string }>();
   const { userProfile } = useUser();
   const { currentPage } = useReader();
@@ -83,7 +85,7 @@ export default function ReadPage() {
       >
         <PdfCanvas book={state.book} />
         <Watermark label={watermarkLabel} />
-        <HighlightLayer pageNumber={currentPage} />
+        {capability !== "low" && <HighlightLayer pageNumber={currentPage} />}
         <EdgeNavOverlay />
       </div>
     </div>

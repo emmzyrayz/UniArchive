@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Highlight } from "@/types/reader";
+import { useDeviceCapability } from "@/hooks/useDeviceCapability";
 
 export type ViewMode = "paged" | "scroll";
 
@@ -48,9 +49,11 @@ interface ReaderContextType {
 const ReaderContext = createContext<ReaderContextType | undefined>(undefined);
 
 export function ReaderProvider({ children }: { children: ReactNode }) {
+  const { config, capability } = useDeviceCapability();
+  const defaultZoom = capability === "low" ? 0.9 : 1.2;
   const [currentPage, setCurrentPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
-  const [zoom, setZoom] = useState(1.2);
+  const [zoom, setZoom] = useState(defaultZoom);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [highlightMode, setHighlightMode] = useState(false);
   const [highlights, setHighlights] = useState<Highlight[]>([]);

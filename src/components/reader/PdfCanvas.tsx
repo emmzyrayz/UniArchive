@@ -1,4 +1,9 @@
-// components/reader/PdfCanvas.tsx
+// src/components/reader/PdfCanvas.tsx
+// Replace the top constants:
+// const INITIAL_LOAD = 3;
+// const LOAD_INCREMENT = 3;
+// With adaptive values from the hook
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -6,12 +11,10 @@ import { Document, Page as PDFPage, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import { useReader } from "@/context/readerContext";
+import { useDeviceCapability } from "@/hooks/useDeviceCapability";
 import type { Book } from "@/types/library";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-
-const INITIAL_LOAD = 3;
-const LOAD_INCREMENT = 3;
 
 type FetchCheckState =
   | { status: "checking" }
@@ -21,11 +24,16 @@ type FetchCheckState =
 export function PdfCanvas({ book }: { book: Book }) {
   const { currentPage, numPages, zoom, viewMode, setNumPages, goToPage } =
     useReader();
+  const { config, ready } = useDeviceCapability();
+
+  // Use medium defaults until capability is assessed (avoids SSR mismatch)
+  const initialLoad = ready ? config.initial : 5;
+  const loadIncrement = ready ? config.increment : 5;
 
   const [fetchCheck, setFetchCheck] = useState<FetchCheckState>({
     status: "checking",
   });
-  const [loadedUpTo, setLoadedUpTo] = useState(INITIAL_LOAD);
+  const [loadedUpTo, setLoadedUpTo] = useState<number>(initialLoad);
   const [prevFileUrl, setPrevFileUrl] = useState(book.fileUrl);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -33,13 +41,18 @@ export function PdfCanvas({ book }: { book: Book }) {
   const isProgrammaticScroll = useRef(false);
   const lastScrolledPageRef = useRef<number | null>(null);
 
+  // Reset when book changes
+  if (prevFileUrl !== book.fileUrl) {
+    setPrevFileUrl(book.fileUrl);
+    setLoadedUpTo(initialLoad);
+  }
+
+  // Preflight check
   useEffect(() => {
     let cancelled = false;
     async function checkFile() {
       try {
-        // fileUrl is a signed GET URL (the signature covers the method, so a
-        // HEAD would be rejected). Ask for a single byte instead.
-        const res = await fetch(book.fileUrl, { headers: { Range: "bytes=0-0" } });
+        const res = await fetch(book.fileUrl, { method: "HEAD" });
         if (cancelled) return;
         if (!res.ok) {
           setFetchCheck({
@@ -53,8 +66,7 @@ export function PdfCanvas({ book }: { book: Book }) {
         if (cancelled) return;
         setFetchCheck({
           status: "error",
-          message:
-            "Could not reach the document. Check your connection and try again.",
+          message: `Could not reach this document — check your connection.`,
         });
       }
     }
@@ -64,12 +76,12 @@ export function PdfCanvas({ book }: { book: Book }) {
     };
   }, [book.fileUrl]);
 
-  if (prevFileUrl !== book.fileUrl) {
-    setPrevFileUrl(book.fileUrl);
-    setLoadedUpTo(INITIAL_LOAD);
+  // Jump ahead if sidebar nav requests a page beyond loaded range
+  if (viewMode === "scroll" && numPages && currentPage > loadedUpTo) {
+    setLoadedUpTo(Math.min(currentPage, numPages));
   }
 
-  // Grow the loaded range when the sentinel comes into view
+  // Sentinel observer — loads more pages as user approaches the end
   useEffect(() => {
     if (viewMode !== "scroll" || !sentinelRef.current || loadedUpTo >= numPages)
       return;
@@ -77,7 +89,7 @@ export function PdfCanvas({ book }: { book: Book }) {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          setLoadedUpTo((prev) => Math.min(prev + LOAD_INCREMENT, numPages));
+          setLoadedUpTo((prev) => Math.min(prev + loadIncrement, numPages));
         }
       },
       { root: null, rootMargin: "400px" },
@@ -85,9 +97,9 @@ export function PdfCanvas({ book }: { book: Book }) {
 
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [viewMode, loadedUpTo, numPages]);
+  }, [viewMode, loadedUpTo, numPages, loadIncrement]);
 
-  // Keep currentPage synced to whichever loaded page is most visible
+  // Visibility sync — keeps page counter accurate while scrolling
   useEffect(() => {
     if (viewMode !== "scroll") return;
 
@@ -109,10 +121,7 @@ export function PdfCanvas({ book }: { book: Book }) {
     return () => observer.disconnect();
   }, [viewMode, loadedUpTo, goToPage]);
 
-  if (viewMode === "scroll" && numPages && currentPage > loadedUpTo) {
-    setLoadedUpTo(Math.min(currentPage, numPages));
-  }
-
+  // Programmatic scroll — sidebar clicks, arrow keys
   useEffect(() => {
     if (viewMode !== "scroll" || currentPage > loadedUpTo) return;
     if (lastScrolledPageRef.current === currentPage) return;
@@ -120,9 +129,10 @@ export function PdfCanvas({ book }: { book: Book }) {
     lastScrolledPageRef.current = currentPage;
     isProgrammaticScroll.current = true;
 
-    pageRefs.current
-      .get(currentPage)
-      ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    pageRefs.current.get(currentPage)?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
 
     const timeout = setTimeout(() => {
       isProgrammaticScroll.current = false;
@@ -157,7 +167,7 @@ export function PdfCanvas({ book }: { book: Book }) {
       file={book.fileUrl}
       onLoadSuccess={({ numPages }) => {
         setNumPages(numPages);
-        setLoadedUpTo(Math.min(INITIAL_LOAD, numPages));
+        setLoadedUpTo(Math.min(initialLoad, numPages));
       }}
       loading={
         <div className="w-[600px] h-[800px] bg-neutral-800 animate-pulse rounded" />
@@ -172,6 +182,13 @@ export function PdfCanvas({ book }: { book: Book }) {
         <PDFPage pageNumber={currentPage} scale={zoom} />
       ) : (
         <div className="flex flex-col items-center gap-4">
+          {/* Device capability hint — only shown on low/medium */}
+          {ready && config.label && loadedUpTo < numPages && (
+            <p className="text-xs text-neutral-500 text-center px-4">
+              {config.label}
+            </p>
+          )}
+
           {loadedPages.map((pageNum) => (
             <div
               key={pageNum}
@@ -184,6 +201,7 @@ export function PdfCanvas({ book }: { book: Book }) {
               <PDFPage pageNumber={pageNum} scale={zoom} />
             </div>
           ))}
+
           {loadedUpTo < numPages && (
             <div
               ref={sentinelRef}
