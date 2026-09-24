@@ -15,7 +15,8 @@ import { useDeviceCapability } from "@/hooks/useDeviceCapability";
 import { HighlightLayer } from "@/components/reader/HighlighterLayer";
 import type { Book } from "@/types/library";
 
-pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+// Wrapper polyfills URL.parse inside the worker, then loads pdf.worker.min.mjs
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.wrapper.mjs";
 
 type FetchCheckState =
   | { status: "checking" }
