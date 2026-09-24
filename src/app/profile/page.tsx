@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { useUser } from "@/context/userContext";
-import { MOCK_READING_STATS, MOCK_BOOKMARKS, MOCK_HIGHLIGHTS } from "@/assets/data/dashboardData";
 
 const ROLE_COLORS: Record<string, string> = {
   student: "bg-blue-500/10 text-blue-500",
@@ -41,11 +40,12 @@ export default function ProfilePage() {
   const roleColor = ROLE_COLORS[userProfile.role] ?? "bg-neutral-500/10 text-neutral-500";
   const initials = getUserDisplayName().split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
 
+  // Reading activity isn't persisted yet; show a dash rather than made-up numbers
   const profileStats = [
-    { label: "Pages read", value: MOCK_READING_STATS.totalPagesRead.toLocaleString() },
-    { label: "Bookmarks", value: MOCK_BOOKMARKS.length },
-    { label: "Highlights", value: MOCK_HIGHLIGHTS.length },
-    { label: "Day streak", value: MOCK_READING_STATS.currentStreakDays },
+    { label: "Pages read", value: "—" },
+    { label: "Bookmarks", value: "—" },
+    { label: "Highlights", value: "—" },
+    { label: "Day streak", value: "—" },
   ];
 
   return (

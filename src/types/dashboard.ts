@@ -1,13 +1,4 @@
 // src/types/dashboard.ts
-export interface ReadingStats {
-  totalPagesRead: number;
-  totalTimeSpentMinutes: number;
-  documentsCompleted: number;
-  currentStreakDays: number;
-  longestStreakDays: number;
-  averageSessionMinutes: number;
-}
-
 export interface SavedBookmark {
   id: string;
   bookId: string;

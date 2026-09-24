@@ -109,6 +109,13 @@ export default function HomePage() {
     );
   }
 
+  const removeBook = (id: string) =>
+    setLibrary((prev) =>
+      prev.status === "ready"
+        ? { ...prev, books: prev.books.filter((b) => b.id !== id) }
+        : prev,
+    );
+
   const myBooks = library.status === "ready" ? library.books : [];
   const recentlyOpened = myBooks
     .filter((b) => b.lastOpenedAt)
@@ -157,7 +164,7 @@ export default function HomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: i * 0.05 }}
                     >
-                      <BookCard book={book} />
+                      <BookCard book={book} showDeleteButton onDelete={removeBook} />
                     </motion.div>
                   ))}
                 </div>
@@ -176,7 +183,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.05 }}
                   >
-                    <BookCard book={book} />
+                    <BookCard book={book} showDeleteButton onDelete={removeBook} />
                   </motion.div>
                 ))}
               </div>

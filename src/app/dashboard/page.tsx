@@ -2,29 +2,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { useUser } from "@/context/userContext";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { StorageUsage } from "@/components/dashboard/StorageUsage";
-import { BookmarksList } from "@/components/dashboard/BookmarksList";
-import { HighlightsList } from "@/components/dashboard/HighlightsList";
-import {
-  MOCK_READING_STATS,
-  MOCK_BOOKMARKS,
-  MOCK_HIGHLIGHTS,
-  MOCK_STORAGE,
-  formatDuration,
-} from "@/assets/data/dashboardData";
+import { Button } from "@/components/UI/Buttons";
+import { formatBytes } from "@/assets/data/dashboardData";
+import type { Book } from "@/types/library";
 
 type Tab = "overview" | "bookmarks" | "highlights" | "storage";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
-  { id: "bookmarks", label: `Bookmarks (${MOCK_BOOKMARKS.length})` },
-  { id: "highlights", label: `Highlights (${MOCK_HIGHLIGHTS.length})` },
+  { id: "bookmarks", label: "Bookmarks" },
+  { id: "highlights", label: "Highlights" },
   { id: "storage", label: "Storage" },
 ];
+
+// Flat quota until storage tiers exist
+const STORAGE_TOTAL_BYTES = 524_288_000;
+
+interface UserStats {
+  documentCount: number;
+  totalStorageBytes: number;
+  recentBooks: Book[];
+}
+
+type StatsState =
+  | { status: "loading" }
+  | { status: "ready"; stats: UserStats }
+  | { status: "error" };
 
 function BookIcon() {
   return (
@@ -33,32 +42,54 @@ function BookIcon() {
     </svg>
   );
 }
-function ClockIcon() {
+function DatabaseIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+      <ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
     </svg>
   );
 }
-function FlameIcon() {
+
+function EmptyState({ children }: { children: React.ReactNode }) {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M8.5 14.5A2.5 2.5 0 0011 17h2a2.5 2.5 0 002.5-2.5c0-1.5-.5-2-1-3s-.5-2.5.5-3.5c0 2 1.5 2.5 2 4s.5 3-1 4.5c-1 1-2 1.5-4 1.5s-3-.5-4-1.5c-1.5-1.5-2-3-1-4.5s2-2 2-4c1 1 1.5 2.5.5 3.5z" />
-    </svg>
+    <div className="rounded-xl border border-dashed border-border p-6 text-center">
+      <p className="text-text-muted text-sm">{children}</p>
+    </div>
   );
 }
-function PageIcon() {
+
+function RecentBooks({ books }: { books: Book[] }) {
+  if (books.length === 0) {
+    return <EmptyState>Nothing opened yet — books you read will show up here.</EmptyState>;
+  }
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
-    </svg>
+    <ul className="rounded-xl border border-border bg-surface-raised divide-y divide-border">
+      {books.map((book) => (
+        <li key={book.id}>
+          <Link
+            href={`/read/${book.id}`}
+            className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-100 transition-colors"
+          >
+            <span className="text-sm font-medium text-text-primary line-clamp-1">{book.title}</span>
+            {book.lastOpenedAt && (
+              <span className="text-xs text-text-muted shrink-0">
+                {new Date(book.lastOpenedAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
+              </span>
+            )}
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { hasActiveSession, isLoading, getUserDisplayName } = useUser();
+  const { hasActiveSession, isLoading } = useUser();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [statsState, setStatsState] = useState<StatsState>({ status: "loading" });
+  // Bumped by the retry button to re-run the fetch without a full page reload
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!isLoading && !hasActiveSession) {
@@ -66,9 +97,54 @@ export default function DashboardPage() {
     }
   }, [isLoading, hasActiveSession, router]);
 
+  useEffect(() => {
+    if (isLoading || !hasActiveSession) return;
+    let cancelled = false;
+
+    fetch("/api/user/stats", { credentials: "same-origin" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`GET /api/user/stats ${response.status}`);
+        const stats = (await response.json()) as UserStats;
+        if (!cancelled) setStatsState({ status: "ready", stats });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Failed to load dashboard stats:", error);
+        setStatsState({ status: "error" });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, hasActiveSession, reloadKey]);
+
   if (isLoading || !hasActiveSession) return null;
 
-  const stats = MOCK_READING_STATS;
+  const stats = statsState.status === "ready" ? statsState.stats : null;
+  const storage = stats && {
+    usedBytes: stats.totalStorageBytes,
+    totalBytes: STORAGE_TOTAL_BYTES,
+    documentCount: stats.documentCount,
+  };
+
+  const statsFallback =
+    statsState.status === "error" ? (
+      <div className="rounded-xl border border-dashed border-border p-6 flex flex-col items-center gap-3 text-center">
+        <p className="text-text-muted text-sm">
+          We couldn&apos;t load your stats. Check your connection and try again.
+        </p>
+        <Button
+          onClick={() => {
+            setStatsState({ status: "loading" });
+            setReloadKey((k) => k + 1);
+          }}
+        >
+          Retry
+        </Button>
+      </div>
+    ) : (
+      <EmptyState>Loading…</EmptyState>
+    );
 
   return (
     <div className="min-h-screen mt-[70px] px-4 sm:px-6 py-10">
@@ -106,97 +182,65 @@ export default function DashboardPage() {
         {/* Overview tab */}
         {activeTab === "overview" && (
           <div className="space-y-8">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <StatsCard
-                label="Pages read"
-                value={stats.totalPagesRead}
-                display={stats.totalPagesRead.toLocaleString()}
-                icon={<PageIcon />}
-                delay={0}
-              />
-              <StatsCard
-                label="Time reading"
-                value={stats.totalTimeSpentMinutes}
-                display={formatDuration(stats.totalTimeSpentMinutes)}
-                icon={<ClockIcon />}
-                delay={0.08}
-              />
-              <StatsCard
-                label="Completed"
-                value={stats.documentsCompleted}
-                display={`${stats.documentsCompleted} docs`}
-                icon={<BookIcon />}
-                delay={0.16}
-              />
-              <StatsCard
-                label="Current streak"
-                value={stats.currentStreakDays}
-                display={`${stats.currentStreakDays} days 🔥`}
-                icon={<FlameIcon />}
-                delay={0.24}
-              />
-            </div>
+            {stats && storage ? (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <StatsCard
+                    label="Documents"
+                    value={stats.documentCount}
+                    display={stats.documentCount.toLocaleString()}
+                    icon={<BookIcon />}
+                    delay={0}
+                  />
+                  <StatsCard
+                    label="Storage used"
+                    value={stats.totalStorageBytes}
+                    display={formatBytes(stats.totalStorageBytes)}
+                    icon={<DatabaseIcon />}
+                    delay={0.08}
+                  />
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.32 }}
-                className="rounded-xl border border-border bg-surface-raised p-6"
-              >
-                <h3 className="font-semibold text-text-primary mb-4">Reading details</h3>
-                <dl className="space-y-3">
-                  {[
-                    { label: "Longest streak", value: `${stats.longestStreakDays} days` },
-                    { label: "Avg session", value: formatDuration(stats.averageSessionMinutes) },
-                    { label: "Bookmarks saved", value: MOCK_BOOKMARKS.length },
-                    { label: "Highlights made", value: MOCK_HIGHLIGHTS.length },
-                  ].map((item) => (
-                    <div key={item.label} className="flex justify-between items-center">
-                      <dt className="text-sm text-text-secondary">{item.label}</dt>
-                      <dd className="text-sm font-medium text-text-primary">{item.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </motion.div>
+                <EmptyState>
+                  Reading stats coming soon — start reading to track your progress.
+                </EmptyState>
 
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.4 }}
-              >
-                <StorageUsage storage={MOCK_STORAGE} />
-              </motion.div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.16 }}
+                  >
+                    <h3 className="font-semibold text-text-primary mb-4">Continue reading</h3>
+                    <RecentBooks books={stats.recentBooks} />
+                  </motion.div>
 
-            {/* Recent bookmarks preview */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-text-primary">Recent bookmarks</h3>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("bookmarks")}
-                  className="text-sm text-primary hover:underline"
-                >
-                  View all
-                </button>
-              </div>
-              <BookmarksList bookmarks={MOCK_BOOKMARKS.slice(0, 2)} />
-            </div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.24 }}
+                  >
+                    <StorageUsage storage={storage} />
+                  </motion.div>
+                </div>
+              </>
+            ) : (
+              statsFallback
+            )}
           </div>
         )}
 
-        {/* Bookmarks tab */}
+        {/* Bookmarks tab - bookmarks aren't persisted yet */}
         {activeTab === "bookmarks" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-            <BookmarksList bookmarks={MOCK_BOOKMARKS} />
+            <EmptyState>No bookmarks yet — bookmark pages while reading to see them here</EmptyState>
           </motion.div>
         )}
 
-        {/* Highlights tab */}
+        {/* Highlights tab - highlights aren't persisted yet */}
         {activeTab === "highlights" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-            <HighlightsList highlights={MOCK_HIGHLIGHTS} />
+            <EmptyState>No highlights yet — drag to highlight text while reading</EmptyState>
           </motion.div>
         )}
 
@@ -207,7 +251,7 @@ export default function DashboardPage() {
             transition={{ duration: 0.2 }}
             className="max-w-lg"
           >
-            <StorageUsage storage={MOCK_STORAGE} />
+            {storage ? <StorageUsage storage={storage} /> : statsFallback}
           </motion.div>
         )}
       </div>
