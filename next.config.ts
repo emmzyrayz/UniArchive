@@ -12,6 +12,8 @@ const withPWA = withPWAInit({
   },
   workboxOptions: {
     disableDevLogs: true,
+    // Background-sync handler for the offline upload queue
+    importScripts: ["/sw-sync.js"],
     runtimeCaching: [
       {
         urlPattern: ({ url }) => url.pathname.startsWith("/_next/static"),
@@ -67,6 +69,21 @@ const withPWA = withPWAInit({
         options: {
           cacheName: "app-pages",
           expiration: { maxEntries: 30, maxAgeSeconds: 24 * 60 * 60 },
+        },
+      },
+      {
+        // Reader pages are rendered on the server, so without this they'd
+        // never load offline. Full navigations only: a failed client-side
+        // (RSC) navigation falls back to a full one, which hits this cache.
+        // Pages never opened here get the /offline fallback, which reads
+        // saved page images from IndexedDB instead.
+        urlPattern: ({ request, url }) =>
+          request.mode === "navigate" && url.pathname.startsWith("/read/"),
+        handler: "NetworkFirst",
+        options: {
+          cacheName: "reader-pages",
+          expiration: { maxEntries: 30, maxAgeSeconds: 30 * 24 * 60 * 60 },
+          networkTimeoutSeconds: 10,
         },
       },
       {

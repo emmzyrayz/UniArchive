@@ -1,11 +1,29 @@
 // src/app/offline/page.tsx
 "use client";
 
+import { useSyncExternalStore } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "motion/react";
 import Link from "next/link";
 import BrandLogo from "@/app/auth/components/UI/BrandLogo";
 
+const OfflineReader = dynamic(
+  () => import("@/components/reader/OfflineReader").then((mod) => mod.OfflineReader),
+  { ssr: false },
+);
+
+const noopSubscribe = () => () => {};
+
+// The service worker serves this page in place of any uncached page, so the
+// address bar still holds the URL the user asked for.
+function getRequestedBookId(): string | null {
+  return window.location.pathname.match(/^\/read\/([^/]+)\/?$/)?.[1] ?? null;
+}
+
 export default function OfflinePage() {
+  const bookId = useSyncExternalStore(noopSubscribe, getRequestedBookId, () => null);
+  if (bookId) return <OfflineReader bookId={decodeURIComponent(bookId)} />;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-6">
       <motion.div

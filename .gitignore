@@ -49,6 +49,7 @@ public/pdf.worker.min.mjs
 public/sw.js
 public/workbox-*.js
 public/swe-worker-*.js
+public/fallback-*.js
 
 # Test PDFs — don't commit binary fixtures
 public/mock/*.pdf

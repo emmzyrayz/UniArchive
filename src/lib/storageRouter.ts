@@ -5,7 +5,10 @@
 
 export type StorageProvider = "cloudinary" | "backblaze";
 
-export const CLOUDINARY_MAX_SIZE = 80 * 1024 * 1024; // 80 MB
+// Cloudinary free plan caps uploads at ~10MB.
+// Files above this go to B2.
+// Upgrade to Cloudinary Plus to raise this limit.
+export const CLOUDINARY_MAX_SIZE = 10 * 1024 * 1024; // 10MB free plan limit
 
 export function getStorageProvider(fileSizeBytes: number): StorageProvider {
   return fileSizeBytes <= CLOUDINARY_MAX_SIZE ? "cloudinary" : "backblaze";

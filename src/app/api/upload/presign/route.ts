@@ -1,6 +1,6 @@
 // POST /api/upload/presign
 // Signs a direct browser upload so the PDF never passes through a Next.js
-// function. Files up to 80 MB go to Cloudinary (signed multipart POST, then
+// function. Files up to 10 MB go to Cloudinary (signed multipart POST, then
 // /api/upload/finalize); larger ones get a signed B2 PUT URL (then
 // POST /api/books). The object key is chosen here, under the caller's prefix.
 import { NextResponse, type NextRequest } from "next/server";

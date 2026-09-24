@@ -10,138 +10,16 @@ import { TagInput } from "@/components/UI/TagInput";
 import AuthInput from "@/app/auth/components/UI/AuthInput";
 import { Button } from "@/components/UI/Buttons";
 import { queueUpload } from "@/utils/uploadQueue";
+import { uploadBook } from "@/utils/uploadBook";
 import { compressPdf, type CompressionResult } from "@/lib/compressPdf";
 import { formatFileSize } from "@/assets/data/libraryData";
+
+const COMPRESS_MAX_SIZE = 50 * 1024 * 1024; // 50MB
 
 interface UploadFormState {
   title: string;
   description: string;
   tags: string[];
-}
-
-async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(
-      (data as { message?: string }).message ?? "Upload failed. Please try again.",
-    );
-  }
-  return data as T;
-}
-
-// fetch() can't report upload progress, so the PUT to storage uses XHR.
-function putFileWithProgress(
-  url: string,
-  file: File,
-  onProgress: (percent: number) => void,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", url);
-    xhr.setRequestHeader("Content-Type", file.type);
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) onProgress((event.loaded / event.total) * 100);
-    };
-    xhr.onload = () =>
-      xhr.status >= 200 && xhr.status < 300
-        ? resolve()
-        : reject(new Error(`Storage rejected the upload (HTTP ${xhr.status}).`));
-    xhr.onerror = () => reject(new Error("Network error while uploading the file."));
-    xhr.send(file);
-  });
-}
-
-// Multipart POST straight to Cloudinary, with the fields signed by presign.
-function postFormWithProgress(
-  url: string,
-  fields: Record<string, string>,
-  file: File,
-  onProgress: (percent: number) => void,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const form = new FormData();
-    for (const [name, value] of Object.entries(fields)) form.append(name, value);
-    form.append("file", file);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", url);
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) onProgress((event.loaded / event.total) * 100);
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-        return;
-      }
-      let message = `Storage rejected the upload (HTTP ${xhr.status}).`;
-      try {
-        const data = JSON.parse(xhr.responseText) as { error?: { message?: string } };
-        if (data.error?.message) message = data.error.message;
-      } catch {
-        // keep the generic message
-      }
-      reject(new Error(message));
-    };
-    xhr.onerror = () => reject(new Error("Network error while uploading the file."));
-    xhr.send(form);
-  });
-}
-
-type PresignResponse =
-  | {
-      provider: "cloudinary";
-      uploadUrl: string;
-      fields: Record<string, string>;
-      publicId: string;
-    }
-  | { provider: "backblaze"; uploadUrl: string; storageKey: string };
-
-/**
- * 1. Ask the server for a signed upload (Cloudinary up to 80 MB, B2 above)
- * 2. Upload the file straight to storage
- * 3. Create the book record
- */
-async function uploadBook(
-  file: File,
-  form: UploadFormState,
-  onProgress: (percent: number) => void,
-): Promise<void> {
-  const presign = await postJson<PresignResponse>("/api/upload/presign", {
-    fileName: file.name,
-    fileSize: file.size,
-    mimeType: file.type,
-  });
-  const details = {
-    title: form.title.trim(),
-    description: form.description.trim(),
-    tags: form.tags,
-  };
-
-  // Keep the last few percent for the record-creation step
-  if (presign.provider === "cloudinary") {
-    await postFormWithProgress(presign.uploadUrl, presign.fields, file, (p) =>
-      onProgress(p * 0.95),
-    );
-    await postJson("/api/upload/finalize", {
-      ...details,
-      publicId: presign.publicId,
-    });
-  } else {
-    await putFileWithProgress(presign.uploadUrl, file, (p) => onProgress(p * 0.95));
-    await postJson("/api/books", {
-      ...details,
-      storageKey: presign.storageKey,
-      fileSize: file.size,
-      mimeType: file.type,
-    });
-  }
-  onProgress(100);
 }
 
 export default function UploadPage() {
@@ -180,13 +58,16 @@ export default function UploadPage() {
      const nameWithoutExt = selected.name.replace(/\.pdf$/i, "");
      setFormData((prev) => ({ ...prev, title: nameWithoutExt }));
    }
-   if (selected) {
+   // Compression loads the whole PDF into memory; skip it for large files
+   if (selected && selected.size <= COMPRESS_MAX_SIZE) {
      setIsCompressing(true);
      compressPdf(selected).then((result) => {
        setFile(result.file); // replace with compressed version
        setCompression(result);
        setIsCompressing(false);
      });
+   } else {
+     setIsCompressing(false);
    }
  };
 

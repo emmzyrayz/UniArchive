@@ -58,7 +58,7 @@ export function OfflineSaveButton({
         const batch = [];
         for (let p = start; p < start + BATCH_SIZE && p <= totalPages; p++) {
           batch.push(
-            loadPageImage(book.id, p, totalPages).then(() => {
+            loadPageImage(book.id, p, totalPages, { title: book.title }).then(() => {
               done += 1;
               setState({ status: "caching", done });
             }),

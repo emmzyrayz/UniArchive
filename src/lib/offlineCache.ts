@@ -19,6 +19,8 @@ interface PageRecord {
   bookId: string;
   pageNumber: number;
   totalPages: number;
+  /** Lets the offline fallback show the book without the server. */
+  title?: string;
   mimeType: string;
   iv: Uint8Array;
   ciphertext: ArrayBuffer;
@@ -104,6 +106,7 @@ export async function cachePageImage(
   pageNumber: number,
   totalPages: number,
   image: Blob,
+  title?: string,
 ): Promise<void> {
   try {
     const key = await getKey();
@@ -118,6 +121,7 @@ export async function cachePageImage(
       bookId,
       pageNumber,
       totalPages,
+      title,
       mimeType: image.type || "image/jpeg",
       iv,
       ciphertext,
@@ -177,15 +181,20 @@ export async function getCachedPageImage(
   }
 }
 
-/** How many pages of a book are cached, and how many it has. */
-export async function getCachedPageCount(
-  bookId: string,
-): Promise<{ cached: number; total: number }> {
+export interface CachedBookInfo {
+  cached: number;
+  total: number;
+  title?: string;
+}
+
+/** How many pages of a book are cached, how many it has, and its title. */
+export async function getCachedPageCount(bookId: string): Promise<CachedBookInfo> {
   try {
     const records = await getBookRecords(bookId);
     return {
       cached: records.length,
       total: records[0]?.totalPages ?? 0,
+      title: records.find((r) => r.title)?.title,
     };
   } catch {
     return { cached: 0, total: 0 };

@@ -49,6 +49,36 @@ export default function HomePage() {
     };
   }, [isLoading, hasActiveSession, reloadKey]);
 
+  // Send uploads queued while offline: now, when the connection returns, and
+  // when the service worker's background sync asks. Refresh the library if
+  // any went through.
+  useEffect(() => {
+    if (isLoading || !hasActiveSession) return;
+    let cancelled = false;
+
+    const run = () => {
+      if (!navigator.onLine) return;
+      import("@/utils/uploadQueue")
+        .then(({ processQueue }) => processQueue())
+        .then(({ processed }) => {
+          if (!cancelled && processed > 0) setReloadKey((k) => k + 1);
+        })
+        .catch((error) => console.error("Failed to process upload queue:", error));
+    };
+    const onMessage = (event: MessageEvent) => {
+      if ((event.data as { type?: string } | null)?.type === "PROCESS_UPLOAD_QUEUE") run();
+    };
+
+    run();
+    window.addEventListener("online", run);
+    navigator.serviceWorker?.addEventListener("message", onMessage);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", run);
+      navigator.serviceWorker?.removeEventListener("message", onMessage);
+    };
+  }, [isLoading, hasActiveSession]);
+
   if (isLoading || (hasActiveSession && library.status === "loading")) {
     return (
       <div className="min-h-screen flex items-center justify-center">

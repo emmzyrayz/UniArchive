@@ -1,5 +1,5 @@
 // src/lib/cloudinary.ts
-// Cloudinary storage for PDFs up to 80 MB. Files are uploaded as
+// Cloudinary storage for small PDFs (see CLOUDINARY_MAX_SIZE). Files are uploaded as
 // `type: "authenticated"` image resources, so every delivery URL must be
 // signed by the server, and Cloudinary can render any single page as an image
 // for browsers too old to run pdf.js.

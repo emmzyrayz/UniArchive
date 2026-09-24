@@ -16,7 +16,14 @@ type PageState =
   | { status: "ready"; src: string }
   | { status: "error"; message: string };
 
-export function ImageReader({ book }: { book: Book }) {
+export function ImageReader({
+  book,
+  cacheOnly = false,
+}: {
+  book: Book;
+  /** Read only from the offline cache, never the network. */
+  cacheOnly?: boolean;
+}) {
   const { currentPage, numPages, zoom, setNumPages } = useReader();
   const totalPages = book.pageCount ?? numPages;
 
@@ -35,7 +42,10 @@ export function ImageReader({ book }: { book: Book }) {
     async function load() {
       setPage({ status: "loading" });
       try {
-        const blob = await loadPageImage(book.id, currentPage, totalPages);
+        const blob = await loadPageImage(book.id, currentPage, totalPages, {
+          title: book.title,
+          cacheOnly,
+        });
         if (cancelled) return;
         objectUrl = URL.createObjectURL(blob);
         setPage({ status: "ready", src: objectUrl });
@@ -43,7 +53,7 @@ export function ImageReader({ book }: { book: Book }) {
         if (cancelled) return;
         setPage({
           status: "error",
-          message: navigator.onLine
+          message: navigator.onLine && !cacheOnly
             ? error instanceof Error
               ? error.message
               : "Couldn't load this page."
@@ -55,7 +65,9 @@ export function ImageReader({ book }: { book: Book }) {
       // Warm the next pages in the background; failures are harmless here
       for (let p = currentPage + 1; p <= Math.min(currentPage + PREFETCH_AHEAD, totalPages); p++) {
         if (cancelled) return;
-        await loadPageImage(book.id, p, totalPages).catch(() => undefined);
+        await loadPageImage(book.id, p, totalPages, { title: book.title, cacheOnly }).catch(
+          () => undefined,
+        );
       }
     }
     load();
@@ -64,7 +76,7 @@ export function ImageReader({ book }: { book: Book }) {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [book.id, currentPage, totalPages, attempt]);
+  }, [book.id, book.title, currentPage, totalPages, cacheOnly, attempt]);
 
   const width = { width: `min(${Math.round(600 * zoom)}px, 100%)` };
 

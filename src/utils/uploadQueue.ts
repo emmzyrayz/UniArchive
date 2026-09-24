@@ -1,7 +1,9 @@
 // src/utils/uploadQueue.ts
 // Background sync queue for uploads — uses IndexedDB to persist pending uploads
-// across sessions. When connection returns, service worker fires 'sync' event
-// and this queue processes pending items.
+// across sessions. processQueue() uploads them once the app is back online:
+// on opening the library, on the "online" event, and when the service worker's
+// 'sync' event (public/sw-sync.js) asks open pages to.
+import { uploadBook, UploadError } from "@/utils/uploadBook";
 
 const DB_NAME = "uniarchive-upload-queue";
 const STORE_NAME = "pending-uploads";
@@ -75,4 +77,63 @@ export async function removeUpload(id: string): Promise<void> {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+}
+
+/**
+ * The server rejected the upload itself (bad file, too large), so retrying
+ * can't help. Auth errors, server errors and network failures stay queued.
+ */
+function isPermanentFailure(error: unknown): boolean {
+  return (
+    error instanceof UploadError &&
+    (error.status === 400 || error.status === 413 || error.status === 415)
+  );
+}
+
+let running: Promise<{ processed: number; failed: number }> | null = null;
+
+async function runQueue(): Promise<{ processed: number; failed: number }> {
+  const pending = await getPendingUploads();
+  let processed = 0;
+  let failed = 0;
+
+  // One at a time: uploads are large and the connection may have just returned
+  for (const upload of pending) {
+    try {
+      const file = new File([upload.fileData], upload.fileName, {
+        type: upload.fileType,
+      });
+      await uploadBook(file, upload, () => {});
+      await removeUpload(upload.id);
+      processed++;
+    } catch (error) {
+      console.error(`Failed to process queued upload ${upload.id}:`, error);
+      failed++;
+      if (isPermanentFailure(error)) await removeUpload(upload.id);
+    }
+  }
+
+  return { processed, failed };
+}
+
+/**
+ * Uploads everything in the queue. Safe to call often: calls made while a
+ * run is in progress share it, and other tabs wait their turn (Web Locks,
+ * where supported) so no upload is sent twice.
+ */
+export function processQueue(): Promise<{ processed: number; failed: number }> {
+  if (running) return running;
+  const locks = (navigator as Navigator & { locks?: LockManager }).locks;
+  const run: Promise<{ processed: number; failed: number }> = locks
+    ? // The lock resolves with the callback's own promise; the DOM typings
+      // don't unwrap it
+      (locks.request("uniarchive-upload-queue", runQueue) as unknown as Promise<{
+        processed: number;
+        failed: number;
+      }>)
+    : runQueue();
+  running = run.finally(() => {
+    running = null;
+  });
+  return running;
 }
