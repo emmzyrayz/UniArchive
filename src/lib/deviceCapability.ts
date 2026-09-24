@@ -72,3 +72,35 @@ export const PAGE_LOAD_CONFIG = {
     label: "Saving memory — loading a few pages at a time",
   },
 } as const;
+
+/**
+ * Whether this browser can run pdf.js 6.x, which needs class static blocks
+ * (Chrome/WebView 94+). Feature-tested rather than read from the user agent,
+ * since some browsers (e.g. Kiwi) report a newer Chrome than they run.
+ */
+export function canRunModernPdf(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    new Function("class A{static{}}")();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Old browsers read Cloudinary page images instead of running pdf.js. */
+export function needsImageReader(): boolean {
+  if (typeof window === "undefined") return false;
+  return !canRunModernPdf();
+}
+
+/**
+ * Suggested PDF cache size by device RAM: 100 on devices with more than
+ * 6 GB, otherwise 50. The service worker can't read deviceMemory, so its
+ * Workbox limit stays at 50; this is for page-level storage management.
+ */
+export function getPdfCacheLimit(): number {
+  if (typeof window === "undefined") return 50;
+  const ram = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  return ram !== undefined && ram > 6 ? 100 : 50;
+}

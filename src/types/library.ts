@@ -4,6 +4,7 @@ export interface Book {
   title: string;
   description?: string;
   fileUrl: string;
+  storageProvider: "cloudinary" | "backblaze";
   thumbnailUrl?: string;
   fileSize: number; // bytes
   pageCount?: number;

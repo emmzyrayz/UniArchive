@@ -17,6 +17,7 @@ export function toBookDto(doc: BookDoc): Book & {
     title: doc.title,
     description: doc.description,
     fileUrl: doc.fileUrl,
+    storageProvider: doc.storageProvider ?? "backblaze",
     thumbnailUrl: doc.thumbnailUrl,
     fileSize: doc.fileSize,
     pageCount: doc.pageCount,

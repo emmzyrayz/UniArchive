@@ -1,11 +1,13 @@
 // GET    /api/books/[id]  - one book (owner only)
-// DELETE /api/books/[id]  - delete the file from storage, then the record
+// DELETE /api/books/[id]  - delete the file from storage (B2 or Cloudinary),
+//                            then the record
 import { NextResponse, type NextRequest } from "next/server";
 import { isValidObjectId } from "mongoose";
 import { getBookModel } from "@/lib/models/bookModel";
 import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError } from "@/lib/api";
 import { storageClient } from "@/lib/storage";
+import { deleteCloudinaryPdf, getCloudinaryPdfUrl } from "@/lib/cloudinary";
 import { toBookDto, type BookDoc } from "@/lib/dto/book";
 
 type Context = { params: Promise<{ id: string }> };
@@ -28,19 +30,38 @@ async function findOwnedBook(request: NextRequest, context: Context) {
   return book ? { Book, book } : null;
 }
 
+const isCloudinary = (book: BookDoc) =>
+  book.storageProvider === "cloudinary" && !!book.cloudinaryPublicId;
+
+async function signedReadUrl(book: BookDoc): Promise<string | null> {
+  if (isCloudinary(book)) {
+    try {
+      return getCloudinaryPdfUrl(book.cloudinaryPublicId!);
+    } catch (error) {
+      console.error("GET /api/books/[id]: failed to sign Cloudinary URL:", error);
+      return null;
+    }
+  }
+  const signed = await storageClient.generatePresignedDownloadUrl(
+    book.storageKey,
+    READ_URL_TTL_SECONDS,
+  );
+  if (!signed.success || !signed.downloadUrl) {
+    console.error("GET /api/books/[id]: failed to sign download URL:", signed.error);
+    return null;
+  }
+  return signed.downloadUrl;
+}
+
 export async function GET(request: NextRequest, context: Context) {
   try {
     const found = await findOwnedBook(request, context);
     if (!found) return notFound();
 
-    // The bucket is private, so the stored public URL can't be read by the
-    // browser. Hand the owner a time-limited signed URL instead.
-    const signed = await storageClient.generatePresignedDownloadUrl(
-      found.book.storageKey,
-      READ_URL_TTL_SECONDS,
-    );
-    if (!signed.success || !signed.downloadUrl) {
-      console.error("GET /api/books/[id]: failed to sign download URL:", signed.error);
+    // Storage is private, so the stored URL can't be read by the browser.
+    // Hand the owner a signed URL instead.
+    const fileUrl = await signedReadUrl(found.book);
+    if (!fileUrl) {
       return NextResponse.json(
         { message: "Storage is unavailable. Please try again." },
         { status: 502 },
@@ -60,7 +81,7 @@ export async function GET(request: NextRequest, context: Context) {
       });
 
     return NextResponse.json(
-      { book: { ...toBookDto(found.book), fileUrl: signed.downloadUrl } },
+      { book: { ...toBookDto(found.book), fileUrl } },
       // Signed URLs expire; never let a cache serve a stale one
       { headers: { "Cache-Control": "private, no-store" } },
     );
@@ -75,7 +96,9 @@ export async function DELETE(request: NextRequest, context: Context) {
     if (!found) return notFound();
     const { Book, book } = found;
 
-    const removed = await storageClient.deleteFile(book.storageKey);
+    const removed = isCloudinary(book)
+      ? await deleteCloudinaryPdf(book.cloudinaryPublicId!)
+      : await storageClient.deleteFile(book.storageKey);
     if (!removed.success) {
       console.error("DELETE /api/books/[id]: storage delete failed:", removed.error);
       return NextResponse.json(

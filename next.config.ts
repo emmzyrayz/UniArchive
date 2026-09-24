@@ -30,6 +30,9 @@ const withPWA = withPWAInit({
         },
       },
       {
+        // Matches both B2 and Cloudinary PDF URLs. The service worker can't
+        // read navigator.deviceMemory, so this stays at 50; getPdfCacheLimit()
+        // in deviceCapability.ts gives the RAM-based limit to page code.
         urlPattern: ({ url }) => url.pathname.endsWith(".pdf"),
         handler: "CacheFirst",
         options: {

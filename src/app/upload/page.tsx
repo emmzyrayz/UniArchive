@@ -57,9 +57,54 @@ function putFileWithProgress(
   });
 }
 
+// Multipart POST straight to Cloudinary, with the fields signed by presign.
+function postFormWithProgress(
+  url: string,
+  fields: Record<string, string>,
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    for (const [name, value] of Object.entries(fields)) form.append(name, value);
+    form.append("file", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress((event.loaded / event.total) * 100);
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+        return;
+      }
+      let message = `Storage rejected the upload (HTTP ${xhr.status}).`;
+      try {
+        const data = JSON.parse(xhr.responseText) as { error?: { message?: string } };
+        if (data.error?.message) message = data.error.message;
+      } catch {
+        // keep the generic message
+      }
+      reject(new Error(message));
+    };
+    xhr.onerror = () => reject(new Error("Network error while uploading the file."));
+    xhr.send(form);
+  });
+}
+
+type PresignResponse =
+  | {
+      provider: "cloudinary";
+      uploadUrl: string;
+      fields: Record<string, string>;
+      publicId: string;
+    }
+  | { provider: "backblaze"; uploadUrl: string; storageKey: string };
+
 /**
- * 1. Ask the server for a signed upload URL
- * 2. PUT the file straight to storage
+ * 1. Ask the server for a signed upload (Cloudinary up to 80 MB, B2 above)
+ * 2. Upload the file straight to storage
  * 3. Create the book record
  */
 async function uploadBook(
@@ -67,26 +112,35 @@ async function uploadBook(
   form: UploadFormState,
   onProgress: (percent: number) => void,
 ): Promise<void> {
-  const { uploadUrl, storageKey } = await postJson<{
-    uploadUrl: string;
-    storageKey: string;
-  }>("/api/upload/presign", {
+  const presign = await postJson<PresignResponse>("/api/upload/presign", {
     fileName: file.name,
     fileSize: file.size,
     mimeType: file.type,
   });
-
-  // Keep the last few percent for the record-creation step
-  await putFileWithProgress(uploadUrl, file, (p) => onProgress(p * 0.95));
-
-  await postJson("/api/books", {
+  const details = {
     title: form.title.trim(),
     description: form.description.trim(),
     tags: form.tags,
-    storageKey,
-    fileSize: file.size,
-    mimeType: file.type,
-  });
+  };
+
+  // Keep the last few percent for the record-creation step
+  if (presign.provider === "cloudinary") {
+    await postFormWithProgress(presign.uploadUrl, presign.fields, file, (p) =>
+      onProgress(p * 0.95),
+    );
+    await postJson("/api/upload/finalize", {
+      ...details,
+      publicId: presign.publicId,
+    });
+  } else {
+    await putFileWithProgress(presign.uploadUrl, file, (p) => onProgress(p * 0.95));
+    await postJson("/api/books", {
+      ...details,
+      storageKey: presign.storageKey,
+      fileSize: file.size,
+      mimeType: file.type,
+    });
+  }
   onProgress(100);
 }
 

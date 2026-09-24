@@ -2,8 +2,9 @@
 "use client";
 
 import { useState, useRef, type DragEvent, type ChangeEvent } from "react";
+import { BOOK_MAX_FILE_SIZE } from "@/lib/uploads";
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB — placeholder, confirm against real storage limits later
+const MAX_FILE_SIZE = BOOK_MAX_FILE_SIZE;
 const ACCEPTED_TYPE = "application/pdf";
 
 interface FileDropzoneProps {

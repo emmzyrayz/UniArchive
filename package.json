@@ -17,6 +17,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@ducanh2912/next-pwa": "^10.2.9",
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.11.0",
     "dompurify": "^3.4.15",
     "jose": "^6.2.12",
     "katex": "^0.18.7",

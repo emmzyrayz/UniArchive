@@ -2,28 +2,59 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useSyncExternalStore } from "react";
 import { useUser } from "@/context/userContext";
+import { useReader } from "@/context/readerContext";
 import { useReaderBook } from "@/components/reader/ReaderShell";
 import { Watermark } from "@/components/reader/Watermark";
 import { EdgeNavOverlay } from "@/components/reader/EdgeNavOverlay";
+import { PdfUnsupported } from "@/components/reader/PdfUnsupported";
+import { OfflineSaveButton } from "@/components/reader/OfflineSaveButton";
+import { canRunModernPdf } from "@/lib/deviceCapability";
 
+const pageSkeleton = () => (
+  <div className="w-[600px] h-[800px] bg-neutral-800 animate-pulse rounded" />
+);
+
+// pdf.js 6 won't even parse on browsers without class static blocks, so its
+// chunk must only be requested once we know the browser can run it.
 const PdfCanvas = dynamic(
   () => import("@/components/reader/PdfCanvas").then((mod) => mod.PdfCanvas),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-[600px] h-[800px] bg-neutral-800 animate-pulse rounded" />
-    ),
-  },
+  { ssr: false, loading: pageSkeleton },
 );
+
+const ImageReader = dynamic(
+  () => import("@/components/reader/ImageReader").then((mod) => mod.ImageReader),
+  { ssr: false, loading: pageSkeleton },
+);
+
+const noopSubscribe = () => () => {};
+
+/** null until hydrated, then whether this browser can run pdf.js. */
+function useModernPdfSupport(): boolean | null {
+  return useSyncExternalStore(noopSubscribe, canRunModernPdf, () => null);
+}
 
 export default function ReadPage() {
   // Fetched once by the layout, which already handles 401/404/errors
   const book = useReaderBook();
   const { userProfile } = useUser();
+  const { numPages } = useReader();
+  const modernPdf = useModernPdfSupport();
 
   const watermarkLabel =
     userProfile?.upid ?? userProfile?.fullName ?? "UniArchive";
+  const onCloudinary = book.storageProvider === "cloudinary";
+
+  // Old browser + B2 book: nothing to read, and the page-turn overlay
+  // would swallow clicks on the card's buttons
+  const unsupported = modernPdf === false && !onCloudinary;
+
+  let reader;
+  if (modernPdf === null) reader = pageSkeleton();
+  else if (modernPdf) reader = <PdfCanvas book={book} />;
+  else if (onCloudinary) reader = <ImageReader book={book} />;
+  else reader = <PdfUnsupported book={book} />;
 
   return (
     <div className="flex justify-center py-8 px-4">
@@ -31,10 +62,15 @@ export default function ReadPage() {
         className="relative shadow-2xl select-none"
         style={{ userSelect: "none" }}
       >
-        <PdfCanvas book={book} />
-        <Watermark label={watermarkLabel} />
-        <EdgeNavOverlay />
+        {reader}
+        {!unsupported && (
+          <>
+            <Watermark label={watermarkLabel} />
+            <EdgeNavOverlay />
+          </>
+        )}
       </div>
+      {onCloudinary && <OfflineSaveButton book={book} numPages={numPages} />}
     </div>
   );
 }

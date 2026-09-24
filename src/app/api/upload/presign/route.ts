@@ -1,16 +1,21 @@
 // POST /api/upload/presign
-// Issues a short-lived signed PUT URL so the browser can upload a PDF straight
-// to storage. The object key is chosen here, under the caller's own prefix.
+// Signs a direct browser upload so the PDF never passes through a Next.js
+// function. Files up to 80 MB go to Cloudinary (signed multipart POST, then
+// /api/upload/finalize); larger ones get a signed B2 PUT URL (then
+// POST /api/books). The object key is chosen here, under the caller's prefix.
 import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { storageClient } from "@/lib/storage";
+import { createSignedPdfUpload } from "@/lib/cloudinary";
+import { getStorageProvider } from "@/lib/storageRouter";
 import {
   BOOK_ALLOWED_MIME_TYPES,
   BOOK_MAX_FILE_SIZE,
   PRESIGN_EXPIRES_SECONDS,
   bookKeyPrefix,
+  cloudinaryBookPrefix,
 } from "@/lib/uploads";
 
 export async function POST(request: NextRequest) {
@@ -38,13 +43,28 @@ export async function POST(request: NextRequest) {
     }
     if (!Number.isInteger(fileSize) || fileSize <= 0 || fileSize > BOOK_MAX_FILE_SIZE) {
       return NextResponse.json(
-        { message: "File must be between 1 byte and 50 MB." },
+        { message: "File must be between 1 byte and 500 MB." },
         { status: 400 },
       );
     }
 
-    const storageKey =
-      bookKeyPrefix(session.userId) + storageClient.generateUniqueFileName(fileName);
+    const uniqueName = storageClient.generateUniqueFileName(fileName);
+
+    if (getStorageProvider(fileSize) === "cloudinary") {
+      // Cloudinary adds the extension itself, so the public ID has none
+      const publicId =
+        cloudinaryBookPrefix(session.userId) +
+        uniqueName.replace(/\.[^.]*$/, "").replace(/\./g, "_");
+      const signed = createSignedPdfUpload(publicId);
+      return NextResponse.json({
+        provider: "cloudinary",
+        uploadUrl: signed.uploadUrl,
+        fields: signed.fields,
+        publicId: signed.publicId,
+      });
+    }
+
+    const storageKey = bookKeyPrefix(session.userId) + uniqueName;
 
     const result = await storageClient.generatePresignedUploadUrl(
       storageKey,
@@ -61,6 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
+      provider: "backblaze",
       uploadUrl: result.uploadUrl,
       storageKey,
       expiresIn: PRESIGN_EXPIRES_SECONDS,
