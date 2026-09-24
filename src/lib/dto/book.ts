@@ -22,6 +22,7 @@ export function toBookDto(doc: BookDoc): Book & {
     pageCount: doc.pageCount,
     ownerUpid: doc.ownerUpid,
     tags: doc.tags ?? [],
+    lastOpenedAt: doc.lastOpenedAt?.toISOString(),
     uploadedAt: doc.createdAt.toISOString(),
     storageKey: doc.storageKey,
     mimeType: doc.mimeType,

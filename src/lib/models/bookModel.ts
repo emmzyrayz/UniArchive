@@ -1,6 +1,7 @@
 // src/lib/models/bookModel.ts
-// A PDF in a user's personal library. Per-user reading state (lastOpenedAt,
-// current page) belongs in a separate ReadingProgress model, not here.
+// A PDF in a user's personal library. lastOpenedAt lives here only because
+// books are owner-only; once books can be shared, per-user reading state
+// (lastOpenedAt, current page) should move to a separate ReadingProgress model.
 import { Schema, type Model, type Types } from "mongoose";
 import { connectDB } from "@/lib/mongoose";
 import {
@@ -33,6 +34,7 @@ export interface IBook {
   visibility: Visibility;
   status: MaterialStatus;
   processingStatus: BookProcessingStatus;
+  lastOpenedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -76,6 +78,7 @@ const BookSchema = new Schema<IBook, BookModel>(
       enum: ["none", "pending", "done", "failed"],
       default: "none",
     },
+    lastOpenedAt: { type: Date },
   },
   { timestamps: true, collection: "books" },
 );

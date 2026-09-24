@@ -52,7 +52,9 @@ export function PdfCanvas({ book }: { book: Book }) {
     let cancelled = false;
     async function checkFile() {
       try {
-        const res = await fetch(book.fileUrl, { method: "HEAD" });
+        // Signed URLs are signed for GET, so a HEAD is rejected (403 with no
+        // CORS headers). A one-byte ranged GET matches what pdf.js will send.
+        const res = await fetch(book.fileUrl, { headers: { Range: "bytes=0-0" } });
         if (cancelled) return;
         if (!res.ok) {
           setFetchCheck({

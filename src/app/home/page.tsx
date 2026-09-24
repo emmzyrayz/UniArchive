@@ -5,11 +5,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { useUser } from "@/context/userContext";
-import { MOCK_BOOKS } from "@/assets/data/libraryData";
 import { BookCard } from "@/components/library/BookCard";
 import { EmptyLibrary } from "@/components/library/EmptyLibrary";
 import { Button } from "@/components/UI/Buttons";
-import { IS_MOCK_MODE } from "@/lib/mockMode";
 import type { Book } from "@/types/library";
 
 type LibraryState =
@@ -21,6 +19,8 @@ export default function HomePage() {
   const router = useRouter();
   const { hasActiveSession, isLoading, getUserDisplayName } = useUser();
   const [library, setLibrary] = useState<LibraryState>({ status: "loading" });
+  // Bumped by the retry button to re-run the fetch without a full page reload
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!isLoading && !hasActiveSession) {
@@ -40,19 +40,14 @@ export default function HomePage() {
       })
       .catch((error) => {
         if (cancelled) return;
-        // Mock mode has no real session, so the API is expected to fail there
-        if (IS_MOCK_MODE) {
-          setLibrary({ status: "ready", books: MOCK_BOOKS });
-        } else {
-          console.error("Failed to load library:", error);
-          setLibrary({ status: "error" });
-        }
+        console.error("Failed to load library:", error);
+        setLibrary({ status: "error" });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [isLoading, hasActiveSession]);
+  }, [isLoading, hasActiveSession, reloadKey]);
 
   if (isLoading || (hasActiveSession && library.status === "loading")) {
     return (
@@ -72,7 +67,14 @@ export default function HomePage() {
         <p className="text-text-secondary text-sm">
           We couldn&apos;t load your library. Check your connection and try again.
         </p>
-        <Button onClick={() => window.location.reload()}>Retry</Button>
+        <Button
+          onClick={() => {
+            setLibrary({ status: "loading" });
+            setReloadKey((k) => k + 1);
+          }}
+        >
+          Retry
+        </Button>
       </div>
     );
   }

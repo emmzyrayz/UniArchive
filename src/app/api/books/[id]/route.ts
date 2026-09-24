@@ -47,6 +47,18 @@ export async function GET(request: NextRequest, context: Context) {
       );
     }
 
+    // Fire-and-forget: a failed bookkeeping write must never block or break
+    // the read. timestamps: false so opening a book doesn't bump updatedAt.
+    found.Book.updateOne(
+      { _id: found.book._id },
+      { $set: { lastOpenedAt: new Date() } },
+      { timestamps: false },
+    )
+      .exec()
+      .catch((error) => {
+        console.error("GET /api/books/[id]: failed to update lastOpenedAt:", error);
+      });
+
     return NextResponse.json(
       { book: { ...toBookDto(found.book), fileUrl: signed.downloadUrl } },
       // Signed URLs expire; never let a cache serve a stale one
