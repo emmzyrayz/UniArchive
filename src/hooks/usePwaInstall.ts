@@ -13,26 +13,28 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-function getIsIos(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    /iphone|ipad|ipod/i.test(navigator.userAgent) &&
-    !(navigator as NavigatorWithStandalone).standalone
-  );
-}
-
 export function usePwaInstall() {
   const [installPrompt, setInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
-  // Lazy initializer runs only on client — avoids the effect setState entirely
-  const [isInstalled, setIsInstalled] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(display-mode: standalone)").matches;
-  });
+  const [isInstalled, setIsInstalled] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [isIos, setIsIos] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (isInstalled) return;
+    // All browser checks after mount — no hydration mismatch
+    const standalone = window.matchMedia("(display-mode: standalone)").matches;
+    const ios =
+      /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+      !(navigator as NavigatorWithStandalone).standalone;
+
+    startTransition(() => {
+      setIsInstalled(standalone);
+      setIsIos(ios);
+      setMounted(true);
+    });
+
+    if (standalone) return;
 
     const handler = (e: Event) => {
       e.preventDefault();
@@ -42,7 +44,7 @@ export function usePwaInstall() {
 
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, [isInstalled]);
+  }, []);
 
   const install = async () => {
     if (!installPrompt) return;
@@ -58,8 +60,8 @@ export function usePwaInstall() {
     setIsInstalling(false);
   };
 
-  const isIos = getIsIos();
-  const canInstall = !isInstalled && (!!installPrompt || isIos);
+  // Don't show anything until mounted — prevents hydration mismatch
+  const canInstall = mounted && !isInstalled && (!!installPrompt || isIos);
 
   return { canInstall, isInstalled, isInstalling, isIos, install };
 }

@@ -73,12 +73,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <UserProvider>
           <ClientWrapper>
-            <NavigationWrapper>
-              <div>
-                <PwaInstallButton />
-                {children}
-              </div>
-            </NavigationWrapper>
+            <NavigationWrapper>{children}</NavigationWrapper>
+            <PwaInstallButton />
           </ClientWrapper>
         </UserProvider>
       </body>

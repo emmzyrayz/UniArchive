@@ -2,8 +2,11 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
+
+const DISMISSED_KEY = "pwa-install-dismissed";
 
 function DownloadIcon() {
   return (
@@ -40,8 +43,29 @@ function CloseIcon() {
 export function PwaInstallButton() {
   const { canInstall, isInstalling, isIos, install } = usePwaInstall();
   const [showIosSteps, setShowIosSteps] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  // Lasts for the browser session; a reopened tab may prompt again.
+  // Only affects output after mount (canInstall is false until then).
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return sessionStorage.getItem(DISMISSED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const pathname = usePathname();
 
+  const dismiss = () => {
+    try {
+      sessionStorage.setItem(DISMISSED_KEY, "1");
+    } catch {
+      // Storage blocked (e.g. private mode) — dismiss for this page only
+    }
+    setDismissed(true);
+  };
+
+  // The reader has its own fixed toolbar; the banner would cover the PDF
+  if (pathname.startsWith("/read")) return null;
   if (!canInstall || dismissed) return null;
 
   return (
@@ -155,7 +179,7 @@ export function PwaInstallButton() {
             </button>
             <button
               type="button"
-              onClick={() => setDismissed(true)}
+              onClick={dismiss}
               className="text-neutral-500 hover:text-neutral-300 p-1"
               aria-label="Dismiss"
             >
