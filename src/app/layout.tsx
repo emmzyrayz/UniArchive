@@ -6,6 +6,7 @@ import { baseMetadata } from "@/utils/metadata";
 import ClientWrapper from "@/components/clientWrapper";
 import { NavigationWrapper } from "@/components/navigationWrapper";
 import { UserProvider } from "@/context/userContext";
+import { PwaInstallButton } from "@/components/UI/PwaInstallButton";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -54,9 +55,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} h-full antialiased`}
     >
       <head>
-  <script
-    dangerouslySetInnerHTML={{
-      __html: `
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
         try {
           var t = localStorage.getItem('ua-theme') || 'system';
           var resolved = t === 'system'
@@ -65,14 +66,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           document.documentElement.setAttribute('data-theme', resolved);
         } catch(e) {}
       `,
-    }}
-  />
-</head>
+          }}
+        />
+      </head>
       {/* No manual <head> needed — Next.js injects metadata automatically */}
       <body className="min-h-full flex flex-col">
         <UserProvider>
           <ClientWrapper>
-            <NavigationWrapper>{children}</NavigationWrapper>
+            <NavigationWrapper>
+              <div>
+                <PwaInstallButton />
+                {children}
+              </div>
+            </NavigationWrapper>
           </ClientWrapper>
         </UserProvider>
       </body>

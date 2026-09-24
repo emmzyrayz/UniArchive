@@ -12,6 +12,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import { useReader } from "@/context/readerContext";
 import { useDeviceCapability } from "@/hooks/useDeviceCapability";
+import { HighlightLayer } from "@/components/reader/HighlighterLayer";
 import type { Book } from "@/types/library";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
@@ -24,7 +25,8 @@ type FetchCheckState =
 export function PdfCanvas({ book }: { book: Book }) {
   const { currentPage, numPages, zoom, viewMode, setNumPages, goToPage } =
     useReader();
-  const { config, ready } = useDeviceCapability();
+  const { capability, config, ready } = useDeviceCapability();
+  const showHighlights = capability !== "low";
 
   // Use medium defaults until capability is assessed (avoids SSR mismatch)
   const initialLoad = ready ? config.initial : 5;
@@ -181,7 +183,10 @@ export function PdfCanvas({ book }: { book: Book }) {
       }
     >
       {viewMode === "paged" ? (
-        <PDFPage pageNumber={currentPage} scale={zoom} />
+        <div className="relative">
+          <PDFPage pageNumber={currentPage} scale={zoom} />
+          {showHighlights && <HighlightLayer pageNumber={currentPage} />}
+        </div>
       ) : (
         <div className="flex flex-col items-center gap-4">
           {/* Device capability hint — only shown on low/medium */}
@@ -199,8 +204,10 @@ export function PdfCanvas({ book }: { book: Book }) {
                 if (el) pageRefs.current.set(pageNum, el);
                 else pageRefs.current.delete(pageNum);
               }}
+              className="relative"
             >
               <PDFPage pageNumber={pageNum} scale={zoom} />
+              {showHighlights && <HighlightLayer pageNumber={pageNum} />}
             </div>
           ))}
 
