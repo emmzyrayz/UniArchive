@@ -10,6 +10,10 @@ import { toBookDto, type BookDoc } from "@/lib/dto/book";
 
 type Context = { params: Promise<{ id: string }> };
 
+// Long enough for a reading session: pdf.js keeps making range requests
+// against the same URL as the reader scrolls.
+const READ_URL_TTL_SECONDS = 4 * 60 * 60;
+
 // Non-owners get the same 404 as a missing book, so ids can't be probed.
 const notFound = () =>
   NextResponse.json({ message: "Book not found." }, { status: 404 });
@@ -28,7 +32,26 @@ export async function GET(request: NextRequest, context: Context) {
   try {
     const found = await findOwnedBook(request, context);
     if (!found) return notFound();
-    return NextResponse.json({ book: toBookDto(found.book) });
+
+    // The bucket is private, so the stored public URL can't be read by the
+    // browser. Hand the owner a time-limited signed URL instead.
+    const signed = await storageClient.generatePresignedDownloadUrl(
+      found.book.storageKey,
+      READ_URL_TTL_SECONDS,
+    );
+    if (!signed.success || !signed.downloadUrl) {
+      console.error("GET /api/books/[id]: failed to sign download URL:", signed.error);
+      return NextResponse.json(
+        { message: "Storage is unavailable. Please try again." },
+        { status: 502 },
+      );
+    }
+
+    return NextResponse.json(
+      { book: { ...toBookDto(found.book), fileUrl: signed.downloadUrl } },
+      // Signed URLs expire; never let a cache serve a stale one
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
   } catch (error) {
     return handleRouteError(error, "GET /api/books/[id]");
   }

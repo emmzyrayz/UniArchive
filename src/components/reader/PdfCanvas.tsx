@@ -37,7 +37,9 @@ export function PdfCanvas({ book }: { book: Book }) {
     let cancelled = false;
     async function checkFile() {
       try {
-        const res = await fetch(book.fileUrl, { method: "HEAD" });
+        // fileUrl is a signed GET URL (the signature covers the method, so a
+        // HEAD would be rejected). Ask for a single byte instead.
+        const res = await fetch(book.fileUrl, { headers: { Range: "bytes=0-0" } });
         if (cancelled) return;
         if (!res.ok) {
           setFetchCheck({
@@ -51,7 +53,8 @@ export function PdfCanvas({ book }: { book: Book }) {
         if (cancelled) return;
         setFetchCheck({
           status: "error",
-          message: `Could not reach "${book.fileUrl}" — likely a missing file or CORS restriction.`,
+          message:
+            "Could not reach the document. Check your connection and try again.",
         });
       }
     }
