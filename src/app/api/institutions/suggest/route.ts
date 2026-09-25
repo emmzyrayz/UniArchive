@@ -17,7 +17,10 @@ import {
   ACTIVE_SUGGESTION_STATUSES,
   getSchoolSuggestionModel,
 } from "@/lib/models/schoolSuggestionModel";
-import { classifySuggestion } from "@/lib/schoolSuggestions";
+import {
+  autoWithdrawPreviousSuggestion,
+  classifySuggestion,
+} from "@/lib/schoolSuggestions";
 import { NIGERIAN_STATES } from "@/lib/constants/nigerianStates";
 import {
   UNIVERSITY_OWNERSHIPS,
@@ -144,6 +147,10 @@ export async function POST(request: NextRequest) {
       session.userId,
     );
     const User = await getUserModel();
+
+    // The user's school is about to change either way, so the suggestion
+    // their profile pointed at would otherwise be orphaned in the queue.
+    await autoWithdrawPreviousSuggestion(session.userId);
 
     if (result.outcome === "auto_resolved") {
       const { university, faculty, department } = result;

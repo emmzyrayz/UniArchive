@@ -195,3 +195,51 @@ export async function loadPendingSuggestionForCompletion(
     .lean();
   return suggestion ?? null;
 }
+
+/**
+ * Marks a suggestion withdrawn if it's still awaiting review, and lowers the
+ * priority of the suggestion it was linked to. Returns false when it was
+ * already decided (a concurrent admin decision wins).
+ */
+export async function withdrawSuggestion(
+  suggestion: { _id: Types.ObjectId; linkedToSuggestionId?: Types.ObjectId },
+  reviewNote?: string,
+): Promise<boolean> {
+  const Suggestion = await getSchoolSuggestionModel();
+  const updated = await Suggestion.updateOne(
+    { _id: suggestion._id, status: { $in: ACTIVE_SUGGESTION_STATUSES } },
+    { $set: { status: "withdrawn", ...(reviewNote ? { reviewNote } : {}) } },
+  );
+  if (updated.modifiedCount === 0) return false;
+
+  if (suggestion.linkedToSuggestionId) {
+    await Suggestion.updateOne(
+      { _id: suggestion.linkedToSuggestionId, adminPriority: { $gt: 1 } },
+      { $inc: { adminPriority: -1 } },
+    );
+  }
+  return true;
+}
+
+/**
+ * Before a user's school changes (new suggestion or auto-resolve), withdraws
+ * their most recent suggestion that still awaits review, if it's within its
+ * 24h window. Older ones stay in the admin queue: the school may still be
+ * valid even though this user moved on.
+ */
+export async function autoWithdrawPreviousSuggestion(userId: string): Promise<void> {
+  const Suggestion = await getSchoolSuggestionModel();
+  const previous = await Suggestion.findOne({
+    submittedBy: userId,
+    status: { $in: ACTIVE_SUGGESTION_STATUSES },
+  })
+    .sort({ submittedAt: -1 })
+    .select("_id linkedToSuggestionId canWithdrawUntil")
+    .lean();
+  if (!previous || new Date() >= previous.canWithdrawUntil) return;
+
+  await withdrawSuggestion(
+    previous,
+    "Auto-withdrawn when user submitted a new suggestion",
+  );
+}

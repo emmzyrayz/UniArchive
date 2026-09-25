@@ -10,6 +10,7 @@ import {
   ACTIVE_SUGGESTION_STATUSES,
   getSchoolSuggestionModel,
 } from "@/lib/models/schoolSuggestionModel";
+import { withdrawSuggestion } from "@/lib/schoolSuggestions";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -42,22 +43,10 @@ export async function DELETE(request: NextRequest, context: Context) {
       );
     }
 
-    // Only flip it if it's still active, so a concurrent admin decision wins
-    const updated = await Suggestion.updateOne(
-      { _id: suggestion._id, status: { $in: ACTIVE_SUGGESTION_STATUSES } },
-      { $set: { status: "withdrawn" } },
-    );
-    if (updated.modifiedCount === 0) {
+    if (!(await withdrawSuggestion(suggestion))) {
       return NextResponse.json(
         { message: "This suggestion can no longer be withdrawn." },
         { status: 400 },
-      );
-    }
-
-    if (suggestion.linkedToSuggestionId) {
-      await Suggestion.updateOne(
-        { _id: suggestion.linkedToSuggestionId, adminPriority: { $gt: 1 } },
-        { $inc: { adminPriority: -1 } },
       );
     }
 
