@@ -4,7 +4,20 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getUserModel } from "@/lib/models/userModel";
 import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError } from "@/lib/api";
+import { decryptSensitiveData } from "@/lib/encryption";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
+import { MASKED_PHONE } from "@/lib/constants/profile";
+
+/** Decrypts a field for its owner; null if it's missing or unreadable. */
+function tryDecrypt(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    return decryptSensitiveData(value);
+  } catch (error) {
+    console.error("me: failed to decrypt a user field", error);
+    return null;
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,10 +26,11 @@ export async function GET(request: NextRequest) {
     const User = await getUserModel();
     const user = await User.findById(session.userId)
       .select(
-        "upid uuid role fullName username school faculty department level semester " +
-          "isVerified profilePhoto bio dob phone createdAt " +
+        "upid uuid role fullName firstName lastName username email school faculty " +
+          "department level semester isVerified profilePhoto bio dob phone createdAt " +
           "universityId universityName universityAbbr facultyId facultyName " +
-          "departmentId departmentName verifiedMaterialCount submissionCount",
+          "departmentId departmentName verifiedMaterialCount submissionCount " +
+          "roleUpgradedAt",
       )
       .lean();
     if (!user) {
@@ -26,8 +40,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // phone and dob are selected only to feed the completion checks; they
-    // are not returned (phone is ciphertext).
     const completion = calculateProfileCompletion(user);
 
     return NextResponse.json(
@@ -38,9 +50,16 @@ export async function GET(request: NextRequest) {
           uuid: user.uuid,
           role: user.role,
           fullName: user.fullName,
+          firstName: user.firstName,
+          lastName: user.lastName,
           username: user.username,
+          // Only ever returned to its owner
+          email: tryDecrypt(user.email) ?? "",
           profilePhoto: user.profilePhoto,
           bio: user.bio,
+          dob: user.dob,
+          // The number itself is never sent, not even to its owner
+          phoneMasked: user.phone ? MASKED_PHONE : null,
           isVerified: user.isVerified,
           // Legacy plain-string institution fields, still read by userContext
           school: user.school,
@@ -59,6 +78,7 @@ export async function GET(request: NextRequest) {
           // Contribution tracking
           verifiedMaterialCount: user.verifiedMaterialCount ?? 0,
           submissionCount: user.submissionCount ?? 0,
+          roleUpgradedAt: user.roleUpgradedAt,
           joinedAt: user.createdAt,
           profileCompletion: completion,
         },

@@ -7,6 +7,7 @@
 // Like the B2 flow, the browser uploads straight to Cloudinary with a signed
 // request, so files never pass through a Next.js function.
 import { v2 as cloudinary } from "cloudinary";
+import { escapeRegex } from "@/lib/escapeRegex";
 
 const REQUIRED_ENV = [
   "CLOUDINARY_CLOUD_NAME",
@@ -157,4 +158,68 @@ export async function deleteCloudinaryPdf(
       error: error instanceof Error ? error.message : "Delete failed",
     };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Avatars
+// ---------------------------------------------------------------------------
+
+/** Folder that holds one user's avatar. The public ID inside it is fixed. */
+export function avatarFolder(userId: string): string {
+  return `uniarchive/avatars/${userId}`;
+}
+
+const AVATAR_PUBLIC_ID = "avatar";
+
+/**
+ * Signs a direct browser upload for a user's avatar. Unlike PDFs, avatars are
+ * public (`type: "upload"`) so they can be shown without signing each URL.
+ * The incoming transformation crops to a 400x400 face-centred square before
+ * storage, and `overwrite` + `invalidate` replace the old avatar and purge it
+ * from the CDN.
+ */
+export function createSignedAvatarUpload(userId: string): CloudinarySignedUpload {
+  const c = client();
+  const { cloud_name, api_key, api_secret } = c.config();
+  const params = {
+    folder: avatarFolder(userId),
+    public_id: AVATAR_PUBLIC_ID,
+    type: "upload",
+    allowed_formats: "jpg,jpeg,png,webp,heic",
+    // Stored as JPEG so HEIC uploads display everywhere; next/image picks
+    // WebP/AVIF at delivery. (f_auto can't be applied at upload time.)
+    format: "jpg",
+    transformation: "c_fill,g_face,h_400,w_400,q_auto:good",
+    overwrite: "true",
+    invalidate: "true",
+    timestamp: Math.floor(Date.now() / 1000),
+  };
+  const signature = c.utils.api_sign_request(params, api_secret!);
+
+  return {
+    uploadUrl: `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`,
+    publicId: `${params.folder}/${params.public_id}`,
+    fields: {
+      ...params,
+      timestamp: String(params.timestamp),
+      api_key: api_key!,
+      signature,
+    },
+  };
+}
+
+/**
+ * True when `url` is an avatar this server signed for `userId`: a delivery
+ * URL on our cloud, inside that user's avatar folder. Stops a client from
+ * pointing profilePhoto at an arbitrary image.
+ */
+export function isOwnAvatarUrl(url: string, userId: string): boolean {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  if (!cloudName) return false;
+  const pattern = new RegExp(
+    `^https://res\\.cloudinary\\.com/${escapeRegex(cloudName)}/image/upload/` +
+      `(?:v\\d+/)?${escapeRegex(avatarFolder(userId))}/${AVATAR_PUBLIC_ID}\\.[a-z0-9]+$`,
+    "i",
+  );
+  return pattern.test(url);
 }

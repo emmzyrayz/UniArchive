@@ -7,6 +7,7 @@ import ClientWrapper from "@/components/clientWrapper";
 import { NavigationWrapper } from "@/components/navigationWrapper";
 import { UserProvider } from "@/context/userContext";
 import { PwaInstallButton } from "@/components/UI/PwaInstallButton";
+import ProfileCompletionModal from "@/components/profile/ProfileCompletionModal";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -91,6 +92,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <ClientWrapper>
             <NavigationWrapper>{children}</NavigationWrapper>
             <PwaInstallButton />
+            <ProfileCompletionModal />
           </ClientWrapper>
         </UserProvider>
       </body>

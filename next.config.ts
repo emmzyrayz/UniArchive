@@ -103,6 +103,16 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   turbopack: {},
+  images: {
+    // Profile avatars (public Cloudinary uploads)
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: `/${process.env.CLOUDINARY_CLOUD_NAME ?? "*"}/image/upload/**`,
+      },
+    ],
+  },
 };
 
 // Wrap and export the config

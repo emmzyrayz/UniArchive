@@ -6,6 +6,7 @@ import universitiesData from "@/assets/data/schoolData";
 import type { UserRole } from "@/types/roles";
 import { can } from "@/lib/auth/permissions";
 import { IS_MOCK_MODE } from "@/lib/mockMode";
+import type { ProfileCompletion } from "@/lib/profileCompletion";
 
 // Helper function to safely parse dates
 const safeParseDate = (dateValue: string | Date | undefined): Date => {
@@ -112,31 +113,67 @@ const mockSessionInfo = {
 
 
 // Shape returned by GET /api/auth/me
-interface MeResponse {
+export interface MeResponse {
   user: {
     id: string;
     upid: string;
     uuid: string;
     role: UserRole;
     fullName: string;
+    firstName?: string;
+    lastName?: string;
+    username?: string;
+    email: string;
+    bio?: string;
+    dob?: string;
+    phoneMasked: string | null;
     school: string;
     faculty: string;
     department: string;
     level: string;
+    semester?: string;
+    universityId?: string;
+    universityName?: string;
+    universityAbbr?: string;
+    facultyId?: string;
+    facultyName?: string;
+    departmentId?: string;
+    departmentName?: string;
+    verifiedMaterialCount: number;
+    submissionCount: number;
+    roleUpgradedAt?: string;
     isVerified: boolean;
     profilePhoto?: string;
     joinedAt?: string;
+    profileCompletion: ProfileCompletion;
   };
 }
 
 const userFromMe = ({ user }: MeResponse): User => ({
   id: user.id,
   fullName: user.fullName,
-  email: "", // not sent to the client; the profile page shows it as encrypted
+  firstName: user.firstName,
+  lastName: user.lastName,
+  username: user.username,
+  email: user.email,
+  bio: user.bio,
+  dob: user.dob ? new Date(user.dob) : undefined,
+  phoneMasked: user.phoneMasked,
   role: user.role,
   school: user.school,
   faculty: user.faculty,
   department: user.department,
+  semester: user.semester,
+  universityId: user.universityId,
+  universityName: user.universityName,
+  universityAbbr: user.universityAbbr,
+  facultyId: user.facultyId,
+  facultyName: user.facultyName,
+  departmentId: user.departmentId,
+  departmentName: user.departmentName,
+  verifiedMaterialCount: user.verifiedMaterialCount,
+  submissionCount: user.submissionCount,
+  roleUpgradedAt: user.roleUpgradedAt,
   uuid: user.uuid,
   upid: user.upid,
   isVerified: user.isVerified,
@@ -145,7 +182,10 @@ const userFromMe = ({ user }: MeResponse): User => ({
   joinedAt: user.joinedAt,
 });
 
-const fetchCurrentUser = async (): Promise<User> => {
+const fetchCurrentUser = async (): Promise<{
+  user: User;
+  profileCompletion: ProfileCompletion;
+}> => {
   const response = await fetch("/api/auth/me", {
     credentials: "same-origin",
     cache: "no-store",
@@ -153,20 +193,38 @@ const fetchCurrentUser = async (): Promise<User> => {
   // Thrown as a Response so retryWithBackoff doesn't retry a 401
   if (response.status === 401) throw response;
   if (!response.ok) throw new Error(`/api/auth/me failed with ${response.status}`);
-  return userFromMe((await response.json()) as MeResponse);
+  const body = (await response.json()) as MeResponse;
+  return { user: userFromMe(body), profileCompletion: body.user.profileCompletion };
 };
 
 // Enhanced User interface - matches SessionCache data structure
 export interface User {
   id: string;
   fullName: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
   email: string;
   bio?: string;
-joinedAt?: string;
+  joinedAt?: string;
   role: UserRole;
   school: string;
   faculty: string;
   department: string;
+  semester?: string;
+  // Normalized institution refs and their denormalised names
+  universityId?: string;
+  universityName?: string;
+  universityAbbr?: string;
+  facultyId?: string;
+  facultyName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  /** Display-only mask; the real number never reaches the client. */
+  phoneMasked?: string | null;
+  verifiedMaterialCount?: number;
+  submissionCount?: number;
+  roleUpgradedAt?: string;
   uuid: string;
   upid: string;
   isVerified: boolean;
@@ -240,6 +298,8 @@ export enum UserState {
 interface UserContextType {
   // User profile and session
   userProfile: User | null;
+  /** From /api/auth/me; null when signed out or in mock mode. */
+  profileCompletion: ProfileCompletion | null;
   sessionInfo: SessionInfo | null;
   userPreferences: UserPreferences;
   userPermissions: UserPermissions;
@@ -396,6 +456,8 @@ const tokenStorage = new TokenStorage();
 // User Provider Component
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [profileCompletion, setProfileCompletion] =
+    useState<ProfileCompletion | null>(null);
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(() =>
     getUserPreferencesFromStorage(),
@@ -442,6 +504,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       hasSessionRef.current = false;
       safeSetState(() => {
         setUserProfile(null);
+        setProfileCompletion(null);
         setSessionInfo(null);
         setUserPermissions(getPermissionsByRole("student"));
         setHasActiveSession(false);
@@ -511,19 +574,24 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           });
         }
 
-        const activeUser = IS_MOCK_MODE
+        const { user: activeUser, profileCompletion: completion } = IS_MOCK_MODE
           ? await retryWithBackoff(async () => {
               // Simulated network latency for the mock user
               await new Promise((resolve) => setTimeout(resolve, 800));
-              return process.env.NEXT_PUBLIC_MOCK_ROLE === "admin"
-                ? mockAdminUser
-                : mockStudentUser;
+              return {
+                user:
+                  process.env.NEXT_PUBLIC_MOCK_ROLE === "admin"
+                    ? mockAdminUser
+                    : mockStudentUser,
+                profileCompletion: null,
+              };
             })
           : await retryWithBackoff(fetchCurrentUser);
 
         hasSessionRef.current = true;
         safeSetState(() => {
           setUserProfile(activeUser);
+          setProfileCompletion(completion);
           setSessionInfo(IS_MOCK_MODE ? mockSessionInfo : null);
           setUserPermissions(getPermissionsByRole(activeUser.role));
           setHasActiveSession(true);
@@ -771,6 +839,7 @@ const canAccessRoute = useCallback(
 
   const value: UserContextType = {
     userProfile,
+    profileCompletion,
     sessionInfo,
     userPreferences,
     userPermissions,
