@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { FiSearch, FiX } from "react-icons/fi";
+import { FiPlus, FiSearch, FiX } from "react-icons/fi";
 
 export interface UniversityOption {
   _id: string;
@@ -15,16 +15,20 @@ export interface UniversityOption {
 interface Props {
   value: { id: string; name: string } | null;
   onChange: (university: UniversityOption) => void;
+  /** "My school isn't listed": opens the suggestion form with the query. */
+  onAddSchool?: (universityName: string) => void;
   error?: string;
 }
 
 const MIN_QUERY = 2;
+// The "add my school" option appears once the query is this long
+const MIN_ADD_QUERY = 3;
 const DEBOUNCE_MS = 300;
 
 export const FIELD_CLASS =
   "w-full px-4 py-3 border rounded-md bg-neutral-50 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed";
 
-export default function UniversityCombobox({ value, onChange, error }: Props) {
+export default function UniversityCombobox({ value, onChange, onAddSchool, error }: Props) {
   const inputId = useId();
   const listId = useId();
   const [query, setQuery] = useState("");
@@ -180,6 +184,22 @@ export default function UniversityCombobox({ value, onChange, error }: Props) {
                   <span className="text-text-secondary"> — {option.name}</span>
                 </li>
               ))}
+            {onAddSchool && !searching && trimmed.length >= MIN_ADD_QUERY && (
+              <li role="presentation">
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setIsOpen(false);
+                    onAddSchool(trimmed);
+                  }}
+                  className="flex items-center gap-2 w-full px-4 py-3 text-left text-sm border-t border-neutral-200 dark:border-neutral-700 text-primary hover:bg-neutral-50 dark:hover:bg-neutral-700/50"
+                >
+                  <FiPlus className="shrink-0" />
+                  <span className="truncate">Add &ldquo;{trimmed}&rdquo; — my school isn&apos;t listed</span>
+                </button>
+              </li>
+            )}
           </ul>
         )}
         {isOpen && trimmed.length < MIN_QUERY && (

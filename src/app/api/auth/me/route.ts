@@ -7,6 +7,7 @@ import { handleRouteError } from "@/lib/api";
 import { decryptSensitiveData } from "@/lib/encryption";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
 import { MASKED_PHONE } from "@/lib/constants/profile";
+import { loadPendingSuggestionForCompletion } from "@/lib/schoolSuggestions";
 
 /** Decrypts a field for its owner; null if it's missing or unreadable. */
 function tryDecrypt(value: string | undefined): string | null {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
           "department level semester isVerified profilePhoto bio dob phone createdAt " +
           "universityId universityName universityAbbr facultyId facultyName " +
           "departmentId departmentName verifiedMaterialCount submissionCount " +
-          "roleUpgradedAt",
+          "roleUpgradedAt pendingSuggestionId",
       )
       .lean();
     if (!user) {
@@ -40,7 +41,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const completion = calculateProfileCompletion(user);
+    const pendingSuggestion = await loadPendingSuggestionForCompletion(
+      user.pendingSuggestionId,
+    );
+    const completion = calculateProfileCompletion(user, pendingSuggestion);
 
     return NextResponse.json(
       {
@@ -79,6 +83,10 @@ export async function GET(request: NextRequest) {
           verifiedMaterialCount: user.verifiedMaterialCount ?? 0,
           submissionCount: user.submissionCount ?? 0,
           roleUpgradedAt: user.roleUpgradedAt,
+          // Set only while the suggestion still awaits review
+          pendingSuggestionId: pendingSuggestion
+            ? user.pendingSuggestionId?.toString()
+            : undefined,
           joinedAt: user.createdAt,
           profileCompletion: completion,
         },

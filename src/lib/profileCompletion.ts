@@ -2,7 +2,9 @@
 // Calculates profile completion % and the missing fields. Called server-side
 // in /api/auth/me so every authenticated page has the percentage without an
 // extra fetch.
+import type { Types } from "mongoose";
 import type { IUser } from "@/lib/models/userModel";
+import type { SuggestionScope } from "@/lib/models/schoolSuggestionModel";
 
 /** Just the fields the calculation reads, so a .lean() result works too. */
 export type ProfileCompletionInput = Pick<
@@ -19,6 +21,16 @@ export type ProfileCompletionInput = Pick<
   | "departmentId"
   | "level"
 >;
+
+/**
+ * The user's open school suggestion, if any. Only pass one whose status is
+ * still active (awaiting review); a rejected or withdrawn one earns nothing.
+ */
+export interface PendingSuggestionInput {
+  suggestionScope: SuggestionScope;
+  existingUniversityId?: Types.ObjectId;
+  existingFacultyId?: Types.ObjectId;
+}
 
 export interface CompletionCheck {
   key: string;
@@ -38,7 +50,16 @@ export interface ProfileCompletion {
 
 export function calculateProfileCompletion(
   user: ProfileCompletionInput,
+  pendingSuggestion?: PendingSuggestionInput | null,
 ): ProfileCompletion {
+  // Partial credit while a school suggestion awaits review: any suggestion
+  // means the university is known; a department-only suggestion means the
+  // faculty exists too. The department only counts once it's approved.
+  const universityMet = !!user.universityId || !!pendingSuggestion;
+  const facultyMet =
+    !!user.facultyId || pendingSuggestion?.suggestionScope === "department_only";
+  const departmentMet = !!user.departmentId;
+
   // Weights sum to 100.
   const checks: CompletionCheck[] = [
     // Account (30%)
@@ -99,21 +120,21 @@ export function calculateProfileCompletion(
       key: "universitySet",
       label: "Select your university",
       weight: 15,
-      met: !!user.universityId,
+      met: universityMet,
       category: "academic",
     },
     {
       key: "facultySet",
       label: "Select your faculty",
       weight: 10,
-      met: !!user.facultyId,
+      met: facultyMet,
       category: "academic",
     },
     {
       key: "departmentSet",
       label: "Select your department",
       weight: 10,
-      met: !!user.departmentId,
+      met: departmentMet,
       category: "academic",
     },
     {

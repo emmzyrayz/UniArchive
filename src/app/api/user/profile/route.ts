@@ -19,6 +19,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { encryptSensitiveData, hashForSearch } from "@/lib/encryption";
 import { isOwnAvatarUrl } from "@/lib/cloudinary";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
+import { loadPendingSuggestionForCompletion } from "@/lib/schoolSuggestions";
 import {
   PROFILE_BIO_MAX_LENGTH,
   PROFILE_LEVELS,
@@ -46,7 +47,7 @@ const USER_FIELDS =
   "upid uuid role fullName firstName lastName username isVerified " +
   "profilePhoto bio dob phone level semester " +
   "universityId universityName universityAbbr facultyId facultyName " +
-  "departmentId departmentName";
+  "departmentId departmentName pendingSuggestionId";
 
 class BadRequest extends Error {
   constructor(
@@ -284,7 +285,10 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ message: "Authentication required" }, { status: 401 });
     }
 
-    const profileCompletion = calculateProfileCompletion(user);
+    const profileCompletion = calculateProfileCompletion(
+      user,
+      await loadPendingSuggestionForCompletion(user.pendingSuggestionId),
+    );
 
     return NextResponse.json(
       {

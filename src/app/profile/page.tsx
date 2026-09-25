@@ -14,6 +14,9 @@ import {
   AUDITOR_MIN_MONTHS_AS_COLLABORATOR,
   COLLABORATOR_MATERIALS_REQUIRED,
 } from "@/lib/constants/profile";
+import PendingSuggestionBanner, {
+  usePendingSuggestion,
+} from "@/components/profile/PendingSuggestionBanner";
 import {
   CompletionBar,
   PROFILE_CARD_CLASS,
@@ -79,7 +82,11 @@ const fadeUp = (delay: number) => ({
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { hasActiveSession, isLoading, userProfile, profileCompletion } = useUser();
+  const { hasActiveSession, isLoading, userProfile, profileCompletion, refreshUserData } =
+    useUser();
+  const { suggestion: pendingSuggestion, reload: reloadSuggestion } = usePendingSuggestion(
+    hasActiveSession && !!userProfile?.pendingSuggestionId,
+  );
   const [checklistOpen, setChecklistOpen] = useState(false);
 
   useEffect(() => {
@@ -231,6 +238,17 @@ export default function ProfilePage() {
             <h2 className="text-xs font-semibold tracking-wider uppercase text-text-muted mb-4">
               Academic info
             </h2>
+            {pendingSuggestion && (
+              <div className="mb-4">
+                <PendingSuggestionBanner
+                  suggestion={pendingSuggestion}
+                  onWithdrawn={() => {
+                    reloadSuggestion();
+                    void refreshUserData({ force: true });
+                  }}
+                />
+              </div>
+            )}
             {hasAcademic ? (
               <dl className="space-y-3">
                 <InfoRow
@@ -242,7 +260,7 @@ export default function ProfilePage() {
                 <InfoRow label="Level" value={user.level} />
                 <InfoRow label="Semester" value={user.semester} />
               </dl>
-            ) : (
+            ) : pendingSuggestion ? null : (
               <p className="text-sm text-text-muted">
                 Academic info not set.{" "}
                 <Link href="/profile/edit" className="text-primary font-medium hover:underline">

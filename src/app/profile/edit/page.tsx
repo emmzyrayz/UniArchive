@@ -3,13 +3,19 @@
 // /api/auth/me, sends only the changed fields to PATCH /api/user/profile.
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { FiCheckCircle, FiLock } from "react-icons/fi";
 import { useUser, type MeResponse } from "@/context/userContext";
 import AuthInput from "@/app/auth/components/UI/AuthInput";
 import AvatarUploader from "@/components/profile/AvatarUploader";
+import PendingSuggestionBanner, {
+  usePendingSuggestion,
+} from "@/components/profile/PendingSuggestionBanner";
+import SchoolSuggestionModal, {
+  type ResolvedSchool,
+} from "@/components/profile/SchoolSuggestionModal";
 import UniversityCombobox, {
   FIELD_CLASS,
   type UniversityOption,
@@ -182,6 +188,14 @@ export default function EditProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [suggestFor, setSuggestFor] = useState<string | null>(null);
+  const { suggestion: pendingSuggestion, reload: reloadSuggestion } =
+    usePendingSuggestion(hasActiveSession);
+
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
 
   useEffect(() => {
     if (!sessionLoading && !hasActiveSession) {
@@ -283,6 +297,54 @@ export default function EditProfilePage() {
     update("department", match ? { id, name: match.name } : null);
   };
 
+  const showToast = (message: string, ms = 5000) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(message);
+    toastTimer.current = setTimeout(() => setToast(null), ms);
+  };
+
+  // The suggestion routes change the saved institution server-side; mirror
+  // that in both the form and its baseline so it isn't seen as an edit.
+  const applyInstitution = (
+    institution: Pick<FormState, "university" | "faculty" | "department">,
+  ) => {
+    setForm((f) => (f ? { ...f, ...institution } : f));
+    setInitial((i) => (i ? { ...i, ...institution } : i));
+  };
+
+  const handleResolved = (school: ResolvedSchool, message: string) => {
+    setSuggestFor(null);
+    applyInstitution({
+      university: { id: school.university.id, name: school.university.name },
+      faculty: school.faculty,
+      department: school.department,
+    });
+    showToast(message);
+    reloadSuggestion();
+    void refreshUserData({ force: true });
+  };
+
+  const handleSubmitted = async (_suggestionId: string, message: string) => {
+    setSuggestFor(null);
+    showToast(message, 7000);
+    reloadSuggestion();
+    void refreshUserData({ force: true });
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" });
+      if (res.ok) {
+        const { user } = (await res.json()) as MeResponse;
+        const fresh = formFromUser(user);
+        applyInstitution({
+          university: fresh.university,
+          faculty: fresh.faculty,
+          department: fresh.department,
+        });
+      }
+    } catch {
+      // The banner still shows the suggestion; the dropdowns refresh on reload
+    }
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Show every error on submit, not just the touched ones
@@ -307,7 +369,7 @@ export default function EditProfilePage() {
         return;
       }
       await refreshUserData({ force: true });
-      setToast("Profile updated");
+      showToast("Profile updated");
       setTimeout(() => router.push("/profile"), 1500);
     } catch {
       setSaveError("Network error. Check your connection and try again.");
@@ -446,7 +508,21 @@ export default function EditProfilePage() {
             <div>
               <SectionHeading>Academic info</SectionHeading>
               <div className="space-y-4">
-                <UniversityCombobox value={form.university} onChange={selectUniversity} />
+                <UniversityCombobox
+                  value={form.university}
+                  onChange={selectUniversity}
+                  onAddSchool={setSuggestFor}
+                />
+                {pendingSuggestion && (
+                  <PendingSuggestionBanner
+                    suggestion={pendingSuggestion}
+                    onWithdrawn={() => {
+                      reloadSuggestion();
+                      void refreshUserData({ force: true });
+                      showToast("Suggestion withdrawn");
+                    }}
+                  />
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
@@ -586,6 +662,15 @@ export default function EditProfilePage() {
           </section>
         </div>
       </form>
+
+      {/* Outside the profile <form>: forms can't nest */}
+      <SchoolSuggestionModal
+        open={suggestFor !== null}
+        initialUniversityName={suggestFor ?? ""}
+        onClose={() => setSuggestFor(null)}
+        onResolved={handleResolved}
+        onSubmitted={handleSubmitted}
+      />
 
       <AnimatePresence>
         {toast && (

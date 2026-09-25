@@ -142,6 +142,7 @@ export interface MeResponse {
     verifiedMaterialCount: number;
     submissionCount: number;
     roleUpgradedAt?: string;
+    pendingSuggestionId?: string;
     isVerified: boolean;
     profilePhoto?: string;
     joinedAt?: string;
@@ -174,6 +175,7 @@ const userFromMe = ({ user }: MeResponse): User => ({
   verifiedMaterialCount: user.verifiedMaterialCount,
   submissionCount: user.submissionCount,
   roleUpgradedAt: user.roleUpgradedAt,
+  pendingSuggestionId: user.pendingSuggestionId,
   uuid: user.uuid,
   upid: user.upid,
   isVerified: user.isVerified,
@@ -225,6 +227,8 @@ export interface User {
   verifiedMaterialCount?: number;
   submissionCount?: number;
   roleUpgradedAt?: string;
+  /** School suggestion awaiting review, if any. */
+  pendingSuggestionId?: string;
   uuid: string;
   upid: string;
   isVerified: boolean;

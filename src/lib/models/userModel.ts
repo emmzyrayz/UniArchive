@@ -49,6 +49,8 @@ export interface IUser extends Document {
   departmentName?: string;
   semester?: string;
   bio?: string;
+  // Open school suggestion while the student's institution isn't listed
+  pendingSuggestionId?: Types.ObjectId;
 
   // Contribution tracking, used for role progression
   verifiedMaterialCount: number;
@@ -134,6 +136,11 @@ const UserSchema = new Schema<IUser>(
     departmentName: { type: String },
     semester: { type: String },
     bio: { type: String },
+    pendingSuggestionId: {
+      type: Schema.Types.ObjectId,
+      ref: "SchoolSuggestion",
+      sparse: true,
+    },
 
     verifiedMaterialCount: { type: Number, default: 0 },
     submissionCount: { type: Number, default: 0 },
