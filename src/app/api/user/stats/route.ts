@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       {
         documentCount: sizes.length,
         totalStorageBytes: sizes.reduce((sum, b) => sum + (b.fileSize ?? 0), 0),
-        recentBooks: recent.map(toBookDto),
+        recentBooks: recent.map((doc) => toBookDto(doc)),
       },
       { headers: { "Cache-Control": "private, no-store" } },
     );

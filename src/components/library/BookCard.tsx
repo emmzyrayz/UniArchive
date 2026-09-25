@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
+import { FiUpload } from "react-icons/fi";
 import type { Book } from "@/types/library";
 import { formatFileSize } from "@/assets/data/libraryData";
 
@@ -10,11 +11,47 @@ interface BookCardProps {
   book: Book;
   onDelete?: (bookId: string) => void;
   showDeleteButton?: boolean;
+  /** Show "Submit to UniLibrary", or the submission's status once it has one. */
+  showSubmitButton?: boolean;
+  /** Opens the submission form (also used to view/continue an existing one). */
+  onSubmitToLibrary?: (bookId: string) => void;
 }
+
+const SUBMISSION_BADGES: Record<
+  NonNullable<Book["submissionStatus"]>,
+  { label: string; className: string }
+> = {
+  draft: {
+    label: "Draft",
+    className: "bg-neutral-500/10 text-text-secondary border-border",
+  },
+  submitted: {
+    label: "In Review",
+    className: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30",
+  },
+  in_review: {
+    label: "In Review",
+    className: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30",
+  },
+  verified: {
+    label: "Published",
+    className: "bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/30",
+  },
+  rejected: {
+    label: "Changes needed",
+    className: "bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30",
+  },
+};
 
 type DeleteState = "idle" | "confirming" | "deleting";
 
-export function BookCard({ book, onDelete, showDeleteButton = false }: BookCardProps) {
+export function BookCard({
+  book,
+  onDelete,
+  showDeleteButton = false,
+  showSubmitButton = false,
+  onSubmitToLibrary,
+}: BookCardProps) {
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +72,12 @@ export function BookCard({ book, onDelete, showDeleteButton = false }: BookCardP
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { message?: string } | null;
+        // 409: the book backs a UniLibrary submission; the reason is for the user
+        if (response.status === 409 && data?.message) {
+          setError(data.message);
+          setDeleteState("idle");
+          return;
+        }
         throw new Error(data?.message ?? `DELETE /api/books/${book.id} ${response.status}`);
       }
       // Drop any encrypted offline copy too; best-effort, never throws
@@ -48,11 +91,11 @@ export function BookCard({ book, onDelete, showDeleteButton = false }: BookCardP
   };
 
   return (
-    <motion.div whileHover={{ y: -3 }} className="group relative">
-      <a
-        href={`/read/${book.id}`}
-        className="block rounded-xl border border-border bg-surface-raised overflow-hidden hover:shadow-md transition-shadow"
-      >
+    <motion.div
+      whileHover={{ y: -3 }}
+      className="group relative rounded-xl border border-border bg-surface-raised overflow-hidden hover:shadow-md transition-shadow"
+    >
+      <a href={`/read/${book.id}`} className="block">
         <div className="aspect-[4/3] bg-neutral-100 relative overflow-hidden">
           {book.thumbnailUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -100,6 +143,33 @@ export function BookCard({ book, onDelete, showDeleteButton = false }: BookCardP
           )}
         </div>
       </a>
+
+      {/* Outside the link: buttons can't be nested in an <a> */}
+      {showSubmitButton && (
+        <div className="px-4 pb-4 -mt-1">
+          {book.hasSubmission ? (
+            <button
+              type="button"
+              onClick={() => onSubmitToLibrary?.(book.id)}
+              className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full border ${
+                SUBMISSION_BADGES[book.submissionStatus ?? "submitted"].className
+              }`}
+              title="View submission"
+            >
+              {SUBMISSION_BADGES[book.submissionStatus ?? "submitted"].label}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onSubmitToLibrary?.(book.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+            >
+              <FiUpload size={12} />
+              Submit to UniLibrary
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Sibling of the link, not inside it: a button can't be nested in an <a> */}
       {showDeleteButton && deleteState === "idle" && (

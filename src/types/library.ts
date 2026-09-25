@@ -12,4 +12,19 @@ export interface Book {
   tags: string[];
   lastOpenedAt?: string;
   uploadedAt: string;
+  // Academic context (optional, from the uploader's profile)
+  universityId?: string;
+  universityName?: string;
+  universityAbbr?: string;
+  facultyId?: string;
+  facultyName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  level?: string;
+  semester?: string;
+  // UniLibrary submission
+  hasSubmission?: boolean;
+  submissionId?: string;
+  /** Pipeline status of the submission; present when hasSubmission. */
+  submissionStatus?: "draft" | "submitted" | "in_review" | "verified" | "rejected";
 }

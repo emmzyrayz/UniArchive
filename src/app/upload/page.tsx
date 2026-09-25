@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { useUser } from "@/context/userContext";
+import { useUser, type User } from "@/context/userContext";
 import { FileDropzone } from "@/components/upload/FileDropzone";
 import { TagInput } from "@/components/UI/TagInput";
 import AuthInput from "@/app/auth/components/UI/AuthInput";
@@ -13,6 +13,11 @@ import { queueUpload } from "@/utils/uploadQueue";
 import { uploadBook } from "@/utils/uploadBook";
 import { compressPdf, type CompressionResult } from "@/lib/compressPdf";
 import { formatFileSize } from "@/assets/data/libraryData";
+import {
+  AcademicInfoSection,
+  type AcademicInfo,
+} from "@/components/upload/AcademicInfoSection";
+import { PROFILE_LEVELS, PROFILE_SEMESTERS } from "@/lib/constants/profile";
 
 const COMPRESS_MAX_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -22,9 +27,29 @@ interface UploadFormState {
   tags: string[];
 }
 
+/** The profile's academic info, in the shape the upload form stores. */
+function academicFromProfile(profile: User | null): AcademicInfo {
+  if (!profile) return {};
+  return {
+    universityId: profile.universityId,
+    universityName: profile.universityName,
+    universityAbbr: profile.universityAbbr,
+    facultyId: profile.universityId ? profile.facultyId : undefined,
+    facultyName: profile.universityId ? profile.facultyName : undefined,
+    departmentId: profile.facultyId ? profile.departmentId : undefined,
+    departmentName: profile.facultyId ? profile.departmentName : undefined,
+    // Older accounts may hold free-text values the API won't accept
+    level: (PROFILE_LEVELS as readonly string[]).includes(profile.level) ? profile.level : undefined,
+    semester:
+      profile.semester && (PROFILE_SEMESTERS as readonly string[]).includes(profile.semester)
+        ? profile.semester
+        : undefined,
+  };
+}
+
 export default function UploadPage() {
   const router = useRouter();
-  const { hasActiveSession, isLoading } = useUser();
+  const { hasActiveSession, isLoading, userProfile } = useUser();
 
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState<UploadFormState>({
@@ -32,6 +57,10 @@ export default function UploadPage() {
     description: "",
     tags: [],
   });
+  // null until the user edits it: until then it follows the profile
+  const [academicEdits, setAcademicEdits] = useState<AcademicInfo | null>(null);
+  const profileAcademic = academicFromProfile(userProfile);
+  const academic = academicEdits ?? profileAcademic;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -94,6 +123,11 @@ export default function UploadPage() {
       title: formData.title,
       description: formData.description,
       tags: formData.tags,
+      universityId: academic.universityId,
+      facultyId: academic.facultyId,
+      departmentId: academic.departmentId,
+      level: academic.level,
+      semester: academic.semester,
       fileData,
       fileName: file.name,
       fileType: file.type,
@@ -107,7 +141,18 @@ export default function UploadPage() {
   }
 
     try {
-      await uploadBook(file, formData, setProgress);
+      await uploadBook(
+        file,
+        {
+          ...formData,
+          universityId: academic.universityId,
+          facultyId: academic.facultyId,
+          departmentId: academic.departmentId,
+          level: academic.level,
+          semester: academic.semester,
+        },
+        setProgress,
+      );
       router.push("/home");
     } catch (error) {
       setUploadError(
@@ -147,6 +192,7 @@ export default function UploadPage() {
                 setIsComplete(false);
                 setFile(null);
                 setFormData({ title: "", description: "", tags: [] });
+                setAcademicEdits(null);
                 titleTouched.current = false;
                 setWasQueued(false);
               }}
@@ -248,6 +294,12 @@ export default function UploadPage() {
               onChange={(tags) => setFormData((prev) => ({ ...prev, tags }))}
             />
           </div>
+
+          <AcademicInfoSection
+            value={academic}
+            profile={profileAcademic}
+            onChange={setAcademicEdits}
+          />
 
           {uploadError && (
             <p role="alert" className="text-sm text-error">

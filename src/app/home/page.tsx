@@ -2,6 +2,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { FiCheckCircle, FiClock, FiFileText, FiX } from "react-icons/fi";
+import { SUBMISSION_SUCCESS_KEY } from "@/lib/constants/submissions";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { useUser } from "@/context/userContext";
@@ -9,6 +12,42 @@ import { BookCard } from "@/components/library/BookCard";
 import { EmptyLibrary } from "@/components/library/EmptyLibrary";
 import { Button } from "@/components/UI/Buttons";
 import type { Book } from "@/types/library";
+
+interface ActiveSubmission {
+  _id: string;
+  bookId: string;
+  title: string;
+  bookTitle: string;
+  status: "submitted" | "in_review";
+  facultyName?: string;
+  submittedAt?: string;
+}
+
+function timeAgo(iso?: string): string {
+  if (!iso) return "";
+  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  const units: [number, string][] = [
+    [86400 * 30, "month"],
+    [86400 * 7, "week"],
+    [86400, "day"],
+    [3600, "hour"],
+    [60, "minute"],
+  ];
+  for (const [size, name] of units) {
+    const n = Math.floor(seconds / size);
+    if (n >= 1) return `${n} ${name}${n === 1 ? "" : "s"} ago`;
+  }
+  return "just now";
+}
+
+function readSubmissionSuccess(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(SUBMISSION_SUCCESS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 type LibraryState =
   | { status: "loading" }
@@ -21,6 +60,44 @@ export default function HomePage() {
   const [library, setLibrary] = useState<LibraryState>({ status: "loading" });
   // Bumped by the retry button to re-run the fetch without a full page reload
   const [reloadKey, setReloadKey] = useState(0);
+  const [submissions, setSubmissions] = useState<{ items: ActiveSubmission[]; total: number }>({
+    items: [],
+    total: 0,
+  });
+  // Read once. The loading screen is what hydrates, so reading storage in
+  // the initializer can't cause a hydration mismatch.
+  const [showSubmittedBanner, setShowSubmittedBanner] = useState(readSubmissionSuccess);
+
+  useEffect(() => {
+    if (!showSubmittedBanner) return;
+    try {
+      sessionStorage.removeItem(SUBMISSION_SUCCESS_KEY);
+    } catch {
+      // storage blocked; the banner still shows this once
+    }
+  }, [showSubmittedBanner]);
+
+  // Submissions under review, shown above the library. Not critical: on
+  // failure the section just doesn't appear.
+  useEffect(() => {
+    if (isLoading || !hasActiveSession) return;
+    const controller = new AbortController();
+    fetch("/api/submissions?status=submitted,in_review&limit=3", {
+      credentials: "same-origin",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = (await response.json()) as { submissions: ActiveSubmission[]; total: number };
+        setSubmissions({ items: data.submissions, total: data.total });
+      })
+      .catch((error) => {
+        if ((error as Error).name !== "AbortError") {
+          console.error("Failed to load submissions:", error);
+        }
+      });
+    return () => controller.abort();
+  }, [isLoading, hasActiveSession, reloadKey]);
 
   useEffect(() => {
     if (!isLoading && !hasActiveSession) {
@@ -116,6 +193,8 @@ export default function HomePage() {
         : prev,
     );
 
+  const openSubmission = (bookId: string) => router.push(`/submit?bookId=${bookId}`);
+
   const myBooks = library.status === "ready" ? library.books : [];
   const recentlyOpened = myBooks
     .filter((b) => b.lastOpenedAt)
@@ -147,6 +226,78 @@ export default function HomePage() {
           <Button href="/upload">Upload a document</Button>
         </motion.div>
 
+        {showSubmittedBanner && (
+          <div
+            role="status"
+            className="mb-8 flex items-start gap-3 rounded-xl border border-green-500/30 bg-green-500/10 p-4"
+          >
+            <FiCheckCircle className="mt-0.5 shrink-0 text-green-600 dark:text-green-400" />
+            <p className="flex-1 text-sm text-text-primary">
+              Your document has been submitted for review! We&apos;ll notify you when it&apos;s
+              approved.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowSubmittedBanner(false)}
+              aria-label="Dismiss"
+              className="shrink-0 text-text-muted hover:text-text-primary"
+            >
+              <FiX />
+            </button>
+          </div>
+        )}
+
+        {submissions.items.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-xs font-semibold tracking-wider uppercase text-text-muted mb-4">
+              Your submissions
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {submissions.items.map((s) => (
+                <div
+                  key={s._id}
+                  className="flex gap-3 rounded-xl border border-border bg-surface-raised p-4"
+                >
+                  <div className="h-10 w-10 shrink-0 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <FiFileText />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-text-primary truncate">{s.title}</p>
+                    <p className="text-xs text-text-secondary mt-0.5 truncate">
+                      <span className="text-amber-600 dark:text-amber-400 font-medium">
+                        In Review
+                      </span>
+                      {s.facultyName && <> • {s.facultyName}</>}
+                    </p>
+                    {s.submittedAt && (
+                      <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1">
+                        <FiClock size={11} /> Submitted {timeAgo(s.submittedAt)}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => openSubmission(s.bookId)}
+                      className="mt-2 text-xs font-medium text-primary hover:underline"
+                    >
+                      View Submission
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {submissions.total > submissions.items.length && (
+              <p className="text-xs text-text-muted mt-3">
+                and {submissions.total - submissions.items.length} more in review. Look for the
+                In Review badge under{" "}
+                <Link href="#all-documents" className="text-primary hover:underline">
+                  All documents
+                </Link>
+                .
+              </p>
+            )}
+          </section>
+        )}
+
         {myBooks.length === 0 ? (
           <EmptyLibrary />
         ) : (
@@ -171,7 +322,7 @@ export default function HomePage() {
               </section>
             )}
 
-            <section>
+            <section id="all-documents">
               <h2 className="text-lg font-semibold text-text-primary mb-4">
                 All documents
               </h2>
@@ -183,7 +334,13 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.05 }}
                   >
-                    <BookCard book={book} showDeleteButton onDelete={removeBook} />
+                    <BookCard
+                      book={book}
+                      showDeleteButton
+                      onDelete={removeBook}
+                      showSubmitButton
+                      onSubmitToLibrary={openSubmission}
+                    />
                   </motion.div>
                 ))}
               </div>

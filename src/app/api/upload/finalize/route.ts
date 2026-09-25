@@ -10,8 +10,9 @@ import { getCloudinaryPdf } from "@/lib/cloudinary";
 import { CLOUDINARY_MAX_SIZE } from "@/lib/storageRouter";
 import { isOwnCloudinaryId } from "@/lib/uploads";
 import { toBookDto, type BookDoc } from "@/lib/dto/book";
+import { resolveBookAcademic, type BookAcademicBody } from "@/lib/submissions";
 
-interface FinalizeBody {
+interface FinalizeBody extends BookAcademicBody {
   publicId: string;
   title: string;
   description: string;
@@ -72,8 +73,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const academic = await resolveBookAcademic(body);
+
     const Book = await getBookModel();
     const doc = await Book.create({
+      ...academic,
       title,
       description: description || undefined,
       tags,

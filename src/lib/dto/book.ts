@@ -6,7 +6,10 @@ import type { Book } from "@/types/library";
 
 export type BookDoc = IBook & { _id: Types.ObjectId };
 
-export function toBookDto(doc: BookDoc): Book & {
+export function toBookDto(
+  doc: BookDoc,
+  submissionStatus?: Book["submissionStatus"],
+): Book & {
   storageKey: string;
   mimeType: string;
   visibility: IBook["visibility"];
@@ -25,6 +28,18 @@ export function toBookDto(doc: BookDoc): Book & {
     tags: doc.tags ?? [],
     lastOpenedAt: doc.lastOpenedAt?.toISOString(),
     uploadedAt: doc.createdAt.toISOString(),
+    universityId: doc.universityId?.toString(),
+    universityName: doc.universityName,
+    universityAbbr: doc.universityAbbr,
+    facultyId: doc.facultyId?.toString(),
+    facultyName: doc.facultyName,
+    departmentId: doc.departmentId?.toString(),
+    departmentName: doc.departmentName,
+    level: doc.level,
+    semester: doc.semester,
+    hasSubmission: doc.hasSubmission ?? false,
+    submissionId: doc.submissionId?.toString(),
+    submissionStatus: doc.hasSubmission ? submissionStatus : undefined,
     storageKey: doc.storageKey,
     mimeType: doc.mimeType,
     visibility: doc.visibility,

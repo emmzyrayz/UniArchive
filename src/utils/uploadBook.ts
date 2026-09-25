@@ -5,7 +5,16 @@
 // 2. Upload the file straight to storage
 // 3. Create the book record
 
-export interface UploadDetails {
+/** Optional academic context stored with the book (ids from the profile). */
+export interface BookAcademicDetails {
+  universityId?: string;
+  facultyId?: string;
+  departmentId?: string;
+  level?: string;
+  semester?: string;
+}
+
+export interface UploadDetails extends BookAcademicDetails {
   title: string;
   description?: string;
   tags: string[];
@@ -123,6 +132,11 @@ export async function uploadBook(
     title: form.title.trim(),
     description: (form.description ?? "").trim(),
     tags: form.tags,
+    universityId: form.universityId,
+    facultyId: form.facultyId,
+    departmentId: form.departmentId,
+    level: form.level,
+    semester: form.semester,
   };
 
   // Keep the last few percent for the record-creation step

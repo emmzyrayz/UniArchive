@@ -11,6 +11,11 @@ import {
   isOwnBookKey,
 } from "@/lib/uploads";
 import { toBookDto, type BookDoc } from "@/lib/dto/book";
+import {
+  getMaterialSubmissionModel,
+  type SubmissionStatus,
+} from "@/lib/models/materialSubmissionModel";
+import { resolveBookAcademic, type BookAcademicBody } from "@/lib/submissions";
 
 const MAX_LIMIT = 50;
 
@@ -36,8 +41,21 @@ export async function GET(request: NextRequest) {
       Book.countDocuments(filter),
     ]);
 
+    // Attach each submission's pipeline status for the library cards
+    const submissionIds = docs
+      .filter((d) => d.hasSubmission && d.submissionId)
+      .map((d) => d.submissionId!);
+    const statuses = new Map<string, SubmissionStatus>();
+    if (submissionIds.length) {
+      const Submission = await getMaterialSubmissionModel();
+      const subs = await Submission.find({ _id: { $in: submissionIds } }).select("status").lean();
+      for (const s of subs) statuses.set(s._id.toString(), s.status);
+    }
+
     return NextResponse.json({
-      books: docs.map(toBookDto),
+      books: docs.map((doc) =>
+        toBookDto(doc, doc.submissionId ? statuses.get(doc.submissionId.toString()) : undefined),
+      ),
       total,
       page,
       totalPages: Math.max(1, Math.ceil(total / limit)),
@@ -47,7 +65,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-interface CreateBookBody {
+interface CreateBookBody extends BookAcademicBody {
   title: string;
   description: string;
   tags: string[];
@@ -118,8 +136,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const academic = await resolveBookAcademic(body);
+
     const Book = await getBookModel();
     const doc = await Book.create({
+      ...academic,
       title,
       description: description || undefined,
       tags,

@@ -21,6 +21,7 @@ import UniversityCombobox, {
   type UniversityOption,
 } from "@/components/profile/UniversityCombobox";
 import { PROFILE_CARD_CLASS, ROLE_LABELS } from "@/components/profile/profileUi";
+import { useInstitutionOptions } from "@/components/profile/useInstitutionOptions";
 import {
   PROFILE_BIO_MAX_LENGTH,
   PROFILE_LEVELS,
@@ -49,11 +50,6 @@ interface FormState {
   department: Ref | null;
   level: string;
   semester: string;
-}
-
-interface Option {
-  _id: string;
-  name: string;
 }
 
 function toDateInput(value?: string): string {
@@ -142,39 +138,6 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Loads the options for a dependent dropdown, keyed by its parent id. */
-function useOptions(url: string | null, listKey: "faculties" | "departments") {
-  const [state, setState] = useState<{ url: string | null; items: Option[]; error: boolean }>({
-    url: null,
-    items: [],
-    error: false,
-  });
-
-  useEffect(() => {
-    if (!url) return;
-    const controller = new AbortController();
-    (async () => {
-      try {
-        const res = await fetch(url, { signal: controller.signal });
-        if (!res.ok) throw new Error(String(res.status));
-        const data = (await res.json()) as Record<string, Option[]>;
-        setState({ url, items: data[listKey] ?? [], error: false });
-      } catch (err) {
-        if ((err as Error).name === "AbortError") return;
-        setState({ url, items: [], error: true });
-      }
-    })();
-    return () => controller.abort();
-  }, [url, listKey]);
-
-  const ready = !!url && state.url === url;
-  return {
-    items: ready ? state.items : [],
-    loading: !!url && !ready,
-    error: ready && state.error,
-  };
-}
-
 export default function EditProfilePage() {
   const router = useRouter();
   const { hasActiveSession, isLoading: sessionLoading, refreshUserData } = useUser();
@@ -230,11 +193,11 @@ export default function EditProfilePage() {
 
   const universityId = form?.university?.id ?? null;
   const facultyId = form?.faculty?.id ?? null;
-  const faculties = useOptions(
+  const faculties = useInstitutionOptions(
     universityId ? `/api/institutions/faculties?universityId=${universityId}` : null,
     "faculties",
   );
-  const departments = useOptions(
+  const departments = useInstitutionOptions(
     universityId && facultyId
       ? `/api/institutions/departments?facultyId=${facultyId}&universityId=${universityId}`
       : null,

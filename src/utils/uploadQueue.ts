@@ -3,13 +3,13 @@
 // across sessions. processQueue() uploads them once the app is back online:
 // on opening the library, on the "online" event, and when the service worker's
 // 'sync' event (public/sw-sync.js) asks open pages to.
-import { uploadBook, UploadError } from "@/utils/uploadBook";
+import { uploadBook, UploadError, type BookAcademicDetails } from "@/utils/uploadBook";
 
 const DB_NAME = "uniarchive-upload-queue";
 const STORE_NAME = "pending-uploads";
 const DB_VERSION = 1;
 
-export interface PendingUpload {
+export interface PendingUpload extends BookAcademicDetails {
   id: string;
   title: string;
   description?: string;

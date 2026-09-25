@@ -38,6 +38,24 @@ export interface IBook {
   status: MaterialStatus;
   processingStatus: BookProcessingStatus;
   lastOpenedAt?: Date;
+
+  // Optional academic context, pre-filled from the uploader's profile and
+  // carried into a UniLibrary submission. Levels use the profile values
+  // ("300L"); names are denormalised copies of the refs.
+  universityId?: Types.ObjectId;
+  universityName?: string;
+  universityAbbr?: string;
+  facultyId?: Types.ObjectId;
+  facultyName?: string;
+  departmentId?: Types.ObjectId;
+  departmentName?: string;
+  level?: string;
+  semester?: string;
+
+  // UniLibrary submission (see materialSubmissionModel)
+  hasSubmission?: boolean;
+  submissionId?: Types.ObjectId;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -90,6 +108,23 @@ const BookSchema = new Schema<IBook, BookModel>(
       default: "none",
     },
     lastOpenedAt: { type: Date },
+
+    universityId: { type: Schema.Types.ObjectId, ref: "University" },
+    universityName: { type: String },
+    universityAbbr: { type: String },
+    facultyId: { type: Schema.Types.ObjectId, ref: "Faculty" },
+    facultyName: { type: String },
+    departmentId: { type: Schema.Types.ObjectId, ref: "Department" },
+    departmentName: { type: String },
+    level: { type: String },
+    semester: { type: String },
+
+    hasSubmission: { type: Boolean, default: false },
+    submissionId: {
+      type: Schema.Types.ObjectId,
+      ref: "MaterialSubmission",
+      sparse: true,
+    },
   },
   { timestamps: true, collection: "books" },
 );
