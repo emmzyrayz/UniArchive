@@ -1,6 +1,9 @@
 // src/lib/models/courseModel.ts
-// Course with a week -> topic -> subtopic outline. Topic ids will later
-// reference Topic documents; the shape is kept as-is until that model exists.
+// Course with a week -> topic -> subtopic outline. A course belongs to one
+// department and references the normalized University/Faculty/Department
+// collections by ObjectId, with denormalised names for display. Topic ids
+// will later reference Topic documents; the outline shape is kept as-is
+// until that model exists.
 import { Schema, type Model, type Types } from "mongoose";
 import { connectDB } from "@/lib/mongoose";
 
@@ -22,32 +25,65 @@ export interface CourseOutlineWeek {
 }
 
 export type CourseStatus = "approved" | "pending" | "rejected";
-export type Semester = "First" | "Second" | "Annual";
+export type Semester = "First" | "Second" | "Year-long";
+export type CourseLevel =
+  | "100"
+  | "200"
+  | "300"
+  | "400"
+  | "500"
+  | "PG"
+  | "Staff";
+
+export const COURSE_LEVELS: CourseLevel[] = [
+  "100",
+  "200",
+  "300",
+  "400",
+  "500",
+  "PG",
+  "Staff",
+];
+export const SEMESTERS: Semester[] = ["First", "Second", "Year-long"];
 
 export interface ICourse {
   courseId: string;
-  courseName: string;
-  courseCode: string;
   courseOutline: CourseOutlineWeek[];
-  creditUnit?: number;
-  semester: Semester;
-  level: string;
   status: CourseStatus;
-  schoolId: Types.ObjectId;
-  schoolName: string;
-  // Faculty and department ids are the string ids of the entries embedded
-  // in the Institution document, so they are not ObjectIds.
-  facultyId: string;
+
+  // Parent references
+  universityId: Types.ObjectId;
+  facultyId: Types.ObjectId;
+  departmentId: Types.ObjectId;
+
+  // Denormalised names, so reads don't need joins
+  universityName: string;
+  universityAbbr: string;
   facultyName: string;
-  departmentId: string;
   departmentName: string;
-  createdBy?: Types.ObjectId;
+
+  // Academic details
+  courseCode: string;
+  courseName: string;
+  level: CourseLevel;
+  semester: Semester;
+  creditUnits?: number;
+  description?: string;
+  isElective: boolean;
+  isActive: boolean;
+  addedBy?: Types.ObjectId;
+  verifiedBy?: Types.ObjectId;
+
   createdAt: Date;
   updatedAt: Date;
 }
 
 interface CourseModel extends Model<ICourse> {
   generateCourseId(deptCode: string, level: string, courseCode: string): string;
+  getCoursesForDepartment(
+    departmentId: Types.ObjectId | string,
+    filter?: { level?: CourseLevel; semester?: Semester },
+  ): Promise<ICourse[]>;
 }
 
 const SubtopicSchema = new Schema<CourseOutlineSubtopic>(
@@ -79,39 +115,55 @@ const WeekSchema = new Schema<CourseOutlineWeek>(
 const CourseSchema = new Schema<ICourse, CourseModel>(
   {
     courseId: { type: String, required: true, unique: true },
-    courseName: { type: String, required: true, trim: true },
-    courseCode: { type: String, required: true, trim: true, uppercase: true },
     courseOutline: { type: [WeekSchema], default: [] },
-    creditUnit: { type: Number, min: 0 },
-    semester: {
-      type: String,
-      enum: ["First", "Second", "Annual"],
-      default: "First",
-    },
-    level: { type: String, required: true },
     status: {
       type: String,
       enum: ["approved", "pending", "rejected"],
       default: "pending",
       index: true,
     },
-    schoolId: {
+
+    universityId: {
       type: Schema.Types.ObjectId,
-      ref: "Institution",
+      ref: "University",
       required: true,
+      index: true,
     },
-    schoolName: { type: String, required: true },
-    facultyId: { type: String, required: true },
+    facultyId: {
+      type: Schema.Types.ObjectId,
+      ref: "Faculty",
+      required: true,
+      index: true,
+    },
+    departmentId: {
+      type: Schema.Types.ObjectId,
+      ref: "Department",
+      required: true,
+      index: true,
+    },
+
+    universityName: { type: String, required: true },
+    universityAbbr: { type: String, required: true },
     facultyName: { type: String, required: true },
-    departmentId: { type: String, required: true },
     departmentName: { type: String, required: true },
-    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+
+    courseCode: { type: String, required: true, trim: true, uppercase: true },
+    courseName: { type: String, required: true, trim: true },
+    level: { type: String, enum: COURSE_LEVELS, required: true },
+    semester: { type: String, enum: SEMESTERS, required: true },
+    creditUnits: { type: Number, min: 0 },
+    description: { type: String },
+    isElective: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true },
+    addedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    verifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true, collection: "courses" },
 );
 
-CourseSchema.index({ schoolId: 1, departmentId: 1, level: 1 });
-CourseSchema.index({ courseCode: 1, schoolId: 1 });
+CourseSchema.index({ departmentId: 1, courseCode: 1 }, { unique: true });
+CourseSchema.index({ departmentId: 1, level: 1, semester: 1 });
+CourseSchema.index({ universityId: 1, courseCode: 1 });
 
 CourseSchema.static(
   "generateCourseId",
@@ -119,6 +171,22 @@ CourseSchema.static(
     return `${deptCode}-${level}-${courseCode}`
       .toLowerCase()
       .replace(/\s+/g, "");
+  },
+);
+
+CourseSchema.static(
+  "getCoursesForDepartment",
+  function (
+    this: CourseModel,
+    departmentId: Types.ObjectId | string,
+    filter: { level?: CourseLevel; semester?: Semester } = {},
+  ) {
+    const query: Record<string, unknown> = { departmentId, isActive: true };
+    if (filter.level) query.level = filter.level;
+    if (filter.semester) query.semester = filter.semester;
+    return this.find(query)
+      .sort({ level: 1, courseCode: 1 })
+      .lean<ICourse[]>();
   },
 );
 

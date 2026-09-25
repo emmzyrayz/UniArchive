@@ -1,9 +1,10 @@
 // GET /api/auth/me
-// Returns the signed-in user, or 401.
+// Returns the signed-in user with their profile completion, or 401.
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserModel } from "@/lib/models/userModel";
 import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError } from "@/lib/api";
+import { calculateProfileCompletion } from "@/lib/profileCompletion";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +13,10 @@ export async function GET(request: NextRequest) {
     const User = await getUserModel();
     const user = await User.findById(session.userId)
       .select(
-        "upid uuid role fullName school faculty department level isVerified profilePhoto createdAt",
+        "upid uuid role fullName username school faculty department level semester " +
+          "isVerified profilePhoto bio dob phone createdAt " +
+          "universityId universityName universityAbbr facultyId facultyName " +
+          "departmentId departmentName verifiedMaterialCount submissionCount",
       )
       .lean();
     if (!user) {
@@ -22,6 +26,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // phone and dob are selected only to feed the completion checks; they
+    // are not returned (phone is ciphertext).
+    const completion = calculateProfileCompletion(user);
+
     return NextResponse.json(
       {
         user: {
@@ -30,13 +38,29 @@ export async function GET(request: NextRequest) {
           uuid: user.uuid,
           role: user.role,
           fullName: user.fullName,
+          username: user.username,
+          profilePhoto: user.profilePhoto,
+          bio: user.bio,
+          isVerified: user.isVerified,
+          // Legacy plain-string institution fields, still read by userContext
           school: user.school,
           faculty: user.faculty ?? "",
           department: user.department ?? "",
           level: user.level ?? "",
-          isVerified: user.isVerified,
-          profilePhoto: user.profilePhoto,
+          semester: user.semester,
+          // Normalized institution references
+          universityId: user.universityId?.toString(),
+          universityName: user.universityName,
+          universityAbbr: user.universityAbbr,
+          facultyId: user.facultyId?.toString(),
+          facultyName: user.facultyName,
+          departmentId: user.departmentId?.toString(),
+          departmentName: user.departmentName,
+          // Contribution tracking
+          verifiedMaterialCount: user.verifiedMaterialCount ?? 0,
+          submissionCount: user.submissionCount ?? 0,
           joinedAt: user.createdAt,
+          profileCompletion: completion,
         },
       },
       { headers: { "Cache-Control": "no-store" } },

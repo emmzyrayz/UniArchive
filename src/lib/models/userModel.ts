@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose, { Schema, Document, Model, Types } from "mongoose";
 import bcrypt from "bcryptjs";
 import {
   encryptSensitiveData,
@@ -35,6 +35,30 @@ export interface IUser extends Document {
   department?: string;
   regNumber?: string;
   regNumberHash?: string;
+
+  // Normalized institution references. The plain-string school/faculty/
+  // department fields above stay for existing records; new code should
+  // read and write these. The *Name/*Abbr fields are denormalised copies
+  // kept in sync with the refs.
+  universityId?: Types.ObjectId;
+  facultyId?: Types.ObjectId;
+  departmentId?: Types.ObjectId;
+  universityName?: string;
+  universityAbbr?: string;
+  facultyName?: string;
+  departmentName?: string;
+  semester?: string;
+  bio?: string;
+
+  // Contribution tracking, used for role progression
+  verifiedMaterialCount: number;
+  submissionCount: number;
+
+  // Role progression
+  tokenVersion: number;
+  roleUpgradedAt?: Date;
+  previousRole?: string;
+
   uuid: string;
   upid: string;
   isVerified: boolean;
@@ -100,6 +124,24 @@ const UserSchema = new Schema<IUser>(
     department: { type: String },
     regNumber: { type: String },
     regNumberHash: { type: String },
+
+    universityId: { type: Schema.Types.ObjectId, ref: "University" },
+    facultyId: { type: Schema.Types.ObjectId, ref: "Faculty" },
+    departmentId: { type: Schema.Types.ObjectId, ref: "Department" },
+    universityName: { type: String },
+    universityAbbr: { type: String },
+    facultyName: { type: String },
+    departmentName: { type: String },
+    semester: { type: String },
+    bio: { type: String },
+
+    verifiedMaterialCount: { type: Number, default: 0 },
+    submissionCount: { type: Number, default: 0 },
+
+    tokenVersion: { type: Number, default: 0 },
+    roleUpgradedAt: { type: Date },
+    previousRole: { type: String },
+
     uuid: { type: String, required: true, unique: true },
     upid: { type: String, required: true, unique: true },
     isVerified: { type: Boolean, default: false },
