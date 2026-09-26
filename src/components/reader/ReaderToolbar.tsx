@@ -1,10 +1,14 @@
 // components/reader/ReaderToolbar.tsx
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useReader } from "@/context/readerContext";
 import { useDeviceCapability } from "@/hooks/useDeviceCapability";
+import { canRunModernPdf } from "@/lib/deviceCapability";
 import type { Book } from "@/types/library";
+
+const noopSubscribe = () => () => {};
 
 export function ReaderToolbar({ book }: { book: Book }) {
   const {
@@ -25,6 +29,11 @@ export function ReaderToolbar({ book }: { book: Book }) {
   } = useReader();
 
   const { capability, ready } = useDeviceCapability();
+  // null on the server; the same check read/[id]/page.tsx routes on
+  const modernPdf = useSyncExternalStore(noopSubscribe, canRunModernPdf, () => null);
+  // Old browsers read Cloudinary page images instead of running pdf.js
+  // (Backblaze books show an "unsupported" message instead, not images)
+  const imageMode = modernPdf === false && book.storageProvider === "cloudinary";
   const bookmarked = isPageBookmarked(currentPage);
 
   // Only hide scroll mode once capability is assessed — avoids layout shift
@@ -245,13 +254,22 @@ export function ReaderToolbar({ book }: { book: Book }) {
         </div>
       </div>
 
-      {/* Low device notice — shown once, sits below the toolbar */}
-      {ready && capability === "low" && (
+      {/* Reader notices — sit below the toolbar */}
+      {imageMode ? (
         <div className="px-4 py-1.5 bg-amber-500/10 border-t border-amber-500/20">
           <p className="text-xs text-amber-400/80 text-center">
-            Lightweight mode active — scroll view disabled to save memory
+            Your browser can&apos;t run the PDF viewer — showing page images instead
           </p>
         </div>
+      ) : (
+        ready &&
+        capability === "low" && (
+          <div className="px-4 py-1.5 bg-amber-500/10 border-t border-amber-500/20">
+            <p className="text-xs text-amber-400/80 text-center">
+              Lightweight mode active — scroll view disabled to save memory
+            </p>
+          </div>
+        )
       )}
     </div>
   );

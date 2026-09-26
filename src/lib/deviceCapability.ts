@@ -74,18 +74,40 @@ export const PAGE_LOAD_CONFIG = {
 } as const;
 
 /**
- * Whether this browser can run pdf.js 6.x, which needs class static blocks
- * (Chrome/WebView 94+). Feature-tested rather than read from the user agent,
- * since some browsers (e.g. Kiwi) report a newer Chrome than they run.
+ * Whether this browser can run pdf.js 6.x. Feature-tested against what
+ * pdf.js actually calls with no fallback, rather than read from the user
+ * agent: forks such as Kiwi report a newer Chrome than they run, and Chrome
+ * on Android reports "Android 10" whatever the real OS version.
+ * Uint8Array.toHex and URL.parse aren't tested: layout.tsx and the worker
+ * polyfill supply them.
  */
 export function canRunModernPdf(): boolean {
-  if (typeof window === "undefined") return true;
+  if (typeof window === "undefined") return true; // SSR
+
+  // Test 1: class static blocks (Chrome 94+, Safari 16.4+,
+  // Firefox 93+) — pdf.js 6.x uses these extensively
   try {
-    new Function("class A{static{}}")();
-    return true;
+    new Function("class A { static { } }")();
   } catch {
     return false;
   }
+
+  // Test 2: Promise.try (Chrome 128+, Firefox 134+, Safari 17.4+)
+  // pdf.js 6.x calls this directly with no fallback
+  if (typeof (Promise as unknown as { try?: unknown }).try !== "function") {
+    return false;
+  }
+
+  // Test 3: Map.prototype.getOrInsertComputed
+  // pdf.js 6.x uses this throughout its internals
+  if (
+    typeof (Map.prototype as unknown as { getOrInsertComputed?: unknown })
+      .getOrInsertComputed !== "function"
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 /** Old browsers read Cloudinary page images instead of running pdf.js. */
