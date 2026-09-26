@@ -72,6 +72,9 @@ async function verifyTier1(
   if (!DECIDABLE_STATUSES.includes(submission.status)) {
     return fail(409, `This submission is already ${submission.status.replace("_", " ")}.`);
   }
+  if (submission.submittedBy.toString() === session.userId) {
+    return fail(403, "You cannot verify your own submission.");
+  }
 
   const Book = await getBookModel();
   const book = await Book.findById(submission.bookId)
