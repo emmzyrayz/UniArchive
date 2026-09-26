@@ -1,14 +1,13 @@
 // GET /api/books/[id]/page?page=N
-// Signed Cloudinary image URL for one page of a book (owner only). The image
+// Signed Cloudinary image URL for one page of a book (owner, or a reviewer
+// once it's submitted — see lib/bookAccess). The image
 // reader and offline save go through here, so the client never builds
 // Cloudinary URLs itself.
 import { NextResponse, type NextRequest } from "next/server";
-import { isValidObjectId } from "mongoose";
 import { requireAuth } from "@/lib/auth/session";
-import { getBookModel } from "@/lib/models/bookModel";
+import { findReadableBook } from "@/lib/bookAccess";
 import { getCloudinaryPageImageUrl } from "@/lib/cloudinary";
 import { handleRouteError } from "@/lib/api";
-import type { BookDoc } from "@/lib/dto/book";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -25,12 +24,9 @@ export async function GET(request: NextRequest, context: Context) {
       return NextResponse.json({ message: "Invalid page number." }, { status: 400 });
     }
 
-    // Non-owners get the same 404 as a missing book, so ids can't be probed.
-    const book = isValidObjectId(id)
-      ? await (await getBookModel())
-          .findOne({ _id: id, uploaderId: session.userId })
-          .lean<BookDoc>()
-      : null;
+    // Anyone who can't read it gets the same 404 as a missing book, so ids
+    // can't be probed.
+    const book = (await findReadableBook(id, session))?.book;
     if (!book) {
       return NextResponse.json({ message: "Book not found." }, { status: 404 });
     }

@@ -1,8 +1,9 @@
 // src/hooks/useNavConfig.ts
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useUser } from "@/context/userContext";
 import type { UserRole } from "@/types/roles";
+import { PERMISSIONS, can } from "@/lib/auth/permissions";
 
 export interface NavItem {
   name: string;
@@ -10,6 +11,8 @@ export interface NavItem {
   icon?: string;
   requiresAuth?: boolean;
   roles?: UserRole[];
+  /** Count shown next to the item (e.g. submissions waiting for review). */
+  badge?: number;
 }
 
 export interface NavCategory {
@@ -38,6 +41,10 @@ const MOD_ROLES: UserRole[] = [
   "lecturer",
 ];
 const CONTRIBUTOR_ROLES: UserRole[] = [...MOD_ROLES, "collaborator"];
+const REVIEWER_ROLES = (Object.keys(PERMISSIONS) as UserRole[]).filter((role) =>
+  can(role, "admin.view_submissions"),
+);
+const SUBMISSIONS_PATH = "/admin/submissions";
 
 const navConfig: PageNavConfig = {
   "/": {
@@ -123,6 +130,12 @@ const navConfig: PageNavConfig = {
             path: "/moderation",
             requiresAuth: true,
             roles: MOD_ROLES,
+          },
+          {
+            name: "Submissions",
+            path: SUBMISSIONS_PATH,
+            requiresAuth: true,
+            roles: REVIEWER_ROLES,
           },
           {
             name: "User Management",
@@ -270,6 +283,27 @@ const navConfig: PageNavConfig = {
     showSearch: true,
   },
 
+  "/admin/submissions": {
+    title: "Submissions",
+    standaloneItems: [
+      { name: "My Library", path: "/home", requiresAuth: true },
+      {
+        name: "Submissions",
+        path: SUBMISSIONS_PATH,
+        requiresAuth: true,
+        roles: REVIEWER_ROLES,
+      },
+      {
+        name: "Admin Panel",
+        path: "/admin",
+        requiresAuth: true,
+        roles: ADMIN_ROLES,
+      },
+    ],
+    categories: [],
+    showSearch: false,
+  },
+
   "/moderation": {
     title: "Moderation",
     standaloneItems: [
@@ -314,16 +348,39 @@ const navConfig: PageNavConfig = {
 export const useNavConfig = () => {
   const pathname = usePathname();
   const { userProfile, hasActiveSession, canAccessRoute } = useUser();
+  const isReviewer =
+    hasActiveSession && !!userProfile && REVIEWER_ROLES.includes(userProfile.role);
+
+  // Submissions waiting for a reviewer, for the nav badge. Refreshed on
+  // navigation; failures just hide the badge.
+  const [pendingSubmissions, setPendingSubmissions] = useState(0);
+  useEffect(() => {
+    if (!isReviewer) return;
+    const controller = new AbortController();
+    fetch("/api/admin/submissions/count", { signal: controller.signal, cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { pendingCount?: number } | null) => {
+        setPendingSubmissions(data?.pendingCount ?? 0);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [isReviewer, pathname]);
 
   const filterItems = (items: NavItem[]): NavItem[] => {
-    return items.filter((item) => {
-      if (item.requiresAuth && !hasActiveSession) return false;
-      if (item.roles && item.roles.length > 0) {
-        if (!userProfile) return false;
-        return item.roles.includes(userProfile.role);
-      }
-      return true;
-    });
+    return items
+      .filter((item) => {
+        if (item.requiresAuth && !hasActiveSession) return false;
+        if (item.roles && item.roles.length > 0) {
+          if (!userProfile) return false;
+          return item.roles.includes(userProfile.role);
+        }
+        return true;
+      })
+      .map((item) =>
+        item.path === SUBMISSIONS_PATH && isReviewer && pendingSubmissions > 0
+          ? { ...item, badge: pendingSubmissions }
+          : item,
+      );
   };
 
   const filterCategories = (categories: NavCategory[]): NavCategory[] => {
@@ -356,7 +413,7 @@ export const useNavConfig = () => {
       additionalActions: filterItems(config.additionalActions ?? []),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, userProfile, hasActiveSession]);
+  }, [pathname, userProfile, hasActiveSession, pendingSubmissions]);
 
   const getUserSpecificItems = (): NavItem[] => {
     if (!hasActiveSession || !userProfile) {
@@ -374,6 +431,12 @@ export const useNavConfig = () => {
       items.push({ name: "Admin Panel", path: "/admin" });
     if (MOD_ROLES.includes(userProfile.role))
       items.push({ name: "Moderation", path: "/moderation" });
+    if (REVIEWER_ROLES.includes(userProfile.role))
+      items.push({
+        name: "Review Submissions",
+        path: SUBMISSIONS_PATH,
+        badge: pendingSubmissions || undefined,
+      });
     return items;
   };
 

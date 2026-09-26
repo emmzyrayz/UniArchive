@@ -46,8 +46,17 @@ export function readSessionToken(request: NextRequest): string | null {
 export async function getCurrentSessionUser(
   request: NextRequest,
 ): Promise<SessionUser | null> {
-  const rawToken = readSessionToken(request);
-  if (!rawToken) return null;
+  return getSessionUserByToken(readSessionToken(request));
+}
+
+/**
+ * Resolves a raw session token (already format-checked) to its user. Server
+ * components read the cookie themselves and come in here.
+ */
+export async function getSessionUserByToken(
+  rawToken: string | null | undefined,
+): Promise<SessionUser | null> {
+  if (!rawToken || !/^[a-f0-9]{64}$/.test(rawToken)) return null;
 
   try {
     const SessionCache = await getSessionCacheModel();
@@ -116,6 +125,11 @@ export async function requirePermission(
     | "verify"
     | "teach"
     | "create_course"
+    | "admin.view_submissions"
+    | "submission.review"
+    | "submission.verify_tier1"
+    | "submission.verify_tier2"
+    | "submission.reject"
   >,
 ): Promise<SessionUser> {
   const user = await requireAuth(request);

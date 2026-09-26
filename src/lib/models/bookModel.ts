@@ -8,11 +8,11 @@ import {
   MATERIAL_CATEGORY_IDS,
   type MaterialCategory,
 } from "@/lib/constants/materialCategories";
-import type {
-  MaterialStatus,
-  Visibility,
-} from "@/lib/models/materialModel";
 
+// Legacy per-book audit fields, kept for existing records. The UniLibrary
+// review pipeline lives on MaterialSubmission.
+export type MaterialStatus = "pending" | "in_review" | "verified" | "rejected";
+export type Visibility = "private" | "shared" | "public";
 export type BookProcessingStatus = "none" | "pending" | "done" | "failed";
 export type BookStorageProvider = "cloudinary" | "backblaze";
 

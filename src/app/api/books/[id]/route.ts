@@ -1,4 +1,4 @@
-// GET    /api/books/[id]  - one book (owner only)
+// GET    /api/books/[id]  - one book (owner, or a reviewer once it's submitted)
 // PATCH  /api/books/[id]  - edit title/description (owner only)
 // DELETE /api/books/[id]  - delete the file from storage (B2 or Cloudinary),
 //                            then the record. Refused while the book has a
@@ -11,6 +11,7 @@ import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
 import { storageClient } from "@/lib/storage";
 import { deleteCloudinaryPdf, getCloudinaryPdfUrl } from "@/lib/cloudinary";
 import { toBookDto, type BookDoc } from "@/lib/dto/book";
+import { findReadableBook } from "@/lib/bookAccess";
 import {
   EDITABLE_SUBMISSION_STATUSES,
   getMaterialSubmissionModel,
@@ -61,7 +62,8 @@ async function signedReadUrl(book: BookDoc): Promise<string | null> {
 
 export async function GET(request: NextRequest, context: Context) {
   try {
-    const found = await findOwnedBook(request, context);
+    const session = await requireAuth(request);
+    const found = await findReadableBook((await context.params).id, session);
     if (!found) return notFound();
 
     // ?meta=1: just the record (e.g. the submission form). No signed URL,
@@ -74,7 +76,7 @@ export async function GET(request: NextRequest, context: Context) {
     }
 
     // Storage is private, so the stored URL can't be read by the browser.
-    // Hand the owner a signed URL instead.
+    // Hand the reader a signed URL instead.
     const fileUrl = await signedReadUrl(found.book);
     if (!fileUrl) {
       return NextResponse.json(
@@ -85,15 +87,19 @@ export async function GET(request: NextRequest, context: Context) {
 
     // Fire-and-forget: a failed bookkeeping write must never block or break
     // the read. timestamps: false so opening a book doesn't bump updatedAt.
-    found.Book.updateOne(
-      { _id: found.book._id },
-      { $set: { lastOpenedAt: new Date() } },
-      { timestamps: false },
-    )
-      .exec()
-      .catch((error) => {
-        console.error("GET /api/books/[id]: failed to update lastOpenedAt:", error);
-      });
+    // A reviewer opening it isn't the owner's reading activity.
+    if (found.isOwner) {
+      (await getBookModel())
+        .updateOne(
+          { _id: found.book._id },
+          { $set: { lastOpenedAt: new Date() } },
+          { timestamps: false },
+        )
+        .exec()
+        .catch((error) => {
+          console.error("GET /api/books/[id]: failed to update lastOpenedAt:", error);
+        });
+    }
 
     return NextResponse.json(
       { book: { ...toBookDto(found.book), fileUrl } },

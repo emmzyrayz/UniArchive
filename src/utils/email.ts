@@ -4,6 +4,8 @@ interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+  /** Plain-text fallback for clients that don't render HTML. */
+  text?: string;
 }
 
 const escapeHtml = (value: string) =>
@@ -41,7 +43,7 @@ class EmailService {
     return this.transporter;
   }
 
-  async sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
+  async sendEmail({ to, subject, html, text }: EmailOptions): Promise<boolean> {
     try {
       const transporter = this.getTransporter();
       const emailUser = process.env.EMAIL_USER;
@@ -51,6 +53,7 @@ class EmailService {
         to,
         subject,
         html,
+        text,
       });
       return true;
     } catch (error) {
@@ -181,3 +184,139 @@ class EmailService {
 }
 
 export const emailService = new EmailService();
+
+// ---------------------------------------------------------------------------
+// UniLibrary submission review
+// ---------------------------------------------------------------------------
+
+function appUrl(path: string): string {
+  const origin = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "");
+  return `${origin}${path}`;
+}
+
+/** Shared frame for the review emails; `bodyHtml` must already be escaped. */
+function reviewEmailHtml(title: string, heading: string, bodyHtml: string): string {
+  return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>${escapeHtml(title)}</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">UniArchive</h1>
+          <p style="color: white; margin: 10px 0 0 0; opacity: 0.9;">${escapeHtml(heading)}</p>
+        </div>
+        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+          ${bodyHtml}
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
+            <p>This is an automated email. Please do not reply to this message.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+}
+
+export async function sendSubmissionVerifiedEmail(params: {
+  toEmail: string;
+  toName: string;
+  materialTitle: string;
+  tier: 1 | 2;
+  note?: string;
+  materialUrl: string; // app path, e.g. /unilibrary
+}): Promise<void> {
+  const { toEmail, toName, materialTitle, tier, note, materialUrl } = params;
+  const subject =
+    tier === 1
+      ? "Your material has been verified on UniArchive 🎉"
+      : "Your material received a lecturer endorsement on UniArchive ⭐";
+  const lead =
+    tier === 1
+      ? `Your material "${materialTitle}" has been verified on UniArchive.`
+      : `Your material "${materialTitle}" has been endorsed on UniArchive.`;
+  const detail =
+    tier === 1
+      ? "It's now visible in the UniLibrary with a verified badge."
+      : "A lecturer has endorsed this material as academically accurate.";
+  const link = appUrl(materialUrl);
+
+  const text = [
+    `Hi ${toName},`,
+    "",
+    lead,
+    "",
+    detail,
+    ...(note ? ["", `Reviewer note: ${note}`] : []),
+    "",
+    `View it here: ${link}`,
+    "",
+    "Thank you for contributing to UniArchive!",
+  ].join("\n");
+
+  const html = reviewEmailHtml(
+    subject,
+    tier === 1 ? "Material Verified" : "Lecturer Endorsement",
+    `
+          <h2 style="color: #333; margin-top: 0;">Hi ${escapeHtml(toName)},</h2>
+          <p>${escapeHtml(lead)}</p>
+          <p>${escapeHtml(detail)}</p>
+          ${
+            note
+              ? `<div style="background: white; padding: 16px 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+            <strong>Reviewer note:</strong> ${escapeHtml(note)}
+          </div>`
+              : ""
+          }
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${escapeHtml(link)}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              Open the UniLibrary
+            </a>
+          </div>
+          <p>Thank you for contributing to UniArchive!</p>`,
+  );
+
+  await emailService.sendEmail({ to: toEmail, subject, html, text });
+}
+
+export async function sendSubmissionRejectedEmail(params: {
+  toEmail: string;
+  toName: string;
+  materialTitle: string;
+  reason: string;
+}): Promise<void> {
+  const { toEmail, toName, materialTitle, reason } = params;
+  const subject = "Your UniArchive submission needs attention";
+  const link = appUrl("/home");
+
+  const text = [
+    `Hi ${toName},`,
+    "",
+    `Your submission "${materialTitle}" could not be verified at this time.`,
+    "",
+    `Reason: ${reason}`,
+    "",
+    "You can update your submission and resubmit it from your library:",
+    link,
+  ].join("\n");
+
+  const html = reviewEmailHtml(
+    subject,
+    "Submission Update",
+    `
+          <h2 style="color: #333; margin-top: 0;">Hi ${escapeHtml(toName)},</h2>
+          <p>Your submission "${escapeHtml(materialTitle)}" could not be verified at this time.</p>
+          <div style="background: white; padding: 16px 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+            <strong>Reason:</strong> ${escapeHtml(reason)}
+          </div>
+          <p>You can update your submission and resubmit it from your library.</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${escapeHtml(link)}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              Go to my library
+            </a>
+          </div>`,
+  );
+
+  await emailService.sendEmail({ to: toEmail, subject, html, text });
+}

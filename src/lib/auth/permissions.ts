@@ -17,13 +17,30 @@ type Action =
   | "teach"
   | "create_course"
   | "manage_institution"
-  | "assign_role";
+  | "assign_role"
+  // UniLibrary submission review
+  | "admin.view_submissions" // see the admin submissions queue, add notes
+  | "submission.review" // start a review
+  | "submission.verify_tier1" // grant tier 1 (green badge)
+  | "submission.verify_tier2" // grant tier 2 (gold crown), never on own submission
+  | "submission.reject"; // reject with a reason
 
 const PERMISSIONS: Record<UserRole, Action[]> = {
   student: ["download", "comment", "upload"],
   collaborator: ["download", "comment", "upload", "edit"],
-  auditor: ["download", "comment", "upload", "edit", "moderate", "audit"],
-  course_rep: ["download", "comment", "upload", "edit", "moderate"],
+  auditor: [
+    "download",
+    "comment",
+    "upload",
+    "edit",
+    "moderate",
+    "audit",
+    "admin.view_submissions",
+    "submission.review",
+    "submission.verify_tier1",
+    "submission.reject",
+  ],
+  course_rep: ["download", "comment", "upload", "edit", "moderate", "admin.view_submissions"],
   lecturer: [
     "download",
     "comment",
@@ -34,6 +51,8 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "verify",
     "teach",
     "create_course",
+    "admin.view_submissions",
+    "submission.verify_tier2",
   ],
   ed_admin: [
     "download",
@@ -47,6 +66,11 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "teach",
     "create_course",
     "manage_institution",
+    "admin.view_submissions",
+    "submission.review",
+    "submission.verify_tier1",
+    "submission.verify_tier2",
+    "submission.reject",
   ],
   com_admin: [
     "download",
@@ -62,6 +86,11 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "teach",
     "create_course",
     "manage_institution",
+    "admin.view_submissions",
+    "submission.review",
+    "submission.verify_tier1",
+    "submission.verify_tier2",
+    "submission.reject",
   ],
   webmaster: [
     "download",
@@ -78,6 +107,11 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "create_course",
     "manage_institution",
     "assign_role",
+    "admin.view_submissions",
+    "submission.review",
+    "submission.verify_tier1",
+    "submission.verify_tier2",
+    "submission.reject",
   ],
   dev: [
     "download",
@@ -94,6 +128,11 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "create_course",
     "manage_institution",
     "assign_role",
+    "admin.view_submissions",
+    "submission.review",
+    "submission.verify_tier1",
+    "submission.verify_tier2",
+    "submission.reject",
   ],
 };
 

@@ -140,6 +140,17 @@ function TabIcon({ name }: { name: string }) {
   return icons[name] ?? null;
 }
 
+// ─── Nav badge ────────────────────────────────────────────────────────────────
+
+function NavBadge({ count }: { count?: number }) {
+  if (!count) return null;
+  return (
+    <span className="ml-2 inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-white">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 // ─── User Avatar ──────────────────────────────────────────────────────────────
 
 function UserAvatar({ name }: { name: string }) {
@@ -422,6 +433,7 @@ export const Navbar: React.FC = () => {
                     }`}
                   >
                     {item.name}
+                    <NavBadge count={item.badge} />
                   </span>
                   <div
                     className={`h-[2px] rounded mt-1 transition-all duration-300 ${
@@ -478,6 +490,7 @@ export const Navbar: React.FC = () => {
                             }`}
                           >
                             {item.name}
+                            <NavBadge count={item.badge} />
                           </Link>
                         ))}
                       </motion.div>
@@ -671,6 +684,7 @@ export const Navbar: React.FC = () => {
               }`}
             >
               {item.name}
+              <NavBadge count={item.badge} />
             </Link>
           ))}
 
@@ -693,6 +707,7 @@ export const Navbar: React.FC = () => {
                     }`}
                   >
                     {item.name}
+                    <NavBadge count={item.badge} />
                   </Link>
                 ))}
               </div>
@@ -713,6 +728,7 @@ export const Navbar: React.FC = () => {
                   className="flex items-center py-2.5 px-3 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   {item.name}
+                  <NavBadge count={item.badge} />
                 </Link>
               ))}
             </div>

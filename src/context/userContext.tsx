@@ -736,6 +736,11 @@ const canAccessRoute = useCallback(
     if (!hasActiveSession) return false;
     if (!userProfile) return false;
 
+    // Reviewers who aren't admins still get the submissions queue
+    if (path === "/admin/submissions" || path.startsWith("/admin/submissions/")) {
+      return can(userProfile.role, "admin.view_submissions");
+    }
+
     const adminPrefixes = ["/admin", "/moderation"];
     const adminRoles: UserRole[] = [
       "ed_admin",
