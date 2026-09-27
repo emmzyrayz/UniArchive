@@ -295,6 +295,7 @@ export const Navbar: React.FC = () => {
   const [ribbonHeight, setRibbonHeight] = useState(0);
 
   const navbarRef = useRef<HTMLDivElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideNavbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -384,7 +385,13 @@ export const Navbar: React.FC = () => {
       ) {
         setDropdownOpen(false);
       }
-      if (navbarRef.current && !navbarRef.current.contains(e.target as Node)) {
+      // The drawer renders outside the navbar, so it needs its own check;
+      // otherwise pressing a drawer link closes the menu before the click lands
+      if (
+        navbarRef.current &&
+        !navbarRef.current.contains(e.target as Node) &&
+        !drawerRef.current?.contains(e.target as Node)
+      ) {
         setOpenDropdown(null);
         if (isMobileMenuOpen) setIsMobileMenuOpen(false);
       }
@@ -651,6 +658,7 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile drawer */}
       <motion.div
+        ref={drawerRef}
         initial={{ x: "100%" }}
         animate={{ x: isMobileMenuOpen ? 0 : "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
