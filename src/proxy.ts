@@ -20,7 +20,7 @@ const ADMIN_PREFIXES = ["/admin", "/moderation"];
 const ADMIN_ROLES: UserRole[] = ["ed_admin", "com_admin", "webmaster", "dev"];
 // Admin pages open to non-admin reviewers (auditors, lecturers, ...). The
 // proxy only requires a session for these; the page checks the permission.
-const PAGE_CHECKED_ADMIN_PREFIXES = ["/admin/submissions"];
+const PAGE_CHECKED_ADMIN_PREFIXES = ["/admin/submissions", "/admin/role-applications"];
 
 // Files served from /public (pdf.worker.min.mjs, icons, manifest, sw.js, ...)
 const STATIC_FILE = /\.[a-zA-Z0-9]+$/;

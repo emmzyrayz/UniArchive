@@ -46,7 +46,9 @@ export function validateDob(value: string | Date): string | null {
   return null;
 }
 
-// Role progression thresholds shown on the profile page.
+// Role progression thresholds, shared by the profile page, the dashboard and
+// the eligibility engine (src/lib/auth/roleEligibility.ts).
 export const COLLABORATOR_MATERIALS_REQUIRED = 5;
+export const COLLABORATOR_MIN_ACCOUNT_AGE_DAYS = 30;
 export const AUDITOR_MATERIALS_REQUIRED = 15;
 export const AUDITOR_MIN_MONTHS_AS_COLLABORATOR = 2;

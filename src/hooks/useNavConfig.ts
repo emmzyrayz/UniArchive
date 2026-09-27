@@ -45,6 +45,7 @@ const REVIEWER_ROLES = (Object.keys(PERMISSIONS) as UserRole[]).filter((role) =>
   can(role, "admin.view_submissions"),
 );
 const SUBMISSIONS_PATH = "/admin/submissions";
+const ROLE_APPLICATIONS_PATH = "/admin/role-applications";
 // Public: signed-out visitors can browse the UniLibrary too
 const UNILIBRARY_PATH = "/unilibrary";
 const UNILIBRARY_ITEMS: NavItem[] = [
@@ -53,6 +54,24 @@ const UNILIBRARY_ITEMS: NavItem[] = [
   { name: "Notes & Summaries", path: `${UNILIBRARY_PATH}?category=LEARNING_AIDS` },
   { name: "Textbooks", path: `${UNILIBRARY_PATH}?category=BOOKS` },
 ];
+
+// The reviewer queues share one nav so either page links to the other
+const REVIEW_QUEUE_NAV = (title: string): PageNavConfig[string] => ({
+  title,
+  standaloneItems: [
+    { name: "My Library", path: "/home", requiresAuth: true },
+    { name: "Submissions", path: SUBMISSIONS_PATH, requiresAuth: true, roles: REVIEWER_ROLES },
+    {
+      name: "Role Applications",
+      path: ROLE_APPLICATIONS_PATH,
+      requiresAuth: true,
+      roles: REVIEWER_ROLES,
+    },
+    { name: "Admin Panel", path: "/admin", requiresAuth: true, roles: ADMIN_ROLES },
+  ],
+  categories: [],
+  showSearch: false,
+});
 
 const navConfig: PageNavConfig = {
   "/": {
@@ -141,6 +160,12 @@ const navConfig: PageNavConfig = {
           {
             name: "Submissions",
             path: SUBMISSIONS_PATH,
+            requiresAuth: true,
+            roles: REVIEWER_ROLES,
+          },
+          {
+            name: "Role Applications",
+            path: ROLE_APPLICATIONS_PATH,
             requiresAuth: true,
             roles: REVIEWER_ROLES,
           },
@@ -274,26 +299,8 @@ const navConfig: PageNavConfig = {
     showSearch: true,
   },
 
-  "/admin/submissions": {
-    title: "Submissions",
-    standaloneItems: [
-      { name: "My Library", path: "/home", requiresAuth: true },
-      {
-        name: "Submissions",
-        path: SUBMISSIONS_PATH,
-        requiresAuth: true,
-        roles: REVIEWER_ROLES,
-      },
-      {
-        name: "Admin Panel",
-        path: "/admin",
-        requiresAuth: true,
-        roles: ADMIN_ROLES,
-      },
-    ],
-    categories: [],
-    showSearch: false,
-  },
+  [SUBMISSIONS_PATH]: REVIEW_QUEUE_NAV("Submissions"),
+  [ROLE_APPLICATIONS_PATH]: REVIEW_QUEUE_NAV("Role Applications"),
 
   "/moderation": {
     title: "Moderation",
@@ -342,20 +349,29 @@ export const useNavConfig = () => {
   const isReviewer =
     hasActiveSession && !!userProfile && REVIEWER_ROLES.includes(userProfile.role);
 
-  // Submissions waiting for a reviewer, for the nav badge. Refreshed on
-  // navigation; failures just hide the badge.
-  const [pendingSubmissions, setPendingSubmissions] = useState(0);
+  // Pending items in the reviewer queues, for the nav badges. Refreshed on
+  // navigation; failures just hide the badges.
+  const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
   useEffect(() => {
     if (!isReviewer) return;
     const controller = new AbortController();
-    fetch("/api/admin/submissions/count", { signal: controller.signal, cache: "no-store" })
+    fetch("/api/admin/counts", { signal: controller.signal, cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { pendingCount?: number } | null) => {
-        setPendingSubmissions(data?.pendingCount ?? 0);
-      })
+      .then(
+        (
+          data: { pendingSubmissions?: number; pendingRoleApplications?: number } | null,
+        ) => {
+          setPendingCounts({
+            [SUBMISSIONS_PATH]: data?.pendingSubmissions ?? 0,
+            [ROLE_APPLICATIONS_PATH]: data?.pendingRoleApplications ?? 0,
+          });
+        },
+      )
       .catch(() => {});
     return () => controller.abort();
   }, [isReviewer, pathname]);
+  const badgeFor = (path: string) =>
+    isReviewer && pendingCounts[path] ? pendingCounts[path] : undefined;
 
   const filterItems = (items: NavItem[]): NavItem[] => {
     return items
@@ -367,11 +383,10 @@ export const useNavConfig = () => {
         }
         return true;
       })
-      .map((item) =>
-        item.path === SUBMISSIONS_PATH && isReviewer && pendingSubmissions > 0
-          ? { ...item, badge: pendingSubmissions }
-          : item,
-      );
+      .map((item) => {
+        const badge = badgeFor(item.path);
+        return badge ? { ...item, badge } : item;
+      });
   };
 
   const filterCategories = (categories: NavCategory[]): NavCategory[] => {
@@ -404,7 +419,7 @@ export const useNavConfig = () => {
       additionalActions: filterItems(config.additionalActions ?? []),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, userProfile, hasActiveSession, pendingSubmissions]);
+  }, [pathname, userProfile, hasActiveSession, pendingCounts]);
 
   const getUserSpecificItems = (): NavItem[] => {
     if (!hasActiveSession || !userProfile) {
@@ -423,11 +438,14 @@ export const useNavConfig = () => {
     if (MOD_ROLES.includes(userProfile.role))
       items.push({ name: "Moderation", path: "/moderation" });
     if (REVIEWER_ROLES.includes(userProfile.role))
-      items.push({
-        name: "Review Submissions",
-        path: SUBMISSIONS_PATH,
-        badge: pendingSubmissions || undefined,
-      });
+      items.push(
+        { name: "Review Submissions", path: SUBMISSIONS_PATH, badge: badgeFor(SUBMISSIONS_PATH) },
+        {
+          name: "Role Applications",
+          path: ROLE_APPLICATIONS_PATH,
+          badge: badgeFor(ROLE_APPLICATIONS_PATH),
+        },
+      );
     return items;
   };
 

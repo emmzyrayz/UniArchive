@@ -10,6 +10,7 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { StorageUsage } from "@/components/dashboard/StorageUsage";
 import { BookmarksList } from "@/components/dashboard/BookmarksList";
 import { HighlightsList } from "@/components/dashboard/HighlightsList";
+import { RoleProgression } from "@/components/dashboard/RoleProgression";
 import { Button } from "@/components/UI/Buttons";
 import { formatBytes } from "@/assets/data/dashboardData";
 import type { Book } from "@/types/library";
@@ -244,6 +245,9 @@ export default function DashboardPage() {
         {/* Overview tab */}
         {activeTab === "overview" && (
           <div className="space-y-8">
+            {/* Loads on its own, so it shows even if the stats fail */}
+            <RoleProgression />
+
             {stats && storage ? (
               <>
                 <div className="grid grid-cols-2 gap-4">

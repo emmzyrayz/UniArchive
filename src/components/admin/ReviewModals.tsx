@@ -1,5 +1,6 @@
 // components/admin/ReviewModals.tsx
-// Status badge plus the verify / endorse / reject dialogs.
+// Status badge plus the verify / endorse / reject dialogs. Modal and
+// ModalActions are also used by the role application queue.
 "use client";
 
 import { useEffect, useId, useState, type ReactNode } from "react";
@@ -47,7 +48,7 @@ export function StatusBadge({
   );
 }
 
-function Modal({
+export function Modal({
   title,
   onClose,
   children,
@@ -93,10 +94,10 @@ function Modal({
   );
 }
 
-const fieldClass =
+export const fieldClass =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/40";
 
-function ModalActions({
+export function ModalActions({
   onCancel,
   confirmLabel,
   confirmClass,

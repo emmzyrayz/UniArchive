@@ -3,7 +3,7 @@
 //
 // Tier 1 ("submission.verify_tier1"): submitted | in_review -> verified.
 //   Creates the Material record from the submission and its Book, bumps the
-//   submitter's verifiedMaterialCount and emails them.
+//   submitter's verifiedMaterialCount, logs a ContributionEvent and emails them.
 // Tier 2 ("submission.verify_tier2"): endorses an already verified material.
 //   Never on the caller's own submission.
 import { NextResponse, type NextRequest } from "next/server";
@@ -13,6 +13,7 @@ import { handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { getBookModel } from "@/lib/models/bookModel";
 import { getUserModel } from "@/lib/models/userModel";
+import { getContributionEventModel } from "@/lib/models/contributionEventModel";
 import {
   getMaterialSubmissionModel,
   type IMaterialSubmission,
@@ -168,6 +169,22 @@ async function verifyTier1(
 
   const User = await getUserModel();
   await User.updateOne({ _id: verified.submittedBy }, { $inc: { verifiedMaterialCount: 1 } });
+
+  // The role-progression audit trail. The verification is already committed,
+  // so a failed ledger write is logged rather than failing the request.
+  const ContributionEvent = await getContributionEventModel();
+  await ContributionEvent.create({
+    userId: verified.submittedBy,
+    userUpid: verified.submittedByUpid,
+    materialId: material._id,
+    materialTitle: material.title,
+    submissionId: verified._id,
+    action: "verified",
+    verifiedBy: session.userId,
+    verifiedByUpid: session.upid,
+    verifiedByRole: session.role,
+    verificationTier: "tier1",
+  }).catch((error) => console.error("verify: failed to log contribution event:", error));
 
   const contact = await loadSubmitterContact(verified.submittedBy);
   if (contact) {

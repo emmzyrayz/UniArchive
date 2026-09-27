@@ -320,3 +320,87 @@ export async function sendSubmissionRejectedEmail(params: {
 
   await emailService.sendEmail({ to: toEmail, subject, html, text });
 }
+
+// ---------------------------------------------------------------------------
+// Role applications
+// ---------------------------------------------------------------------------
+
+export async function sendRoleApplicationApprovedEmail(params: {
+  toEmail: string;
+  toName: string;
+  newRole: string; // display label, e.g. "Collaborator"
+}): Promise<void> {
+  const { toEmail, toName, newRole } = params;
+  const subject = `You've been promoted to ${newRole} on UniArchive 🎉`;
+  const link = appUrl("/dashboard");
+
+  const text = [
+    `Hi ${toName},`,
+    "",
+    `Congratulations! You are now a ${newRole} on UniArchive.`,
+    "",
+    "Your new permissions are already active. If anything looks unchanged, sign out and sign in again.",
+    "",
+    `Open your dashboard: ${link}`,
+    "",
+    "Thank you for contributing to UniArchive!",
+  ].join("\n");
+
+  const html = reviewEmailHtml(
+    subject,
+    "Role Application Approved",
+    `
+          <h2 style="color: #333; margin-top: 0;">Congratulations ${escapeHtml(toName)}!</h2>
+          <p>You are now a <strong>${escapeHtml(newRole)}</strong> on UniArchive.</p>
+          <p>Your new permissions are already active. If anything looks unchanged, sign out and sign in again.</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${escapeHtml(link)}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              Open my dashboard
+            </a>
+          </div>
+          <p>Thank you for contributing to UniArchive!</p>`,
+  );
+
+  await emailService.sendEmail({ to: toEmail, subject, html, text });
+}
+
+export async function sendRoleApplicationRejectedEmail(params: {
+  toEmail: string;
+  toName: string;
+  targetRole: string; // display label, e.g. "Collaborator"
+  reviewNote: string;
+}): Promise<void> {
+  const { toEmail, toName, targetRole, reviewNote } = params;
+  const subject = "Your UniArchive role application was reviewed";
+  const link = appUrl("/dashboard");
+
+  const text = [
+    `Hi ${toName},`,
+    "",
+    `Your application for ${targetRole} was not approved at this time.`,
+    "",
+    `Reason: ${reviewNote}`,
+    "",
+    "You can apply again from your dashboard once you've addressed the feedback:",
+    link,
+  ].join("\n");
+
+  const html = reviewEmailHtml(
+    subject,
+    "Role Application Update",
+    `
+          <h2 style="color: #333; margin-top: 0;">Hi ${escapeHtml(toName)},</h2>
+          <p>Your application for <strong>${escapeHtml(targetRole)}</strong> was not approved at this time.</p>
+          <div style="background: white; padding: 16px 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+            <strong>Reason:</strong> ${escapeHtml(reviewNote)}
+          </div>
+          <p>You can apply again from your dashboard once you've addressed the feedback.</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${escapeHtml(link)}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              Open my dashboard
+            </a>
+          </div>`,
+  );
+
+  await emailService.sendEmail({ to: toEmail, subject, html, text });
+}

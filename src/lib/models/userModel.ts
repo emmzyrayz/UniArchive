@@ -55,6 +55,8 @@ export interface IUser extends Document {
   // Contribution tracking, used for role progression
   verifiedMaterialCount: number;
   submissionCount: number;
+  // Active policy violations; any blocks a self-service role application
+  violationCount: number;
 
   // Role progression
   tokenVersion: number;
@@ -144,6 +146,7 @@ const UserSchema = new Schema<IUser>(
 
     verifiedMaterialCount: { type: Number, default: 0 },
     submissionCount: { type: Number, default: 0 },
+    violationCount: { type: Number, default: 0 },
 
     tokenVersion: { type: Number, default: 0 },
     roleUpgradedAt: { type: Date },
