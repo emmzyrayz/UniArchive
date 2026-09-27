@@ -1,10 +1,13 @@
 // src/lib/bookAccess.ts
-// Who may read a Book. The owner always can. A reviewer (anyone with
-// "admin.view_submissions") can read a book once it has been submitted to
-// the UniLibrary — drafts stay private — so they can check the PDF while
-// reviewing. Everyone else gets null, which routes turn into a 404.
+// Who may read a Book. The owner always can. Any signed-in user can read a
+// book that backs an active UniLibrary Material (it has been verified and
+// published). A reviewer (anyone with "admin.view_submissions") can read a
+// book once it has been submitted to the UniLibrary — drafts stay private —
+// so they can check the PDF while reviewing. Everyone else gets null, which
+// routes turn into a 404.
 import { isValidObjectId } from "mongoose";
 import { getBookModel } from "@/lib/models/bookModel";
+import { getMaterialModel } from "@/lib/models/materialModel";
 import { getMaterialSubmissionModel } from "@/lib/models/materialSubmissionModel";
 import { can } from "@/lib/auth/permissions";
 import type { SessionUser } from "@/lib/auth/session";
@@ -19,6 +22,11 @@ export async function findReadableBook(
   const book = await Book.findById(id).lean<BookDoc>();
   if (!book) return null;
   if (book.uploaderId.toString() === session.userId) return { book, isOwner: true };
+
+  const Material = await getMaterialModel();
+  if (await Material.exists({ bookId: book._id, isActive: true })) {
+    return { book, isOwner: false };
+  }
 
   if (!can(session.role, "admin.view_submissions") || !book.submissionId) return null;
   const Submission = await getMaterialSubmissionModel();

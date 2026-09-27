@@ -58,7 +58,7 @@ export const footerSections = [
     title: "Platform",
     links: [
       { label: "Courses", href: "/courses" },
-      { label: "Materials", href: "/materials" },
+      { label: "UniLibrary", href: "/unilibrary" },
       { label: "Community", href: "/community" },
       { label: "Events", href: "/events" },
     ],

@@ -13,7 +13,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_JWT_COOKIE, verifySessionJwt } from "@/lib/auth/jwt";
 import type { UserRole } from "@/types/roles";
 
-const PUBLIC_PATHS = new Set(["/", "/about", "/contact", "/help", "/offline"]);
+// /unilibrary: anyone can browse; reading a material (/read/...) needs a session
+const PUBLIC_PATHS = new Set(["/", "/about", "/contact", "/help", "/offline", "/unilibrary"]);
 const PUBLIC_PREFIXES = ["/auth", "/_next", "/api"];
 const ADMIN_PREFIXES = ["/admin", "/moderation"];
 const ADMIN_ROLES: UserRole[] = ["ed_admin", "com_admin", "webmaster", "dev"];

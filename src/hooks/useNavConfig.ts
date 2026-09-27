@@ -45,19 +45,25 @@ const REVIEWER_ROLES = (Object.keys(PERMISSIONS) as UserRole[]).filter((role) =>
   can(role, "admin.view_submissions"),
 );
 const SUBMISSIONS_PATH = "/admin/submissions";
+// Public: signed-out visitors can browse the UniLibrary too
+const UNILIBRARY_PATH = "/unilibrary";
+const UNILIBRARY_ITEMS: NavItem[] = [
+  { name: "All Materials", path: UNILIBRARY_PATH },
+  { name: "Past Questions", path: `${UNILIBRARY_PATH}?category=EXAMS` },
+  { name: "Notes & Summaries", path: `${UNILIBRARY_PATH}?category=LEARNING_AIDS` },
+  { name: "Textbooks", path: `${UNILIBRARY_PATH}?category=BOOKS` },
+];
 
 const navConfig: PageNavConfig = {
   "/": {
-    standaloneItems: [{ name: "Home", path: "/" }],
+    standaloneItems: [
+      { name: "Home", path: "/" },
+      { name: "UniLibrary", path: UNILIBRARY_PATH },
+    ],
     categories: [
       {
         name: "Academic",
-        items: [
-          { name: "Materials", path: "/materials" },
-          { name: "Past Questions", path: "/materials/past-questions" },
-          { name: "Lecture Notes", path: "/materials/notes" },
-          { name: "Textbooks", path: "/materials/textbooks" },
-        ],
+        items: UNILIBRARY_ITEMS,
       },
       {
         name: "Community",
@@ -75,6 +81,7 @@ const navConfig: PageNavConfig = {
     title: "Library",
     standaloneItems: [
       { name: "My Library", path: "/home", requiresAuth: true },
+      { name: "UniLibrary", path: UNILIBRARY_PATH },
       {
         name: "Upload",
         path: "/upload",
@@ -167,29 +174,13 @@ const navConfig: PageNavConfig = {
     showSearch: true,
   },
 
-  "/materials": {
-    title: "Study Materials",
-    standaloneItems: [{ name: "Home", path: "/" }],
-    categories: [
-      {
-        name: "Browse Materials",
-        items: [
-          { name: "All Materials", path: "/materials" },
-          { name: "Past Questions", path: "/materials/past-questions" },
-          { name: "Lecture Notes", path: "/materials/notes" },
-          { name: "Textbooks", path: "/materials/textbooks" },
-        ],
-      },
-      {
-        name: "By Subject",
-        items: [
-          { name: "Engineering", path: "/materials/engineering" },
-          { name: "Sciences", path: "/materials/sciences" },
-          { name: "Arts", path: "/materials/arts" },
-          { name: "Social Sciences", path: "/materials/social-sciences" },
-        ],
-      },
+  [UNILIBRARY_PATH]: {
+    title: "UniLibrary",
+    standaloneItems: [
+      { name: "Home", path: "/" },
+      { name: "My Library", path: "/home", requiresAuth: true },
     ],
+    categories: [{ name: "Browse", items: UNILIBRARY_ITEMS }],
     showSearch: true,
   },
 
@@ -458,6 +449,7 @@ export const useNavConfig = () => {
   const mobileTabs: NavItem[] = hasActiveSession
     ? [
         { name: "Home", path: "/home", icon: "home" },
+        { name: "UniLibrary", path: UNILIBRARY_PATH, icon: "library" },
         { name: "Dashboard", path: "/dashboard", icon: "layout" },
         { name: "Upload", path: "/upload", icon: "upload" },
         { name: "Profile", path: "/profile", icon: "user" },

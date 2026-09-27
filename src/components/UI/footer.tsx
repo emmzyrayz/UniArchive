@@ -22,7 +22,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: "Study",
     links: [
-      { label: "Materials", href: "/materials" },
+      { label: "UniLibrary", href: "/unilibrary" },
       { label: "Upload", href: "/upload" },
       { label: "Dashboard", href: "/dashboard" },
       { label: "Read", href: "/home" },

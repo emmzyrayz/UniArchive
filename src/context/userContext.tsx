@@ -728,7 +728,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Check route access
 const canAccessRoute = useCallback(
   (path: string): boolean => {
-    const publicRoutes = ["/", "/about", "/contact", "/help", "/offline"];
+    const publicRoutes = ["/", "/about", "/contact", "/help", "/offline", "/unilibrary"];
     const publicPrefixes = ["/auth"];
 
     if (publicRoutes.includes(path)) return true;

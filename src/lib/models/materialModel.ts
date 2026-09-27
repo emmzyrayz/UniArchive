@@ -161,6 +161,8 @@ const MaterialSchema = new Schema<IMaterial, IMaterialModel>(
 );
 
 MaterialSchema.index({ submittedBy: 1, createdAt: -1 });
+// Read access checks: "is this book published?"
+MaterialSchema.index({ bookId: 1, isActive: 1 });
 MaterialSchema.index({ universityId: 1, category: 1, isActive: 1 });
 MaterialSchema.index({ departmentId: 1, category: 1, isActive: 1 });
 MaterialSchema.index({ courseCode: 1, universityId: 1 });

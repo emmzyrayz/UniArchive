@@ -1,4 +1,5 @@
-// GET    /api/books/[id]  - one book (owner, or a reviewer once it's submitted)
+// GET    /api/books/[id]  - one book (owner, anyone once it is published in the
+//                            UniLibrary, or a reviewer once it is submitted)
 // PATCH  /api/books/[id]  - edit title/description (owner only)
 // DELETE /api/books/[id]  - delete the file from storage (B2 or Cloudinary),
 //                            then the record. Refused while the book has a
