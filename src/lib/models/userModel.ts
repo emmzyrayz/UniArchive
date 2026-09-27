@@ -58,6 +58,13 @@ export interface IUser extends Document {
   // Active policy violations; any blocks a self-service role application
   violationCount: number;
 
+  // Suspension: a suspended user can't sign in, and their existing sessions
+  // stop resolving (src/lib/auth/session.ts)
+  isSuspended: boolean;
+  suspendedAt?: Date;
+  suspendedBy?: Types.ObjectId;
+  suspensionReason?: string;
+
   // Role progression
   tokenVersion: number;
   roleUpgradedAt?: Date;
@@ -147,6 +154,11 @@ const UserSchema = new Schema<IUser>(
     verifiedMaterialCount: { type: Number, default: 0 },
     submissionCount: { type: Number, default: 0 },
     violationCount: { type: Number, default: 0 },
+
+    isSuspended: { type: Boolean, default: false },
+    suspendedAt: { type: Date },
+    suspendedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    suspensionReason: { type: String, maxlength: 500 },
 
     tokenVersion: { type: Number, default: 0 },
     roleUpgradedAt: { type: Date },

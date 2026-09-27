@@ -56,6 +56,13 @@ export async function POST(request: NextRequest) {
     }
     if (!(await user.comparePassword(password))) return invalidCredentials();
 
+    if (user.isSuspended) {
+      return NextResponse.json(
+        { message: "This account has been suspended. Contact support if you think this is a mistake." },
+        { status: 403 },
+      );
+    }
+
     if (!user.isVerified) {
       return NextResponse.json(
         {

@@ -6,6 +6,7 @@
 // A rejected submission can be edited and submitted again.
 import { Schema, type Model, type Types } from "mongoose";
 import { connectDB } from "@/lib/mongoose";
+import { SUBMISSION_LEVELS, SUBMISSION_SEMESTERS } from "@/lib/constants/submissions";
 
 export const SUBMISSION_STATUSES = [
   "draft", // saved but not yet submitted
@@ -21,8 +22,7 @@ export const EDITABLE_SUBMISSION_STATUSES: SubmissionStatus[] = ["draft", "rejec
 /** Statuses that mean the material is with reviewers. */
 export const IN_PIPELINE_SUBMISSION_STATUSES: SubmissionStatus[] = ["submitted", "in_review"];
 
-export const SUBMISSION_LEVELS = ["100", "200", "300", "400", "500", "PG", "Staff"] as const;
-export const SUBMISSION_SEMESTERS = ["First", "Second", "Year-long"] as const;
+export { SUBMISSION_LEVELS, SUBMISSION_SEMESTERS };
 
 export interface IReviewNote {
   authorId: Types.ObjectId;

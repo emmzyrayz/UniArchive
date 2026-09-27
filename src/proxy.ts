@@ -20,7 +20,13 @@ const ADMIN_PREFIXES = ["/admin", "/moderation"];
 const ADMIN_ROLES: UserRole[] = ["ed_admin", "com_admin", "webmaster", "dev"];
 // Admin pages open to non-admin reviewers (auditors, lecturers, ...). The
 // proxy only requires a session for these; the page checks the permission.
-const PAGE_CHECKED_ADMIN_PREFIXES = ["/admin/submissions", "/admin/role-applications"];
+const PAGE_CHECKED_ADMIN_PREFIXES = [
+  "/admin/submissions",
+  "/admin/role-applications",
+  "/admin/materials",
+];
+// Exact paths only: "/admin" as a prefix would open every admin page
+const PAGE_CHECKED_ADMIN_PATHS = new Set(["/admin"]);
 
 // Files served from /public (pdf.worker.min.mjs, icons, manifest, sw.js, ...)
 const STATIC_FILE = /\.[a-zA-Z0-9]+$/;
@@ -62,6 +68,7 @@ export async function proxy(request: NextRequest) {
   if (
     matchesPrefix(pathname, ADMIN_PREFIXES) &&
     !matchesPrefix(pathname, PAGE_CHECKED_ADMIN_PREFIXES) &&
+    !PAGE_CHECKED_ADMIN_PATHS.has(pathname) &&
     !ADMIN_ROLES.includes(claims.role)
   ) {
     const signInUrl = new URL("/auth", request.url);

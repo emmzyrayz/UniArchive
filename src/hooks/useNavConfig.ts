@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useUser } from "@/context/userContext";
 import type { UserRole } from "@/types/roles";
 import { PERMISSIONS, can } from "@/lib/auth/permissions";
+import type { AdminCounts } from "@/types/admin";
 
 export interface NavItem {
   name: string;
@@ -44,8 +45,26 @@ const CONTRIBUTOR_ROLES: UserRole[] = [...MOD_ROLES, "collaborator"];
 const REVIEWER_ROLES = (Object.keys(PERMISSIONS) as UserRole[]).filter((role) =>
   can(role, "admin.view_submissions"),
 );
+const rolesThatCan = (action: Parameters<typeof can>[1]) =>
+  (Object.keys(PERMISSIONS) as UserRole[]).filter((role) => can(role, action));
+const USER_ADMIN_ROLES = rolesThatCan("manage_users");
+const INSTITUTION_ADMIN_ROLES = rolesThatCan("manage_institution");
+
 const SUBMISSIONS_PATH = "/admin/submissions";
 const ROLE_APPLICATIONS_PATH = "/admin/role-applications";
+const SUGGESTIONS_PATH = "/admin/suggestions";
+
+// Every admin page, each shown only to the roles its page accepts
+const ADMIN_ITEMS: NavItem[] = [
+  { name: "Admin Dashboard", path: "/admin", requiresAuth: true, roles: REVIEWER_ROLES },
+  { name: "Submissions", path: SUBMISSIONS_PATH, requiresAuth: true, roles: REVIEWER_ROLES },
+  { name: "Role Applications", path: ROLE_APPLICATIONS_PATH, requiresAuth: true, roles: REVIEWER_ROLES },
+  { name: "School Suggestions", path: SUGGESTIONS_PATH, requiresAuth: true, roles: INSTITUTION_ADMIN_ROLES },
+  { name: "Materials", path: "/admin/materials", requiresAuth: true, roles: REVIEWER_ROLES },
+  { name: "Users", path: "/admin/users", requiresAuth: true, roles: USER_ADMIN_ROLES },
+  { name: "Institutions", path: "/admin/institutions", requiresAuth: true, roles: INSTITUTION_ADMIN_ROLES },
+];
+
 // Public: signed-out visitors can browse the UniLibrary too
 const UNILIBRARY_PATH = "/unilibrary";
 const UNILIBRARY_ITEMS: NavItem[] = [
@@ -54,24 +73,6 @@ const UNILIBRARY_ITEMS: NavItem[] = [
   { name: "Notes & Summaries", path: `${UNILIBRARY_PATH}?category=LEARNING_AIDS` },
   { name: "Textbooks", path: `${UNILIBRARY_PATH}?category=BOOKS` },
 ];
-
-// The reviewer queues share one nav so either page links to the other
-const REVIEW_QUEUE_NAV = (title: string): PageNavConfig[string] => ({
-  title,
-  standaloneItems: [
-    { name: "My Library", path: "/home", requiresAuth: true },
-    { name: "Submissions", path: SUBMISSIONS_PATH, requiresAuth: true, roles: REVIEWER_ROLES },
-    {
-      name: "Role Applications",
-      path: ROLE_APPLICATIONS_PATH,
-      requiresAuth: true,
-      roles: REVIEWER_ROLES,
-    },
-    { name: "Admin Panel", path: "/admin", requiresAuth: true, roles: ADMIN_ROLES },
-  ],
-  categories: [],
-  showSearch: false,
-});
 
 const navConfig: PageNavConfig = {
   "/": {
@@ -145,35 +146,12 @@ const navConfig: PageNavConfig = {
         requiresAuth: true,
         roles: MOD_ROLES,
         items: [
-          {
-            name: "Admin Panel",
-            path: "/admin",
-            requiresAuth: true,
-            roles: ADMIN_ROLES,
-          },
+          ...ADMIN_ITEMS,
           {
             name: "Moderation",
             path: "/moderation",
             requiresAuth: true,
             roles: MOD_ROLES,
-          },
-          {
-            name: "Submissions",
-            path: SUBMISSIONS_PATH,
-            requiresAuth: true,
-            roles: REVIEWER_ROLES,
-          },
-          {
-            name: "Role Applications",
-            path: ROLE_APPLICATIONS_PATH,
-            requiresAuth: true,
-            roles: REVIEWER_ROLES,
-          },
-          {
-            name: "User Management",
-            path: "/admin/users",
-            requiresAuth: true,
-            roles: ADMIN_ROLES,
           },
         ],
       },
@@ -209,98 +187,13 @@ const navConfig: PageNavConfig = {
     showSearch: true,
   },
 
+  // Also used for every /admin/* page (see getCurrentPageConfig)
   "/admin": {
-    title: "Administration",
-    standaloneItems: [
-      {
-        name: "Dashboard",
-        path: "/admin",
-        requiresAuth: true,
-        roles: ADMIN_ROLES,
-      },
-    ],
-    categories: [
-      {
-        name: "User Management",
-        requiresAuth: true,
-        roles: ADMIN_ROLES,
-        items: [
-          {
-            name: "All Users",
-            path: "/admin/users",
-            requiresAuth: true,
-            roles: ADMIN_ROLES,
-          },
-          {
-            name: "User Roles",
-            path: "/admin/users/roles",
-            requiresAuth: true,
-            roles: ADMIN_ROLES,
-          },
-          {
-            name: "Banned Users",
-            path: "/admin/users/banned",
-            requiresAuth: true,
-            roles: ADMIN_ROLES,
-          },
-        ],
-      },
-      {
-        name: "Content Management",
-        requiresAuth: true,
-        roles: ADMIN_ROLES,
-        items: [
-          {
-            name: "All Content",
-            path: "/admin/content",
-            requiresAuth: true,
-            roles: ADMIN_ROLES,
-          },
-          {
-            name: "Reported Content",
-            path: "/admin/content/reports",
-            requiresAuth: true,
-            roles: ADMIN_ROLES,
-          },
-          {
-            name: "Pending Approval",
-            path: "/admin/content/pending",
-            requiresAuth: true,
-            roles: ADMIN_ROLES,
-          },
-        ],
-      },
-      {
-        name: "System",
-        requiresAuth: true,
-        roles: ADMIN_ROLES,
-        items: [
-          {
-            name: "Settings",
-            path: "/admin/settings",
-            requiresAuth: true,
-            roles: ADMIN_ROLES,
-          },
-          {
-            name: "Analytics",
-            path: "/admin/analytics",
-            requiresAuth: true,
-            roles: ADMIN_ROLES,
-          },
-          {
-            name: "Audit Logs",
-            path: "/admin/logs",
-            requiresAuth: true,
-            roles: ADMIN_ROLES,
-          },
-        ],
-      },
-    ],
-    showSearch: true,
+    title: "Admin",
+    standaloneItems: [{ name: "My Library", path: "/home", requiresAuth: true }],
+    categories: [{ name: "Admin", requiresAuth: true, roles: REVIEWER_ROLES, items: ADMIN_ITEMS }],
+    showSearch: false,
   },
-
-  [SUBMISSIONS_PATH]: REVIEW_QUEUE_NAV("Submissions"),
-  [ROLE_APPLICATIONS_PATH]: REVIEW_QUEUE_NAV("Role Applications"),
 
   "/moderation": {
     title: "Moderation",
@@ -359,11 +252,12 @@ export const useNavConfig = () => {
       .then((res) => (res.ok ? res.json() : null))
       .then(
         (
-          data: { pendingSubmissions?: number; pendingRoleApplications?: number } | null,
+          data: Partial<AdminCounts> | null,
         ) => {
           setPendingCounts({
             [SUBMISSIONS_PATH]: data?.pendingSubmissions ?? 0,
             [ROLE_APPLICATIONS_PATH]: data?.pendingRoleApplications ?? 0,
+            [SUGGESTIONS_PATH]: (data?.pendingSchoolSuggestions ?? 0) + (data?.possibleDuplicates ?? 0),
           });
         },
       )
@@ -433,7 +327,7 @@ export const useNavConfig = () => {
       { name: "Dashboard", path: "/dashboard" },
       { name: "My Account", path: "/account" },
     ];
-    if (ADMIN_ROLES.includes(userProfile.role))
+    if (REVIEWER_ROLES.includes(userProfile.role))
       items.push({ name: "Admin Panel", path: "/admin" });
     if (MOD_ROLES.includes(userProfile.role))
       items.push({ name: "Moderation", path: "/moderation" });

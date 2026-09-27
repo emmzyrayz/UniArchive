@@ -64,8 +64,11 @@ export const CATEGORY_TABS: { id: MaterialCategory | ""; label: string }[] = [
   { id: "MEDIA", label: "Slides & Media" },
 ];
 
-// Same values the submission form stores
-export const LEVEL_OPTIONS = ["100L", "200L", "300L", "400L", "500L", "PG"] as const;
+// Stored values, as the submission form saves them (SUBMISSION_LEVELS)
+export const LEVEL_OPTIONS = ["100", "200", "300", "400", "500", "PG"] as const;
+
+/** "300" -> "300L"; "PG" and "Staff" stay as they are. */
+export const levelLabel = (level: string) => (/^\d+$/.test(level) ? `${level}L` : level);
 
 export const TIER_OPTIONS = [
   { id: "", label: "All" },

@@ -1,55 +1,66 @@
 // GET /api/admin/counts
-// Pending counts for every admin queue in one request, for the nav badges.
-// Each count is only included when the caller can see that queue:
-//   pendingSubmissions, pendingRoleApplications - "admin.view_submissions"
-//   pendingSchoolSuggestions                    - institution admins
-// A caller who can see none of them gets 403.
+// Every admin queue count and the headline platform stats in one request,
+// for the /admin dashboard cards and the nav badges.
+// Permission: "admin.view_submissions".
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth/session";
-import { can } from "@/lib/auth/permissions";
+import { requirePermission } from "@/lib/auth/session";
 import { handleRouteError } from "@/lib/api";
 import { getMaterialSubmissionModel } from "@/lib/models/materialSubmissionModel";
 import { getRoleApplicationModel } from "@/lib/models/roleApplicationModel";
 import { getSchoolSuggestionModel } from "@/lib/models/schoolSuggestionModel";
-import type { UserRole } from "@/types/roles";
+import { getMaterialModel } from "@/lib/models/materialModel";
+import { getUserModel } from "@/lib/models/userModel";
+import { getUniversityModel } from "@/lib/models/university/universityModel";
+import type { AdminCounts } from "@/types/admin";
 
-// Same roles as /api/admin/suggestions/count
-const SUGGESTION_REVIEWERS: UserRole[] = ["ed_admin", "com_admin", "webmaster", "dev"];
-
-interface AdminCounts {
-  pendingSubmissions?: number;
-  pendingRoleApplications?: number;
-  pendingSchoolSuggestions?: number;
-}
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await requireAuth(request);
-    const seesQueues = can(session.role, "admin.view_submissions");
-    const seesSuggestions = SUGGESTION_REVIEWERS.includes(session.role);
-    if (!seesQueues && !seesSuggestions) {
-      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-    }
+    await requirePermission(request, "admin.view_submissions");
 
-    const [pendingSubmissions, pendingRoleApplications, pendingSchoolSuggestions] =
+    const [Submission, RoleApplication, Suggestion, Material, User, University] =
       await Promise.all([
-        seesQueues
-          ? getMaterialSubmissionModel().then((m) => m.countDocuments({ status: "submitted" }))
-          : undefined,
-        seesQueues
-          ? getRoleApplicationModel().then((m) => m.countDocuments({ status: "pending" }))
-          : undefined,
-        seesSuggestions
-          ? getSchoolSuggestionModel().then((m) =>
-              m.countDocuments({ status: { $in: ["pending", "possible_duplicate"] } }),
-            )
-          : undefined,
+        getMaterialSubmissionModel(),
+        getRoleApplicationModel(),
+        getSchoolSuggestionModel(),
+        getMaterialModel(),
+        getUserModel(),
+        getUniversityModel(),
       ]);
+
+    const [
+      pendingSubmissions,
+      inReviewSubmissions,
+      pendingRoleApplications,
+      pendingSchoolSuggestions,
+      possibleDuplicates,
+      totalMaterials,
+      totalUsers,
+      newUsersThisWeek,
+      totalInstitutions,
+    ] = await Promise.all([
+      Submission.countDocuments({ status: "submitted" }),
+      Submission.countDocuments({ status: "in_review" }),
+      RoleApplication.countDocuments({ status: "pending" }),
+      Suggestion.countDocuments({ status: "pending" }),
+      Suggestion.countDocuments({ status: "possible_duplicate" }),
+      Material.countDocuments({ isActive: true }),
+      User.estimatedDocumentCount(),
+      User.countDocuments({ createdAt: { $gt: new Date(Date.now() - WEEK_MS) } }),
+      University.countDocuments({ isActive: true }),
+    ]);
 
     const counts: AdminCounts = {
       pendingSubmissions,
+      inReviewSubmissions,
       pendingRoleApplications,
       pendingSchoolSuggestions,
+      possibleDuplicates,
+      totalMaterials,
+      totalUsers,
+      newUsersThisWeek,
+      totalInstitutions,
     };
     return NextResponse.json(counts, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

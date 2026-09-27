@@ -4,7 +4,8 @@
 // The browser holds the RAW session token in the httpOnly `sessionId` cookie;
 // the database stores only its hash. The user's role is re-read from the User
 // document on every request so a role change or demotion applies immediately
-// instead of waiting for the session to expire.
+// instead of waiting for the session to expire. A suspended user's sessions
+// stop resolving the same way.
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
 import { getUserModel } from "@/lib/models/userModel";
@@ -65,9 +66,9 @@ export async function getSessionUserByToken(
 
     const User = await getUserModel();
     const user = await User.findById(session.userId)
-      .select("role upid uuid isVerified fullName")
+      .select("role upid uuid isVerified fullName isSuspended")
       .lean();
-    if (!user) return null;
+    if (!user || user.isSuspended) return null;
 
     if (Date.now() - session.lastActivity.getTime() > ACTIVITY_WRITE_INTERVAL_MS) {
       void SessionCache.updateActivity(rawToken);
@@ -125,6 +126,8 @@ export async function requirePermission(
     | "verify"
     | "teach"
     | "create_course"
+    | "manage_users"
+    | "manage_institution"
     | "admin.view_submissions"
     | "submission.review"
     | "submission.verify_tier1"

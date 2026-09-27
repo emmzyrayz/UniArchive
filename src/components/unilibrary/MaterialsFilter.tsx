@@ -8,7 +8,7 @@ import { useState } from "react";
 import { FiFilter, FiSearch, FiX } from "react-icons/fi";
 import UniversityCombobox from "@/components/profile/UniversityCombobox";
 import type { MaterialSort } from "@/types/unilibrary";
-import { CATEGORY_TABS, LEVEL_OPTIONS, TIER_OPTIONS } from "./materialLabels";
+import { CATEGORY_TABS, LEVEL_OPTIONS, TIER_OPTIONS, levelLabel } from "./materialLabels";
 
 export interface MaterialFilters {
   search: string;
@@ -176,7 +176,7 @@ export function MaterialsFilter({ filters, onChange }: MaterialsFilterProps) {
                 selected={filters.level === level}
                 onClick={() => onChange({ level })}
               >
-                {level}
+                {levelLabel(level)}
               </Pill>
             ))}
           </div>

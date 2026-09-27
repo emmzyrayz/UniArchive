@@ -9,7 +9,7 @@ import { FiArrowRight, FiEye, FiX } from "react-icons/fi";
 import { formatFileSize } from "@/assets/data/libraryData";
 import { timeAgo } from "@/components/admin/reviewShared";
 import type { MaterialSummary } from "@/types/unilibrary";
-import { BADGE_CLASS, categoryBadge } from "./materialLabels";
+import { BADGE_CLASS, categoryBadge, levelLabel } from "./materialLabels";
 
 interface MaterialCardProps {
   material: MaterialSummary;
@@ -91,7 +91,7 @@ export function MaterialCard({ material, isAuthenticated, onRead }: MaterialCard
     material.universityAbbr || material.universityName,
     material.facultyName,
     material.departmentName,
-    material.level,
+    material.level && levelLabel(material.level),
   ]
     .filter(Boolean)
     .join(" · ");
