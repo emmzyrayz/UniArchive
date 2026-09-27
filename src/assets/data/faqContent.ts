@@ -58,7 +58,7 @@ export const faqCategories: FAQCategory[] = [
       {
         question: "Can I highlight or take notes on my PDFs?",
         answer:
-          "Not yet — annotations and highlights are a planned feature. You can track its progress on our About page.",
+          "Yes. In the reader, turn on highlight mode and drag over a passage to highlight it (click a highlight in highlight mode to remove it), or bookmark the page you're on. They're saved to your account automatically and listed under Bookmarks and Highlights on your Dashboard.",
       },
     ],
   },

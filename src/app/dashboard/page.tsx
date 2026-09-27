@@ -8,9 +8,12 @@ import { motion } from "motion/react";
 import { useUser } from "@/context/userContext";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { StorageUsage } from "@/components/dashboard/StorageUsage";
+import { BookmarksList } from "@/components/dashboard/BookmarksList";
+import { HighlightsList } from "@/components/dashboard/HighlightsList";
 import { Button } from "@/components/UI/Buttons";
 import { formatBytes } from "@/assets/data/dashboardData";
 import type { Book } from "@/types/library";
+import type { SavedBookmark, SavedHighlight } from "@/types/dashboard";
 
 type Tab = "overview" | "bookmarks" | "highlights" | "storage";
 
@@ -80,6 +83,65 @@ function RecentBooks({ books }: { books: Book[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+type SavedState<T> =
+  | { status: "loading" }
+  | { status: "ready"; items: T[] }
+  | { status: "error" };
+
+/**
+ * Loads the user's bookmarks or highlights each time the tab is opened, so
+ * it reflects whatever the reader saved since.
+ */
+function SavedAnnotations({ kind }: { kind: "bookmarks" | "highlights" }) {
+  const [state, setState] = useState<SavedState<SavedBookmark | SavedHighlight>>({
+    status: "loading",
+  });
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/user/${kind}`, { credentials: "same-origin", cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`GET /api/user/${kind} ${response.status}`);
+        const data = (await response.json()) as Record<string, unknown>;
+        const items = (data[kind] ?? []) as (SavedBookmark | SavedHighlight)[];
+        if (!cancelled) setState({ status: "ready", items });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error(`Failed to load ${kind}:`, error);
+        setState({ status: "error" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, reloadKey]);
+
+  if (state.status === "loading") return <EmptyState>Loading…</EmptyState>;
+  if (state.status === "error") {
+    return (
+      <div className="rounded-xl border border-dashed border-border p-6 flex flex-col items-center gap-3 text-center">
+        <p className="text-text-muted text-sm">
+          We couldn&apos;t load your {kind}. Check your connection and try again.
+        </p>
+        <Button
+          onClick={() => {
+            setState({ status: "loading" });
+            setReloadKey((k) => k + 1);
+          }}
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
+  return kind === "bookmarks" ? (
+    <BookmarksList bookmarks={state.items as SavedBookmark[]} />
+  ) : (
+    <HighlightsList highlights={state.items as SavedHighlight[]} />
   );
 }
 
@@ -230,17 +292,19 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Bookmarks tab - bookmarks aren't persisted yet */}
+        {/* Bookmarks tab */}
         {activeTab === "bookmarks" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-            <EmptyState>No bookmarks yet — bookmark pages while reading to see them here</EmptyState>
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">My bookmarks</h2>
+            <SavedAnnotations kind="bookmarks" />
           </motion.div>
         )}
 
-        {/* Highlights tab - highlights aren't persisted yet */}
+        {/* Highlights tab */}
         {activeTab === "highlights" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-            <EmptyState>No highlights yet — drag to highlight text while reading</EmptyState>
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">My highlights</h2>
+            <SavedAnnotations kind="highlights" />
           </motion.div>
         )}
 

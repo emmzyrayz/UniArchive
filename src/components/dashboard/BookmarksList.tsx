@@ -5,14 +5,18 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import type { SavedBookmark } from "@/types/dashboard";
 
-function timeAgo(dateStr: string): string {
+export function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const days = Math.floor(diff / 86_400_000);
-  if (days === 0) return "Today";
+  if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 7) return `${days} days ago`;
   return new Date(dateStr).toLocaleDateString("en-NG", { day: "numeric", month: "short" });
 }
+
+/** Opens the reader on the saved page. */
+export const readerHref = (bookId: string, pageNumber: number) =>
+  `/read/${bookId}?page=${pageNumber}`;
 
 export function BookmarksList({ bookmarks }: { bookmarks: SavedBookmark[] }) {
   if (bookmarks.length === 0) {
@@ -27,13 +31,13 @@ export function BookmarksList({ bookmarks }: { bookmarks: SavedBookmark[] }) {
     <ul className="space-y-3">
       {bookmarks.map((bm, i) => (
         <motion.li
-          key={bm.id}
+          key={`${bm.bookId}-${bm.id}`}
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: i * 0.06 }}
+          transition={{ duration: 0.3, delay: Math.min(i, 10) * 0.06 }}
         >
           <Link
-            href={`/read/${bm.bookId}`}
+            href={readerHref(bm.bookId, bm.pageNumber)}
             className="flex items-start gap-4 rounded-xl border border-border bg-surface-raised p-4 hover:shadow-sm transition-shadow group"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500 text-xs font-bold">
@@ -41,13 +45,15 @@ export function BookmarksList({ bookmarks }: { bookmarks: SavedBookmark[] }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-text-primary truncate group-hover:underline">
-                {bm.bookTitle}
+                📄 {bm.bookTitle}
               </p>
-              {bm.note && (
-                <p className="text-xs text-text-secondary mt-0.5 line-clamp-1">{bm.note}</p>
-              )}
+              <p className="text-xs text-text-secondary mt-0.5 line-clamp-1">
+                Page {bm.pageNumber}
+                {bm.label && <> · &ldquo;{bm.label}&rdquo;</>}
+              </p>
               <p className="text-xs text-text-muted mt-1">{timeAgo(bm.createdAt)}</p>
             </div>
+            <span className="self-center shrink-0 text-sm font-medium text-primary">Read →</span>
           </Link>
         </motion.li>
       ))}

@@ -1,21 +1,11 @@
 // src/types/dashboard.ts
-export interface SavedBookmark {
-  id: string;
-  bookId: string;
-  bookTitle: string;
-  pageNumber: number;
-  note?: string;
-  createdAt: string;
-}
+import type { Bookmark, Highlight } from "@/types/reader";
 
-export interface SavedHighlight {
-  id: string;
-  bookId: string;
-  bookTitle: string;
-  pageNumber: number;
-  excerpt: string;
-  createdAt: string;
-}
+/** A reader bookmark plus the book it's in (GET /api/user/bookmarks). */
+export type SavedBookmark = Bookmark & { bookId: string; bookTitle: string };
+
+/** A reader highlight plus the book it's in (GET /api/user/highlights). */
+export type SavedHighlight = Highlight & { bookId: string; bookTitle: string };
 
 export interface StorageInfo {
   usedBytes: number;

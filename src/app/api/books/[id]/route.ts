@@ -2,7 +2,8 @@
 //                            UniLibrary, or a reviewer once it is submitted)
 // PATCH  /api/books/[id]  - edit title/description (owner only)
 // DELETE /api/books/[id]  - delete the file from storage (B2 or Cloudinary),
-//                            then the record. Refused while the book has a
+//                            then the record and every reader's annotations
+//                            on it. Refused while the book has a
 //                            submission under review or published.
 import { NextResponse, type NextRequest } from "next/server";
 import { isValidObjectId } from "mongoose";
@@ -13,6 +14,7 @@ import { storageClient } from "@/lib/storage";
 import { deleteCloudinaryPdf, getCloudinaryPdfUrl } from "@/lib/cloudinary";
 import { toBookDto, type BookDoc } from "@/lib/dto/book";
 import { findReadableBook } from "@/lib/bookAccess";
+import { getAnnotationModel } from "@/lib/models/annotationModel";
 import {
   EDITABLE_SUBMISSION_STATUSES,
   getMaterialSubmissionModel,
@@ -180,6 +182,8 @@ export async function DELETE(request: NextRequest, context: Context) {
     }
 
     await Book.deleteOne({ _id: book._id });
+    // Every reader's, not just the owner's: UniLibrary readers annotate too
+    await (await getAnnotationModel()).deleteMany({ bookId: book._id });
     if (submission) {
       await Submission.deleteOne({
         _id: submission._id,
