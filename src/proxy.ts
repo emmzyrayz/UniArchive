@@ -12,21 +12,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_JWT_COOKIE, verifySessionJwt } from "@/lib/auth/jwt";
 import type { UserRole } from "@/types/roles";
+import { isPublicProfilePath, isReviewerAdminPath } from "@/lib/routeAccess";
 
 // /unilibrary: anyone can browse; reading a material (/read/...) needs a session
 const PUBLIC_PATHS = new Set(["/", "/about", "/contact", "/help", "/offline", "/unilibrary"]);
 const PUBLIC_PREFIXES = ["/auth", "/_next", "/api"];
 const ADMIN_PREFIXES = ["/admin", "/moderation"];
 const ADMIN_ROLES: UserRole[] = ["ed_admin", "com_admin", "webmaster", "dev"];
-// Admin pages open to non-admin reviewers (auditors, lecturers, ...). The
-// proxy only requires a session for these; the page checks the permission.
-const PAGE_CHECKED_ADMIN_PREFIXES = [
-  "/admin/submissions",
-  "/admin/role-applications",
-  "/admin/materials",
-];
-// Exact paths only: "/admin" as a prefix would open every admin page
-const PAGE_CHECKED_ADMIN_PATHS = new Set(["/admin"]);
+// Admin pages open to non-admin reviewers (isReviewerAdminPath) only need a
+// session here; the page checks the permission.
 
 // Files served from /public (pdf.worker.min.mjs, icons, manifest, sw.js, ...)
 const STATIC_FILE = /\.[a-zA-Z0-9]+$/;
@@ -39,6 +33,8 @@ function isPublic(pathname: string): boolean {
   return (
     PUBLIC_PATHS.has(pathname) ||
     matchesPrefix(pathname, PUBLIC_PREFIXES) ||
+    // Other users' public profiles; /profile and /profile/edit stay private
+    isPublicProfilePath(pathname) ||
     STATIC_FILE.test(pathname)
   );
 }
@@ -67,8 +63,7 @@ export async function proxy(request: NextRequest) {
 
   if (
     matchesPrefix(pathname, ADMIN_PREFIXES) &&
-    !matchesPrefix(pathname, PAGE_CHECKED_ADMIN_PREFIXES) &&
-    !PAGE_CHECKED_ADMIN_PATHS.has(pathname) &&
+    !isReviewerAdminPath(pathname) &&
     !ADMIN_ROLES.includes(claims.role)
   ) {
     const signInUrl = new URL("/auth", request.url);

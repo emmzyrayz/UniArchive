@@ -150,7 +150,14 @@ export function MaterialCard({ material, isAuthenticated, onRead }: MaterialCard
         <span>{formatFileSize(material.fileSize)}</span>
       </div>
       <p className="mt-1 text-xs text-neutral-400">
-        Uploaded by <span className="text-text-secondary">@{material.submittedByUpid}</span> ·{" "}
+        Uploaded by{" "}
+        <Link
+          href={`/profile/${encodeURIComponent(material.submittedByUpid)}`}
+          className="text-primary hover:underline"
+        >
+          @{material.submittedByUpid}
+        </Link>{" "}
+        ·{" "}
         {timeAgo(material.createdAt)}
       </p>
 

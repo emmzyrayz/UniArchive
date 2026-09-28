@@ -9,111 +9,28 @@
 // carries per-category counts (all other filters applied) for the tabs.
 import { NextResponse, type NextRequest } from "next/server";
 import { Types, isValidObjectId } from "mongoose";
-import { getMaterialModel, type IMaterial } from "@/lib/models/materialModel";
+import { getMaterialModel } from "@/lib/models/materialModel";
+import {
+  PUBLIC_MATERIAL_FIELDS,
+  toMaterialSummary,
+  type PublicMaterialDoc,
+} from "@/lib/publicMaterials";
 import { handleRouteError } from "@/lib/api";
 import { escapeRegex } from "@/lib/escapeRegex";
 import {
   isMaterialCategory,
   type MaterialCategory,
 } from "@/lib/constants/materialCategories";
-import type { MaterialSummary, MaterialsResponse } from "@/types/unilibrary";
+import type { MaterialsResponse } from "@/types/unilibrary";
 
 const MAX_LIMIT = 50;
 const MIN_SEARCH = 2;
-
-// Storage fields stay server-side: the file is only reachable through the
-// signed URL the reader gets from /api/books/[id].
-const PUBLIC_FIELDS = [
-  "bookId",
-  "title",
-  "description",
-  "category",
-  "subcategory",
-  "tags",
-  "language",
-  "universityName",
-  "universityAbbr",
-  "facultyName",
-  "departmentName",
-  "courseCode",
-  "courseName",
-  "level",
-  "semester",
-  "academicYear",
-  "fileSize",
-  "pageCount",
-  "verificationTier",
-  "hasTypedContent",
-  "viewCount",
-  "downloadCount",
-  "submittedByUpid",
-  "createdAt",
-].join(" ");
-
-type MaterialDoc = Pick<
-  IMaterial,
-  | "_id"
-  | "bookId"
-  | "title"
-  | "description"
-  | "category"
-  | "subcategory"
-  | "tags"
-  | "language"
-  | "universityName"
-  | "universityAbbr"
-  | "facultyName"
-  | "departmentName"
-  | "courseCode"
-  | "courseName"
-  | "level"
-  | "semester"
-  | "academicYear"
-  | "fileSize"
-  | "pageCount"
-  | "verificationTier"
-  | "hasTypedContent"
-  | "viewCount"
-  | "downloadCount"
-  | "submittedByUpid"
-  | "createdAt"
->;
 
 const badRequest = (message: string) => NextResponse.json({ message }, { status: 400 });
 
 function positiveInt(value: string | null, fallback: number): number {
   const n = Number.parseInt(value ?? "", 10);
   return Number.isInteger(n) && n > 0 ? n : fallback;
-}
-
-function toSummary(doc: MaterialDoc): MaterialSummary {
-  return {
-    _id: String(doc._id),
-    bookId: String(doc.bookId),
-    title: doc.title,
-    description: doc.description,
-    category: doc.category,
-    subcategory: doc.subcategory,
-    tags: doc.tags ?? [],
-    language: doc.language,
-    universityName: doc.universityName,
-    universityAbbr: doc.universityAbbr,
-    facultyName: doc.facultyName,
-    departmentName: doc.departmentName,
-    courseCode: doc.courseCode,
-    courseName: doc.courseName,
-    level: doc.level,
-    semester: doc.semester,
-    academicYear: doc.academicYear,
-    verificationTier: doc.verificationTier,
-    hasTypedContent: !!doc.hasTypedContent,
-    viewCount: doc.viewCount ?? 0,
-    downloadCount: doc.downloadCount ?? 0,
-    submittedByUpid: doc.submittedByUpid,
-    createdAt: new Date(doc.createdAt).toISOString(),
-    pageCount: doc.pageCount,
-    fileSize: doc.fileSize,
-  };
 }
 
 export async function GET(request: NextRequest) {
@@ -168,8 +85,8 @@ export async function GET(request: NextRequest) {
         .sort(sortBy)
         .skip(skip)
         .limit(limit)
-        .select(PUBLIC_FIELDS)
-        .lean<MaterialDoc[]>(),
+        .select(PUBLIC_MATERIAL_FIELDS)
+        .lean<PublicMaterialDoc[]>(),
       Material.countDocuments(listFilter),
       Material.aggregate<{ _id: MaterialCategory; count: number }>([
         { $match: base },
@@ -181,7 +98,7 @@ export async function GET(request: NextRequest) {
     for (const g of grouped) categoryCounts[g._id] = g.count;
 
     const body: MaterialsResponse = {
-      materials: docs.map(toSummary),
+      materials: docs.map(toMaterialSummary),
       total,
       page,
       totalPages: Math.max(1, Math.ceil(total / limit)),

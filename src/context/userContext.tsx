@@ -5,6 +5,7 @@ import { USERS_DATA } from "@/assets/data/blogData";
 import universitiesData from "@/assets/data/schoolData";
 import type { UserRole } from "@/types/roles";
 import { can } from "@/lib/auth/permissions";
+import { isPublicProfilePath, isReviewerAdminPath } from "@/lib/routeAccess";
 import { IS_MOCK_MODE } from "@/lib/mockMode";
 import type { ProfileCompletion } from "@/lib/profileCompletion";
 
@@ -733,11 +734,12 @@ const canAccessRoute = useCallback(
 
     if (publicRoutes.includes(path)) return true;
     if (publicPrefixes.some((prefix) => path.startsWith(prefix))) return true;
+    if (isPublicProfilePath(path)) return true;
     if (!hasActiveSession) return false;
     if (!userProfile) return false;
 
-    // Reviewers who aren't admins still get the submissions queue
-    if (path === "/admin/submissions" || path.startsWith("/admin/submissions/")) {
+    // Reviewers who aren't admins still get the review queues and dashboard
+    if (isReviewerAdminPath(path)) {
       return can(userProfile.role, "admin.view_submissions");
     }
 
