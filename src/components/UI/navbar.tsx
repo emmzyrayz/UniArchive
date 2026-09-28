@@ -5,12 +5,11 @@ import React, { useState, useEffect, useRef, startTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { useNavConfig } from "@/hooks/useNavConfig";
+import { FiBook, FiGrid, FiLogOut, FiSettings, FiShield, FiUser } from "react-icons/fi";
+import { useNavConfig, type NavItem } from "@/hooks/useNavConfig";
 import { useUser } from "@/context/userContext";
 import BrandLogo from "@/app/auth/components/UI/BrandLogo";
 import { Button } from "@/components/UI/Buttons";
-
-// navbar.tsx — add after impor
 
 // ─── Inline icons ─────────────────────────────────────────────────────────────
 
@@ -180,13 +179,39 @@ function UserAvatar({ name }: { name: string }) {
   );
 }
 
+// ─── Account menu (desktop dropdown + mobile drawer) ─────────────────────────
+
+// The signed-in user's own pages, in both the desktop dropdown and the drawer
+const ACCOUNT_LINKS = [
+  { label: "My Library", href: "/home", icon: FiBook },
+  { label: "Dashboard", href: "/dashboard", icon: FiGrid },
+  { label: "Profile", href: "/profile", icon: FiUser },
+  { label: "Settings", href: "/settings", icon: FiSettings },
+];
+const ACCOUNT_PATHS = new Set(ACCOUNT_LINKS.map((l) => l.href));
+
+/** Signs out, then runs `onDone` (close the menu) and goes home. */
+function useSignOut(onDone: () => void) {
+  const { logout } = useUser();
+  const router = useRouter();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const signOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await logout();
+    } finally {
+      onDone();
+      router.push("/");
+    }
+  };
+  return { signOut, isSigningOut };
+}
+
 // ─── User Dropdown ────────────────────────────────────────────────────────────
 
 function UserDropdown({ onClose }: { onClose: () => void }) {
-  const { getUserDisplayName, getRoleDisplayName, logout } = useUser();
-  const router = useRouter();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-
+  const { getUserDisplayName, getRoleDisplayName } = useUser();
+  const { signOut, isSigningOut } = useSignOut(onClose);
 
   return (
     <motion.div
@@ -205,12 +230,7 @@ function UserDropdown({ onClose }: { onClose: () => void }) {
         </p>
       </div>
       <div className="py-1">
-        {[
-          { label: "My Library", href: "/home" },
-          { label: "Dashboard", href: "/dashboard" },
-          { label: "Profile", href: "/profile" },
-          { label: "Settings", href: "/settings" },
-        ].map((item) => (
+        {ACCOUNT_LINKS.map((item) => (
           <Link
             key={item.href}
             href={item.href}
@@ -223,18 +243,78 @@ function UserDropdown({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           disabled={isSigningOut}
-          onClick={async () => {
-            setIsSigningOut(true);
-            await logout();
-            onClose();
-            router.push("/");
-          }}
+          onClick={signOut}
           className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-white/10 transition-colors border-t border-white/10 mt-1"
         >
           {isSigningOut ? "Signing out..." : "Sign out"}
         </button>
       </div>
     </motion.div>
+  );
+}
+
+// ─── Mobile account section (bottom of the drawer) ───────────────────────────
+
+/**
+ * The drawer's equivalent of UserDropdown: who's signed in, the same account
+ * links, any role-specific pages (admin, review queues) and sign out.
+ */
+function MobileAccountSection({
+  roleItems,
+  onNavigate,
+}: {
+  roleItems: NavItem[];
+  onNavigate: () => void;
+}) {
+  const { getUserDisplayName, getRoleDisplayName, userProfile } = useUser();
+  const { signOut, isSigningOut } = useSignOut(onNavigate);
+  const name = getUserDisplayName?.() ?? "User";
+  const linkClass =
+    "flex items-center gap-3 py-2.5 px-3 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors";
+
+  return (
+    <div className="mt-6 pt-5 border-t border-white/10">
+      <div className="flex items-center gap-3 px-1 pb-4">
+        <UserAvatar name={name} />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white truncate">{name}</p>
+          <p className="flex items-center gap-2 text-xs text-white/50 truncate">
+            {userProfile?.username && <span className="truncate">@{userProfile.username}</span>}
+            <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+              {getRoleDisplayName?.()}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-0.5 border-t border-white/10 pt-2">
+        {ACCOUNT_LINKS.map(({ label, href, icon: Icon }) => (
+          <Link key={href} href={href} onClick={onNavigate} className={linkClass}>
+            <Icon aria-hidden className="shrink-0" />
+            {label}
+          </Link>
+        ))}
+        {roleItems.map((item) => (
+          <Link key={item.path} href={item.path} onClick={onNavigate} className={linkClass}>
+            <FiShield aria-hidden className="shrink-0" />
+            {item.name}
+            <NavBadge count={item.badge} />
+          </Link>
+        ))}
+      </div>
+
+      <div className="mt-2 border-t border-white/10 pt-2">
+        <button
+          type="button"
+          disabled={isSigningOut}
+          onClick={signOut}
+          className="flex w-full items-center gap-3 py-2.5 px-3 rounded-lg text-sm text-red-400 hover:bg-white/5 transition-colors disabled:opacity-60"
+        >
+          <FiLogOut aria-hidden className="shrink-0" />
+          {isSigningOut ? "Signing out..." : "Sign out"}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -677,21 +757,6 @@ export const Navbar: React.FC = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          {/* Authenticated user profile strip */}
-          {hasActiveSession && (
-            <div className="flex items-center gap-3 mb-5 pb-5 border-b border-white/10">
-              <UserAvatar name={getUserDisplayName?.() ?? "User"} />
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  {getUserDisplayName?.()}
-                </p>
-                <p className="text-xs text-primary capitalize">
-                  {userProfile?.role?.replace("_", " ")}
-                </p>
-              </div>
-            </div>
-          )}
-
           {/* Standalone items */}
           {currentConfig.standaloneItems?.map((item) => (
             <Link
@@ -735,25 +800,36 @@ export const Navbar: React.FC = () => {
             </div>
           ))}
 
-          {/* User-specific items */}
-          <div className="mt-6 pt-5 border-t border-white/10">
-            <p className="text-white/40 text-xs tracking-wider uppercase font-bold mb-2">
-              Account
-            </p>
-            <div className="space-y-0.5">
-              {userItems.map((item) => (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center py-2.5 px-3 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  {item.name}
-                  <NavBadge count={item.badge} />
-                </Link>
-              ))}
+          {/* Signed in: account menu (mirrors the desktop dropdown) */}
+          {hasActiveSession ? (
+            <MobileAccountSection
+              // Admin/review pages; the rest is in the account links, and
+              // /account has no page
+              roleItems={userItems.filter(
+                (item) => !ACCOUNT_PATHS.has(item.path) && item.path !== "/account",
+              )}
+              onNavigate={() => setIsMobileMenuOpen(false)}
+            />
+          ) : (
+            <div className="mt-6 pt-5 border-t border-white/10">
+              <p className="text-white/40 text-xs tracking-wider uppercase font-bold mb-2">
+                Account
+              </p>
+              <div className="space-y-0.5">
+                {userItems.map((item) => (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center py-2.5 px-3 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    {item.name}
+                    <NavBadge count={item.badge} />
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Sign in CTA for guests */}
