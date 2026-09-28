@@ -8,9 +8,9 @@
 //  - never a webmaster or dev, and nobody can be made one (database only)
 //  - only users ranked below you, and only to roles ranked below you
 //
-// A role change applies on the user's next request (sessions re-read the
-// role every time) and closes any pending role application. Suspending
-// signs the user out everywhere and blocks sign-in until reactivated.
+// A role change or suspension bumps tokenVersion, which signs the user out
+// everywhere (src/lib/auth/session.ts). A role change also closes any
+// pending role application; suspension blocks sign-in until reactivated.
 import { NextResponse, type NextRequest } from "next/server";
 import { Types, isValidObjectId } from "mongoose";
 import { requirePermission } from "@/lib/auth/session";

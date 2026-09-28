@@ -2,9 +2,8 @@
 // Promotes the applicant to the role they applied for. Permission: user
 // managers only (com_admin, webmaster, dev).
 //
-// The role takes effect on the applicant's next request: sessions re-read
-// the role from the User document every time (src/lib/auth/session.ts).
-// tokenVersion is still bumped as a record that the role changed.
+// Bumping tokenVersion signs the applicant out everywhere
+// (src/lib/auth/session.ts); they sign in again with the new role.
 //
 // If the applicant's role changed some other way while the application
 // waited, it's closed as withdrawn instead of overwriting that change.

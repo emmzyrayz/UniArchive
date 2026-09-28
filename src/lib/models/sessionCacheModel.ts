@@ -67,6 +67,10 @@ export interface ISessionCache extends Document {
   level?: string;
   upid: string;
   isVerified: boolean;
+  // The user's tokenVersion when this session was created. A later bump
+  // (suspension, role change) makes it stale; see lib/auth/session.ts.
+  // Missing on sessions created before this was added.
+  tokenVersion?: number;
   isActive: boolean;
   isSignedIn: boolean;
   expiresAt: Date;
@@ -96,6 +100,7 @@ interface IUserData {
   level?: string;
   upid: string;
   isVerified: boolean;
+  tokenVersion: number;
 }
 
 // Note: encryptSensitiveData/decryptSensitiveData/hashForSearch live in
@@ -157,6 +162,7 @@ const SessionCacheSchema = new Schema<ISessionCache>({
   regNumberHash: { type: String },
   upid: { type: String, required: true },
   isVerified: { type: Boolean, required: true },
+  tokenVersion: { type: Number },
   isActive: { type: Boolean, default: true },
   isSignedIn: { type: Boolean, default: true },
   expiresAt: { type: Date, required: true },
@@ -314,6 +320,7 @@ SessionCacheSchema.statics.createFullSession = async function (
       level: userData.level,
       upid: userData.upid,
       isVerified: userData.isVerified,
+      tokenVersion: userData.tokenVersion,
       isActive: true,
       isSignedIn: true,
       expiresAt,

@@ -4,8 +4,11 @@
 // The browser holds the RAW session token in the httpOnly `sessionId` cookie;
 // the database stores only its hash. The user's role is re-read from the User
 // document on every request so a role change or demotion applies immediately
-// instead of waiting for the session to expire. A suspended user's sessions
-// stop resolving the same way.
+// instead of waiting for the session to expire. The same read enforces:
+//  - suspension: a suspended user's sessions stop resolving
+//  - tokenVersion: each session records the user's tokenVersion at sign-in;
+//    bumping it (suspend, role change) revokes every existing session, so
+//    the user must sign in again. No extra query: it's the same User read.
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
 import { getUserModel } from "@/lib/models/userModel";
@@ -23,6 +26,7 @@ export interface SessionUser {
   uuid: string;
   isVerified: boolean;
   fullName: string;
+  tokenVersion: number;
 }
 
 export function sessionCookieOptions(maxAgeSeconds = SESSION_TTL_HOURS * 3600) {
@@ -66,9 +70,16 @@ export async function getSessionUserByToken(
 
     const User = await getUserModel();
     const user = await User.findById(session.userId)
-      .select("role upid uuid isVerified fullName isSuspended")
+      .select("role upid uuid isVerified fullName isSuspended tokenVersion")
       .lean();
     if (!user || user.isSuspended) return null;
+
+    const tokenVersion = user.tokenVersion ?? 0;
+    // Sessions from before tokenVersion was recorded are left alone
+    if (session.tokenVersion !== undefined && session.tokenVersion !== tokenVersion) {
+      void SessionCache.invalidateSession(rawToken);
+      return null;
+    }
 
     if (Date.now() - session.lastActivity.getTime() > ACTIVITY_WRITE_INTERVAL_MS) {
       void SessionCache.updateActivity(rawToken);
@@ -81,6 +92,7 @@ export async function getSessionUserByToken(
       uuid: user.uuid,
       isVerified: user.isVerified,
       fullName: user.fullName,
+      tokenVersion,
     };
   } catch (error) {
     console.error("Session lookup failed:", error);

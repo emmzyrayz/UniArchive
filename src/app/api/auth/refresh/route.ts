@@ -32,7 +32,12 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
-  const jwt = await signSessionJwt({ sub: user.userId, role: user.role, upid: user.upid });
+  const jwt = await signSessionJwt({
+    sub: user.userId,
+    role: user.role,
+    upid: user.upid,
+    tokenVersion: user.tokenVersion,
+  });
   const response = NextResponse.redirect(new URL(from, request.url));
   response.cookies.set(SESSION_JWT_COOKIE, jwt, sessionJwtCookieOptions());
   return response;

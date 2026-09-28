@@ -16,6 +16,10 @@ export interface SessionClaims {
   sub: string; // user id
   role: UserRole;
   upid: string;
+  // The user's tokenVersion when minted. The proxy can't check it (no
+  // database here); the session lookup enforces it on every API request and
+  // every refresh, so a stale JWT can't be renewed.
+  tokenVersion: number;
 }
 
 function secretKey(): Uint8Array {
@@ -27,7 +31,7 @@ function secretKey(): Uint8Array {
 }
 
 export async function signSessionJwt(claims: SessionClaims): Promise<string> {
-  return new SignJWT({ role: claims.role, upid: claims.upid })
+  return new SignJWT({ role: claims.role, upid: claims.upid, tokenVersion: claims.tokenVersion })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(claims.sub)
     .setIssuer(ISSUER)
@@ -59,6 +63,8 @@ export async function verifySessionJwt(
       sub: payload.sub,
       role: payload.role as UserRole,
       upid: payload.upid,
+      // Tokens minted before tokenVersion was added carry none
+      tokenVersion: typeof payload.tokenVersion === "number" ? payload.tokenVersion : 0,
     };
   } catch {
     return null;

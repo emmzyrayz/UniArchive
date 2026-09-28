@@ -12,6 +12,7 @@ interface ButtonProps {
   variant?: "primary" | "secondary" | "ghost";
   size?: "md" | "lg";
   type?: "button" | "submit";
+  disabled?: boolean;
 }
 
 export function Button({
@@ -21,6 +22,7 @@ export function Button({
   variant = "primary",
   size = "md",
   type = "button",
+  disabled = false,
 }: ButtonProps) {
   const base =
     "inline-flex items-center justify-center font-semibold rounded-lg transition-colors";
@@ -48,7 +50,7 @@ export function Button({
    return <Link href={href}>{content}</Link>;
  }
  return (
-   <button type={type} onClick={onClick}>
+   <button type={type} onClick={onClick} disabled={disabled} className="disabled:cursor-not-allowed disabled:opacity-60">
      {content}
    </button>
  );

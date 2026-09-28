@@ -6,6 +6,8 @@ interface EmailOptions {
   html: string;
   /** Plain-text fallback for clients that don't render HTML. */
   text?: string;
+  /** Where replies go, e.g. the sender of a contact form message. */
+  replyTo?: string;
 }
 
 const escapeHtml = (value: string) =>
@@ -43,7 +45,7 @@ class EmailService {
     return this.transporter;
   }
 
-  async sendEmail({ to, subject, html, text }: EmailOptions): Promise<boolean> {
+  async sendEmail({ to, subject, html, text, replyTo }: EmailOptions): Promise<boolean> {
     try {
       const transporter = this.getTransporter();
       const emailUser = process.env.EMAIL_USER;
@@ -54,6 +56,7 @@ class EmailService {
         subject,
         html,
         text,
+        ...(replyTo ? { replyTo } : {}),
       });
       return true;
     } catch (error) {
@@ -339,7 +342,7 @@ export async function sendRoleApplicationApprovedEmail(params: {
     "",
     `Congratulations! You are now a ${newRole} on UniArchive.`,
     "",
-    "Your new permissions are already active. If anything looks unchanged, sign out and sign in again.",
+    "You've been signed out on your devices so your new permissions take effect. Sign in again to use them.",
     "",
     `Open your dashboard: ${link}`,
     "",
@@ -352,7 +355,7 @@ export async function sendRoleApplicationApprovedEmail(params: {
     `
           <h2 style="color: #333; margin-top: 0;">Congratulations ${escapeHtml(toName)}!</h2>
           <p>You are now a <strong>${escapeHtml(newRole)}</strong> on UniArchive.</p>
-          <p>Your new permissions are already active. If anything looks unchanged, sign out and sign in again.</p>
+          <p>You've been signed out on your devices so your new permissions take effect. Sign in again to use them.</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${escapeHtml(link)}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
               Open my dashboard
@@ -403,4 +406,95 @@ export async function sendRoleApplicationRejectedEmail(params: {
   );
 
   await emailService.sendEmail({ to: toEmail, subject, html, text });
+}
+
+// ---------------------------------------------------------------------------
+// Contact form
+// ---------------------------------------------------------------------------
+
+/** Where contact form messages go: CONTACT_EMAIL, else the sending account. */
+function contactInbox(): string | undefined {
+  return process.env.CONTACT_EMAIL || process.env.EMAIL_USER;
+}
+
+/**
+ * Forwards a contact form message to the team. Replies go straight to the
+ * sender. Returns false when it couldn't be sent.
+ */
+export async function sendContactMessageEmail(params: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  ip: string;
+  submittedAt: Date;
+}): Promise<boolean> {
+  const to = contactInbox();
+  if (!to) {
+    console.error("contact: no CONTACT_EMAIL or EMAIL_USER configured");
+    return false;
+  }
+  const { name, email, subject, message, ip, submittedAt } = params;
+  const stamp = submittedAt.toISOString();
+
+  const text = [
+    "New contact form submission from UniArchive",
+    "",
+    `From: ${name} <${email}>`,
+    `Subject: ${subject}`,
+    "",
+    "Message:",
+    message,
+    "",
+    `Submitted at: ${stamp}`,
+    `IP: ${ip}`,
+  ].join("\n");
+
+  const html = reviewEmailHtml(
+    "New contact message",
+    "Contact Form",
+    `
+          <p><strong>From:</strong> ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;</p>
+          <p><strong>Subject:</strong> ${escapeHtml(subject)}</p>
+          <div style="background: white; padding: 16px 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; white-space: pre-wrap;">${escapeHtml(message)}</div>
+          <p style="font-size: 12px; color: #666;">Submitted at ${escapeHtml(stamp)} · IP ${escapeHtml(ip)}</p>`,
+  );
+
+  return emailService.sendEmail({
+    to,
+    subject: `[UniArchive Contact] ${subject}`,
+    html,
+    text,
+    replyTo: email,
+  });
+}
+
+/** Tells the sender their message arrived. */
+export async function sendContactConfirmationEmail(params: {
+  toEmail: string;
+  toName: string;
+  subject: string;
+}): Promise<boolean> {
+  const { toEmail, toName, subject } = params;
+  const text = [
+    `Hi ${toName},`,
+    "",
+    "Thanks for reaching out. We'll get back to you within 48 hours.",
+    "",
+    `Your message: ${subject}`,
+  ].join("\n");
+  const html = reviewEmailHtml(
+    "We received your message",
+    "Message Received",
+    `
+          <h2 style="color: #333; margin-top: 0;">Hi ${escapeHtml(toName)},</h2>
+          <p>Thanks for reaching out. We'll get back to you within 48 hours.</p>
+          <p><strong>Your message:</strong> ${escapeHtml(subject)}</p>`,
+  );
+  return emailService.sendEmail({
+    to: toEmail,
+    subject: "We received your message — UniArchive",
+    html,
+    text,
+  });
 }

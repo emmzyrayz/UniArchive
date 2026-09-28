@@ -332,7 +332,8 @@ export function RoleApplicationsReview({
               <p className="text-sm text-text-secondary">
                 Promote <strong>@{target.applicant.upid}</strong> from{" "}
                 {roleLabel(target.currentRole)} to <strong>{roleLabel(target.targetRole)}</strong>?
-                The new role applies on their next request, and they&apos;ll get an email.
+                They&apos;ll be signed out and get an email; the new role applies when they sign in
+                again.
               </p>
             ) : (
               <label className="block text-sm text-text-secondary">

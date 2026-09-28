@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
         upid: user.upid,
         isVerified: user.isVerified,
         profilePhoto: user.profilePhoto,
+        tokenVersion: user.tokenVersion ?? 0,
       },
       rawToken,
       SESSION_TTL_HOURS,
@@ -109,7 +110,12 @@ export async function POST(request: NextRequest) {
     // Short-lived access token for src/proxy.ts (renewed via /api/auth/refresh)
     response.cookies.set(
       SESSION_JWT_COOKIE,
-      await signSessionJwt({ sub: String(user._id), role: user.role, upid: user.upid }),
+      await signSessionJwt({
+        sub: String(user._id),
+        role: user.role,
+        upid: user.upid,
+        tokenVersion: user.tokenVersion ?? 0,
+      }),
       sessionJwtCookieOptions(),
     );
     return response;

@@ -110,7 +110,8 @@ function DecisionDialog({
               </select>
             </label>
             <p className="text-xs text-text-muted">
-              Applies on their next request. Webmaster and dev can only be set in the database.
+              They&apos;ll be signed out and get the new role when they sign in again. Webmaster
+              and dev can only be set in the database.
             </p>
           </>
         )}
