@@ -6,10 +6,11 @@
 import { useEffect, useState, type FormEvent } from "react";
 import UniversityCombobox, { type UniversityOption } from "@/components/profile/UniversityCombobox";
 import { NIGERIAN_STATES } from "@/lib/constants/nigerianStates";
-import type { AdminSuggestionDto, AdminSuggestionsResponse } from "@/types/admin";
+import type { AdminSuggestionDto, AdminSuggestionsResponse, UniversityPreview } from "@/types/admin";
 import { Modal, ModalActions, fieldClass } from "./ReviewModals";
 import { timeAgo } from "./reviewShared";
 import {
+  ActionError,
   AdminPageShell,
   ListState,
   Pager,
@@ -337,6 +338,98 @@ function RejectDialog({
   );
 }
 
+// --- View existing ------------------------------------------------------------------
+
+/**
+ * The university a possible duplicate resembles, to compare before deciding,
+ * with a one-click "Mark as duplicate" linking to it.
+ */
+function ExistingUniversityPanel({
+  s,
+  universityId,
+  onClose,
+  onDone,
+}: {
+  s: AdminSuggestionDto;
+  universityId: string;
+  onClose: () => void;
+  onDone: (result: DecisionResult) => void;
+}) {
+  const { data, loading, error } = useAdminList<UniversityPreview>(
+    `/api/admin/institutions/${universityId}/preview`,
+  );
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const decidable = DECIDABLE.includes(s.status) && s.scope === "full";
+
+  const markDuplicate = async () => {
+    setBusy(true);
+    setActionError(null);
+    try {
+      onDone(
+        await adminRequest<DecisionResult>(`/api/admin/school-suggestions/${s.id}`, "PATCH", {
+          action: "mark_duplicate",
+          existingUniversityId: universityId,
+        }),
+      );
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not link.");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 rounded-lg border border-border bg-surface p-4 text-sm" role="region" aria-label="Existing university">
+      {loading && !data ? (
+        <p className="text-text-muted">Loading…</p>
+      ) : error || !data ? (
+        <p className="text-red-600 dark:text-red-400">{error ?? "Couldn't load that university."}</p>
+      ) : (
+        <>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold text-text-primary">
+                {data.name} ({data.abbreviation})
+              </p>
+              <p className="mt-0.5 text-xs text-text-secondary">
+                {data.ownership} · {data.state}
+                {data.city && `, ${data.city}`} · {data.verificationStatus}
+                {!data.isActive && " · inactive"}
+              </p>
+              <p className="mt-0.5 text-xs text-text-muted">
+                {data.totalFaculties} faculties · {data.totalDepartments} departments
+              </p>
+            </div>
+            <button type="button" onClick={onClose} className={secondaryButton}>
+              Close
+            </button>
+          </div>
+          {data.faculties.length > 0 && (
+            <ul className="mt-3 space-y-0.5 text-xs text-text-secondary">
+              {data.faculties.map((f) => (
+                <li key={f.id}>
+                  {f.name} ({f.totalDepartments} depts)
+                </li>
+              ))}
+              {data.totalFaculties > data.faculties.length && (
+                <li className="text-text-muted">+ {data.totalFaculties - data.faculties.length} more…</li>
+              )}
+            </ul>
+          )}
+          {decidable && (
+            <div className="mt-4 flex justify-end">
+              <button type="button" onClick={markDuplicate} disabled={busy} className={primaryButton}>
+                {busy ? "Linking…" : `Mark as duplicate of ${data.abbreviation}`}
+              </button>
+            </div>
+          )}
+          <ActionError message={actionError} />
+        </>
+      )}
+    </div>
+  );
+}
+
 // --- Page -----------------------------------------------------------------------
 
 export function SuggestionsAdmin() {
@@ -344,6 +437,8 @@ export function SuggestionsAdmin() {
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // The suggestion whose matched university is being previewed
+  const [viewing, setViewing] = useState<string | null>(null);
 
   const query = new URLSearchParams({ status: tab, page: String(page) });
   const { data, loading, error, reload } = useAdminList<AdminSuggestionsResponse>(
@@ -412,10 +507,33 @@ export function SuggestionsAdmin() {
                   {s.existingFaculty && ` / ${s.existingFaculty.name}`}
                 </p>
                 {s.similarUniversity && (
-                  <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-                    ⚠ Possible duplicate of: &ldquo;{s.similarUniversity.name}&rdquo; ({s.similarUniversity.abbreviation}) · similarity{" "}
-                    {s.similarUniversity.score}%
-                  </p>
+                  <>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                      <span>
+                        ⚠ Possible duplicate of <strong>{s.similarUniversity.name}</strong> (
+                        {s.similarUniversity.abbreviation}) · {s.similarUniversity.score}% match
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setViewing((v) => (v === s.id ? null : s.id))}
+                        aria-expanded={viewing === s.id}
+                        className="underline hover:no-underline"
+                      >
+                        {viewing === s.id ? "Hide existing" : "View existing →"}
+                      </button>
+                    </div>
+                    {viewing === s.id && (
+                      <ExistingUniversityPanel
+                        s={s}
+                        universityId={s.similarUniversity.id}
+                        onClose={() => setViewing(null)}
+                        onDone={(result) => {
+                          setViewing(null);
+                          done(result);
+                        }}
+                      />
+                    )}
+                  </>
                 )}
                 {s.reviewNote && !decidable && <p className="mt-2 text-xs text-text-muted">Note: {s.reviewNote}</p>}
 

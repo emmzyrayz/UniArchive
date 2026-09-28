@@ -5,9 +5,11 @@
 //                            then the record and every reader's annotations
 //                            and reading progress on it. Refused while the book has a
 //                            submission under review or published.
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import { isValidObjectId } from "mongoose";
 import { getBookModel } from "@/lib/models/bookModel";
+import { getMaterialModel } from "@/lib/models/materialModel";
+import { redis } from "@/lib/redis";
 import { requireAuth } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
 import { storageClient } from "@/lib/storage";
@@ -26,6 +28,8 @@ type Context = { params: Promise<{ id: string }> };
 // Long enough for a reading session: pdf.js keeps making range requests
 // against the same URL as the reader scrolls.
 const READ_URL_TTL_SECONDS = 4 * 60 * 60;
+// A reader counts as one download per material per day
+const DOWNLOAD_DEDUPE_SECONDS = 24 * 60 * 60;
 
 // Non-owners get the same 404 as a missing book, so ids can't be probed.
 const notFound = () =>
@@ -103,6 +107,30 @@ export async function GET(request: NextRequest, context: Context) {
         .catch((error) => {
           console.error("GET /api/books/[id]: failed to update lastOpenedAt:", error);
         });
+    }
+
+    // A non-owner opening a published UniLibrary material counts as a
+    // download (the reader now holds the file). Once per reader per material
+    // per day, so reloads and the reader's own refetches don't inflate it.
+    const materialId = found.isOwner ? undefined : found.publishedMaterialId;
+    if (materialId) {
+      const readerId = session.userId;
+      after(async () => {
+        try {
+          const first = await redis.set(`download:${materialId}:${readerId}`, "1", {
+            nx: true,
+            ex: DOWNLOAD_DEDUPE_SECONDS,
+          });
+          if (!first) return;
+          await (await getMaterialModel()).updateOne(
+            { _id: materialId },
+            { $inc: { downloadCount: 1 } },
+            { timestamps: false },
+          );
+        } catch (error) {
+          console.error("GET /api/books/[id]: failed to count download:", error);
+        }
+      });
     }
 
     return NextResponse.json(

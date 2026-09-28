@@ -16,6 +16,7 @@ const REVIEWER_ADMIN_PREFIXES = [
   "/admin/submissions",
   "/admin/role-applications",
   "/admin/materials",
+  "/admin/comments",
 ];
 // Exact paths only: "/admin" as a prefix would open every admin page
 const REVIEWER_ADMIN_PATHS = new Set(["/admin"]);

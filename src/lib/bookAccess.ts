@@ -5,7 +5,7 @@
 // book once it has been submitted to the UniLibrary — drafts stay private —
 // so they can check the PDF while reviewing. Everyone else gets null, which
 // routes turn into a 404.
-import { isValidObjectId } from "mongoose";
+import { isValidObjectId, type Types } from "mongoose";
 import { getBookModel } from "@/lib/models/bookModel";
 import { getMaterialModel } from "@/lib/models/materialModel";
 import { getMaterialSubmissionModel } from "@/lib/models/materialSubmissionModel";
@@ -13,10 +13,17 @@ import { can } from "@/lib/auth/permissions";
 import type { SessionUser } from "@/lib/auth/session";
 import type { BookDoc } from "@/lib/dto/book";
 
+export interface ReadableBook {
+  book: BookDoc;
+  isOwner: boolean;
+  /** Set when a non-owner can read it because it's a published Material */
+  publishedMaterialId?: Types.ObjectId;
+}
+
 export async function findReadableBook(
   id: string,
   session: SessionUser,
-): Promise<{ book: BookDoc; isOwner: boolean } | null> {
+): Promise<ReadableBook | null> {
   if (!isValidObjectId(id)) return null;
   const Book = await getBookModel();
   const book = await Book.findById(id).lean<BookDoc>();
@@ -24,8 +31,9 @@ export async function findReadableBook(
   if (book.uploaderId.toString() === session.userId) return { book, isOwner: true };
 
   const Material = await getMaterialModel();
-  if (await Material.exists({ bookId: book._id, isActive: true })) {
-    return { book, isOwner: false };
+  const published = await Material.exists({ bookId: book._id, isActive: true });
+  if (published) {
+    return { book, isOwner: false, publishedMaterialId: published._id };
   }
 
   if (!can(session.role, "admin.view_submissions") || !book.submissionId) return null;

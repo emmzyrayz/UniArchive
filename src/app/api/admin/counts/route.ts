@@ -11,6 +11,7 @@ import { getSchoolSuggestionModel } from "@/lib/models/schoolSuggestionModel";
 import { getMaterialModel } from "@/lib/models/materialModel";
 import { getUserModel } from "@/lib/models/userModel";
 import { getUniversityModel } from "@/lib/models/university/universityModel";
+import { getCommentModel } from "@/lib/models/commentModel";
 import type { AdminCounts } from "@/types/admin";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, "admin.view_submissions");
 
-    const [Submission, RoleApplication, Suggestion, Material, User, University] =
+    const [Submission, RoleApplication, Suggestion, Material, User, University, Comment] =
       await Promise.all([
         getMaterialSubmissionModel(),
         getRoleApplicationModel(),
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
         getMaterialModel(),
         getUserModel(),
         getUniversityModel(),
+        getCommentModel(),
       ]);
 
     const [
@@ -39,6 +41,7 @@ export async function GET(request: NextRequest) {
       totalUsers,
       newUsersThisWeek,
       totalInstitutions,
+      reportedComments,
     ] = await Promise.all([
       Submission.countDocuments({ status: "submitted" }),
       Submission.countDocuments({ status: "in_review" }),
@@ -49,6 +52,7 @@ export async function GET(request: NextRequest) {
       User.estimatedDocumentCount(),
       User.countDocuments({ createdAt: { $gt: new Date(Date.now() - WEEK_MS) } }),
       University.countDocuments({ isActive: true }),
+      Comment.countDocuments({ isReported: true }),
     ]);
 
     const counts: AdminCounts = {
@@ -61,6 +65,7 @@ export async function GET(request: NextRequest) {
       totalUsers,
       newUsersThisWeek,
       totalInstitutions,
+      reportedComments,
     };
     return NextResponse.json(counts, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

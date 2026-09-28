@@ -13,9 +13,15 @@ import { handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail } from "@/lib/adminApi";
 import { getCommentModel, type IComment } from "@/lib/models/commentModel";
-import { getMaterialModel } from "@/lib/models/materialModel";
 import { COMMENT_EDIT_WINDOW_MS, COMMENT_MAX_LENGTH } from "@/lib/constants/comments";
-import { DELETED_TEXT, canModerateComments, findCommentOf, toCommentDto } from "@/lib/comments";
+import {
+  DELETED_TEXT,
+  REMOVED_TEXT,
+  canModerateComments,
+  findCommentOf,
+  softDeleteComment,
+  toCommentDto,
+} from "@/lib/comments";
 
 type Context = { params: Promise<{ id: string; commentId: string }> };
 
@@ -69,34 +75,13 @@ export async function DELETE(request: NextRequest, context: Context) {
       return fail(403, "You can only delete your own comments.");
     }
 
-    const Comment = await getCommentModel();
-    // Only the request that actually deletes it moves the counts
-    const deleted = await Comment.findOneAndUpdate(
-      { _id: comment._id, isDeleted: false },
-      {
-        $set: {
-          isDeleted: true,
-          deletedAt: new Date(),
-          deletedBy: session.userId,
-          text: DELETED_TEXT,
-          authorName: DELETED_TEXT,
-        },
-        $unset: { authorProfilePhoto: "" },
-      },
-      { returnDocument: "after" },
-    ).lean<IComment>();
-
-    if (deleted) {
-      const Material = await getMaterialModel();
-      await Promise.all([
-        Material.updateOne({ _id: comment.materialId }, { $inc: { commentCount: -1 } }, { timestamps: false }),
-        comment.parentId
-          ? Comment.updateOne({ _id: comment.parentId }, { $inc: { replyCount: -1 } }, { timestamps: false })
-          : null,
-      ]);
-      if (!isAuthor) {
-        console.info(`moderation: @${session.upid} deleted comment ${commentId} by @${comment.authorUpid}`);
-      }
+    const deleted = await softDeleteComment(
+      comment,
+      session.userId,
+      isAuthor ? DELETED_TEXT : REMOVED_TEXT,
+    );
+    if (deleted && !isAuthor) {
+      console.info(`moderation: @${session.upid} deleted comment ${commentId} by @${comment.authorUpid}`);
     }
 
     const current = deleted ?? (await findCommentOf(id, commentId));

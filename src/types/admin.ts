@@ -13,6 +13,32 @@ export interface AdminCounts {
   totalUsers: number;
   newUsersThisWeek: number;
   totalInstitutions: number;
+  reportedComments: number;
+}
+
+// --- Reported comments ------------------------------------------------------
+
+export interface AdminCommentDto {
+  id: string;
+  text: string;
+  authorUpid: string;
+  authorName: string;
+  materialId: string;
+  materialTitle: string;
+  /** For "View material": opens the reader */
+  bookId?: string;
+  reportCount: number;
+  isDeleted: boolean;
+  isReported: boolean;
+  createdAt: string;
+  /** Replies only */
+  parentId?: string;
+  parentAuthorUpid?: string;
+}
+
+export interface AdminCommentsResponse extends Paginated {
+  comments: AdminCommentDto[];
+  reportedCount: number;
 }
 
 export interface Paginated {
@@ -149,6 +175,23 @@ export interface AdminSuggestionDto {
   linkedToSuggestionId?: string;
   reviewNote?: string;
   reviewedAt?: string;
+}
+
+/** GET /api/admin/institutions/[id]/preview */
+export interface UniversityPreview {
+  id: string;
+  name: string;
+  abbreviation: string;
+  state: string;
+  city?: string;
+  ownership: string;
+  type: string;
+  isActive: boolean;
+  totalFaculties: number;
+  totalDepartments: number;
+  verificationStatus: string;
+  /** The first few, alphabetically */
+  faculties: { id: string; name: string; totalDepartments: number }[];
 }
 
 export interface AdminSuggestionsResponse extends Paginated {

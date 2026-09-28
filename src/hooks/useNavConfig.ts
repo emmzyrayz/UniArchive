@@ -53,6 +53,7 @@ const INSTITUTION_ADMIN_ROLES = rolesThatCan("manage_institution");
 const SUBMISSIONS_PATH = "/admin/submissions";
 const ROLE_APPLICATIONS_PATH = "/admin/role-applications";
 const SUGGESTIONS_PATH = "/admin/suggestions";
+const COMMENTS_PATH = "/admin/comments";
 
 // Every admin page, each shown only to the roles its page accepts
 const ADMIN_ITEMS: NavItem[] = [
@@ -61,6 +62,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { name: "Role Applications", path: ROLE_APPLICATIONS_PATH, requiresAuth: true, roles: REVIEWER_ROLES },
   { name: "School Suggestions", path: SUGGESTIONS_PATH, requiresAuth: true, roles: INSTITUTION_ADMIN_ROLES },
   { name: "Materials", path: "/admin/materials", requiresAuth: true, roles: REVIEWER_ROLES },
+  { name: "Comments", path: COMMENTS_PATH, requiresAuth: true, roles: REVIEWER_ROLES },
   { name: "Users", path: "/admin/users", requiresAuth: true, roles: USER_ADMIN_ROLES },
   { name: "Institutions", path: "/admin/institutions", requiresAuth: true, roles: INSTITUTION_ADMIN_ROLES },
 ];
@@ -258,6 +260,7 @@ export const useNavConfig = () => {
             [SUBMISSIONS_PATH]: data?.pendingSubmissions ?? 0,
             [ROLE_APPLICATIONS_PATH]: data?.pendingRoleApplications ?? 0,
             [SUGGESTIONS_PATH]: (data?.pendingSchoolSuggestions ?? 0) + (data?.possibleDuplicates ?? 0),
+            [COMMENTS_PATH]: data?.reportedComments ?? 0,
           });
         },
       )

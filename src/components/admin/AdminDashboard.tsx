@@ -76,6 +76,7 @@ export function AdminDashboard({ viewer }: { viewer: AdminViewer }) {
     },
     { label: "Users", href: "/admin/users", show: viewer.canManageUsers },
     { label: "Materials", href: "/admin/materials", show: true },
+    { label: "Reported comments", href: "/admin/comments", count: counts?.reportedComments, show: true },
     { label: "Institutions", href: "/admin/institutions", show: viewer.canManageInstitutions },
   ];
 

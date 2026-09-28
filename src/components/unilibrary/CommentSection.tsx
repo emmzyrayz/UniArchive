@@ -163,7 +163,8 @@ function CommentItem({
   const base = `/api/materials/${materialId}/comments/${c.id}`;
 
   if (c.isDeleted) {
-    return <p className="py-1 text-sm italic text-text-muted">[deleted]</p>;
+    // "[deleted]" or "[removed by moderator]", as the server stored it
+    return <p className="py-1 text-sm italic text-text-muted">{c.text || "[deleted]"}</p>;
   }
 
   const isOwn = !!userProfile && c.author?.upid === userProfile.upid;
