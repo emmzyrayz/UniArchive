@@ -8,6 +8,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { FiArrowLeft } from "react-icons/fi";
 import { useUser } from "@/context/userContext";
+import { useUserReactions } from "@/hooks/useUserReactions";
 import {
   PROFILE_CARD_CLASS,
   ProfileAvatar,
@@ -88,7 +89,7 @@ function ProfileSkeleton() {
 }
 
 function Contributions({ upid }: { upid: string }) {
-  const { hasActiveSession } = useUser();
+  const { hasActiveSession, userProfile } = useUser();
   const [first, setFirst] = useState<MaterialsState | null>(null);
   const [extra, setExtra] = useState<{ key: string; pages: PublicMaterialsResponse[] }>({ key: upid, pages: [] });
   const [loadingMore, setLoadingMore] = useState(false);
@@ -118,6 +119,10 @@ function Contributions({ upid }: { upid: string }) {
   const materials = [firstPage, ...pages]
     .flatMap((p) => p?.materials ?? [])
     .filter((m, i, all) => all.findIndex((x) => x._id === m._id) === i);
+  const userReactions = useUserReactions(
+    materials.map((m) => m._id),
+    hasActiveSession ? (userProfile?.upid ?? null) : null,
+  );
 
   const loadMore = async () => {
     if (!last || loadingMore) return;
@@ -161,7 +166,13 @@ function Contributions({ upid }: { upid: string }) {
       ) : (
         <>
           {materials.map((m) => (
-            <MaterialCard key={m._id} material={m} isAuthenticated={hasActiveSession} onRead={recordView} />
+            <MaterialCard
+              key={m._id}
+              material={m}
+              isAuthenticated={hasActiveSession}
+              onRead={recordView}
+              userReaction={userReactions[m._id]}
+            />
           ))}
           {last?.hasMore && (
             <div className="flex flex-col items-center gap-2 pt-2">

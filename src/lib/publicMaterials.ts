@@ -3,6 +3,7 @@
 // GET /api/materials and GET /api/users/[upid]/materials.
 import type { IMaterial } from "@/lib/models/materialModel";
 import type { MaterialSummary } from "@/types/unilibrary";
+import { EMPTY_REACTIONS } from "@/lib/constants/reactions";
 
 // Storage fields stay server-side: the file is only reachable through the
 // signed URL the reader gets from /api/books/[id].
@@ -31,6 +32,8 @@ export const PUBLIC_MATERIAL_FIELDS = [
   "downloadCount",
   "submittedByUpid",
   "createdAt",
+  "reactions",
+  "reactionCount",
 ].join(" ");
 
 export type PublicMaterialDoc = Pick<
@@ -60,6 +63,8 @@ export type PublicMaterialDoc = Pick<
   | "downloadCount"
   | "submittedByUpid"
   | "createdAt"
+  | "reactions"
+  | "reactionCount"
 >;
 
 export function toMaterialSummary(doc: PublicMaterialDoc): MaterialSummary {
@@ -89,5 +94,8 @@ export function toMaterialSummary(doc: PublicMaterialDoc): MaterialSummary {
     createdAt: new Date(doc.createdAt).toISOString(),
     pageCount: doc.pageCount,
     fileSize: doc.fileSize,
+    // Materials from before reactions existed have neither field
+    reactions: { ...EMPTY_REACTIONS, ...doc.reactions },
+    reactionCount: doc.reactionCount ?? 0,
   };
 }

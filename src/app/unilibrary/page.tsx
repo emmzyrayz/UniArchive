@@ -7,6 +7,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@/context/userContext";
+import { useUserReactions } from "@/hooks/useUserReactions";
 import { isMaterialCategory } from "@/lib/constants/materialCategories";
 import { CategoryTabs } from "@/components/unilibrary/CategoryTabs";
 import { MaterialCard } from "@/components/unilibrary/MaterialCard";
@@ -19,11 +20,12 @@ import {
 } from "@/components/unilibrary/MaterialsFilter";
 import { UniLibraryEmptyState } from "@/components/unilibrary/UniLibraryEmptyState";
 import { LEVEL_OPTIONS } from "@/components/unilibrary/materialLabels";
-import type { MaterialsResponse } from "@/types/unilibrary";
+import type { MaterialSort, MaterialsResponse } from "@/types/unilibrary";
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
 const SKELETON_COUNT = 6;
+const SORTS: MaterialSort[] = ["recent", "popular", "trending"];
 
 interface Feed extends MaterialsResponse {
   /** The query these results belong to; a mismatch means a fetch is pending. */
@@ -42,7 +44,7 @@ function filtersFromUrl(params: URLSearchParams): MaterialFilters {
     universityName: params.get("universityName") ?? "",
     level: (LEVEL_OPTIONS as readonly string[]).includes(level) ? level : "",
     tier: tier === "1" || tier === "2" ? tier : "",
-    sort: params.get("sort") === "popular" ? "popular" : "recent",
+    sort: SORTS.find((s) => s === params.get("sort")) ?? "recent",
   };
 }
 
@@ -77,7 +79,7 @@ async function fetchMaterials(
 
 function UniLibraryFeed() {
   const searchParams = useSearchParams();
-  const { hasActiveSession } = useUser();
+  const { hasActiveSession, userProfile } = useUser();
 
   const [filters, setFilters] = useState<MaterialFilters>(() =>
     filtersFromUrl(new URLSearchParams(searchParams.toString())),
@@ -182,6 +184,11 @@ function UniLibraryFeed() {
 
   const filtersActive = countActiveFilters({ ...filters, sort: "recent" }) > 0;
   const current = feed?.key === query ? feed : null;
+  // Highlights the signed-in viewer's reactions on the loaded cards
+  const userReactions = useUserReactions(
+    current?.materials.map((m) => m._id) ?? [],
+    hasActiveSession ? (userProfile?.upid ?? null) : null,
+  );
 
   return (
     <div className="min-h-screen mt-[60px] px-4 pb-24 pt-6 sm:px-6 lg:pt-10">
@@ -234,6 +241,7 @@ function UniLibraryFeed() {
                     material={material}
                     isAuthenticated={hasActiveSession}
                     onRead={recordView}
+                    userReaction={userReactions[material._id]}
                   />
                 ))}
                 {current.hasMore && (

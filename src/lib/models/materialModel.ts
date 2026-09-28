@@ -8,6 +8,7 @@
 // tier2 (a lecturer+ other than the submitter endorsed it, gold crown).
 import { Schema, type Model, type Types } from "mongoose";
 import { connectDB } from "@/lib/mongoose";
+import type { ReactionCounts } from "@/lib/constants/reactions";
 import {
   MATERIAL_CATEGORY_IDS,
   MATERIAL_SUBCATEGORY_IDS,
@@ -79,6 +80,11 @@ export interface IMaterial {
   viewCount: number;
   downloadCount: number;
   reportCount: number;
+  // Per-type reaction totals (one Reaction document per user), and their
+  // sum for sorting. Both change in the same atomic $inc, so they can't
+  // disagree (see POST /api/materials/[id]/react).
+  reactions: ReactionCounts;
+  reactionCount: number;
 
   // Visibility (an admin can deactivate a material)
   isActive: boolean;
@@ -154,6 +160,12 @@ const MaterialSchema = new Schema<IMaterial, IMaterialModel>(
     viewCount: { type: Number, default: 0 },
     downloadCount: { type: Number, default: 0 },
     reportCount: { type: Number, default: 0 },
+    reactions: {
+      helpful: { type: Number, default: 0 },
+      excellent: { type: Number, default: 0 },
+      accurate: { type: Number, default: 0 },
+    },
+    reactionCount: { type: Number, default: 0 },
 
     isActive: { type: Boolean, default: true },
   },
@@ -168,6 +180,8 @@ MaterialSchema.index({ departmentId: 1, category: 1, isActive: 1 });
 MaterialSchema.index({ courseCode: 1, universityId: 1 });
 MaterialSchema.index({ verificationTier: 1, isActive: 1 });
 MaterialSchema.index({ category: 1, isActive: 1, createdAt: -1 });
+// "popular" sort and the trending candidate set
+MaterialSchema.index({ isActive: 1, viewCount: -1, createdAt: -1 });
 MaterialSchema.index(
   { title: "text", description: "text", tags: "text", courseCode: "text" },
   { name: "material_text" },

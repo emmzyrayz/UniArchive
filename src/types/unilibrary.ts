@@ -4,8 +4,11 @@ import type {
   MaterialCategory,
   MaterialSubcategory,
 } from "@/lib/constants/materialCategories";
+import type { ReactionCounts, ReactionType } from "@/lib/constants/reactions";
 
-export type MaterialSort = "recent" | "popular";
+export type { ReactionCounts, ReactionType };
+
+export type MaterialSort = "recent" | "popular" | "trending";
 
 export interface MaterialSummary {
   _id: string;
@@ -34,6 +37,12 @@ export interface MaterialSummary {
   createdAt: string;
   pageCount?: number;
   fileSize: number;
+  reactions: ReactionCounts;
+  reactionCount: number;
+  /** Only on sort=trending */
+  trendingScore?: number;
+  /** The signed-in viewer's reaction, merged in on the client */
+  userReaction?: ReactionType | null;
 }
 
 export interface MaterialsResponse {

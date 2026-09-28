@@ -204,6 +204,7 @@ export function MaterialsFilter({ filters, onChange }: MaterialsFilterProps) {
           >
             <option value="recent">Most recent</option>
             <option value="popular">Most popular</option>
+            <option value="trending">Trending 🔥</option>
           </select>
         </Section>
       </div>

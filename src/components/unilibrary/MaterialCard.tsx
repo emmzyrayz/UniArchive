@@ -1,13 +1,22 @@
 // components/unilibrary/MaterialCard.tsx
 // One verified material in the UniLibrary feed. Signed-in readers open the
-// backing Book in the reader; everyone else gets a sign-in prompt.
+// backing Book in the reader and can react; everyone else sees the reaction
+// counts and gets a sign-in prompt.
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { FiArrowRight, FiEye, FiX } from "react-icons/fi";
 import { formatFileSize } from "@/assets/data/libraryData";
 import { timeAgo } from "@/components/admin/reviewShared";
+import { useUser } from "@/context/userContext";
+import {
+  REACTIONS,
+  REACTION_TYPES,
+  type ReactionCounts,
+  type ReactionType,
+} from "@/lib/constants/reactions";
 import type { MaterialSummary } from "@/types/unilibrary";
 import { BADGE_CLASS, categoryBadge, levelLabel } from "./materialLabels";
 
@@ -16,9 +25,19 @@ interface MaterialCardProps {
   isAuthenticated: boolean;
   /** Called as a signed-in user opens the material (counts the view). */
   onRead: (materialId: string) => void;
+  /** The viewer's reaction: undefined while unknown, null for none */
+  userReaction?: ReactionType | null;
 }
 
-function SignInPrompt({ from, onClose }: { from: string; onClose: () => void }) {
+function SignInPrompt({
+  from,
+  onClose,
+  message = "Sign in to read this material.",
+}: {
+  from: string;
+  onClose: () => void;
+  message?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
@@ -47,7 +66,7 @@ function SignInPrompt({ from, onClose }: { from: string; onClose: () => void }) 
     >
       <div className="flex items-start justify-between gap-2">
         <p id={titleId} className="text-sm font-medium text-text-primary">
-          Sign in to read this material.
+          {message}
         </p>
         <button
           type="button"
@@ -76,7 +95,146 @@ function SignInPrompt({ from, onClose }: { from: string; onClose: () => void }) 
   );
 }
 
-export function MaterialCard({ material, isAuthenticated, onRead }: MaterialCardProps) {
+interface ReactionState {
+  reactions: ReactionCounts;
+  reactionCount: number;
+  userReaction: ReactionType | null;
+}
+
+/** What a click does, applied locally before the server confirms. */
+function applyReaction(state: ReactionState, type: ReactionType): ReactionState {
+  const reactions = { ...state.reactions };
+  let { reactionCount } = state;
+  let userReaction: ReactionType | null;
+  if (state.userReaction === type) {
+    reactions[type] -= 1;
+    reactionCount -= 1;
+    userReaction = null;
+  } else if (state.userReaction) {
+    reactions[state.userReaction] -= 1;
+    reactions[type] += 1;
+    userReaction = type;
+  } else {
+    reactions[type] += 1;
+    reactionCount += 1;
+    userReaction = type;
+  }
+  for (const t of REACTION_TYPES) reactions[t] = Math.max(0, reactions[t]);
+  return { reactions, reactionCount: Math.max(0, reactionCount), userReaction };
+}
+
+/**
+ * Helpful / Excellent / Accurate. Signed-in readers toggle them (updated
+ * immediately, settled to the server's totals, reverted on error); signed-out
+ * visitors see the counts and a sign-in prompt; on your own material the
+ * counts are shown read-only.
+ */
+function ReactionBar({
+  material,
+  userReaction,
+  isAuthenticated,
+}: {
+  material: MaterialSummary;
+  userReaction?: ReactionType | null;
+  isAuthenticated: boolean;
+}) {
+  const { userProfile } = useUser();
+  const pathname = usePathname();
+  const [local, setLocal] = useState<ReactionState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [promptOpen, setPromptOpen] = useState(false);
+
+  const isOwn = !!userProfile?.upid && userProfile.upid === material.submittedByUpid;
+  // Until the viewer reacts here, show what the feed loaded
+  const shown: ReactionState = local ?? {
+    reactions: material.reactions,
+    reactionCount: material.reactionCount,
+    userReaction: userReaction ?? null,
+  };
+
+  const react = async (type: ReactionType) => {
+    if (!isAuthenticated) {
+      setPromptOpen(true);
+      return;
+    }
+    if (busy) return;
+    const before = local;
+    setLocal(applyReaction(shown, type));
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/materials/${material._id}/react`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reactionType: type }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as {
+        reactionType: ReactionType | null;
+        reactions: ReactionCounts;
+        reactionCount: number;
+      };
+      setLocal({ reactions: data.reactions, reactionCount: data.reactionCount, userReaction: data.reactionType });
+    } catch (error) {
+      console.warn("Reaction failed:", error);
+      setLocal(before);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const chip = "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium";
+
+  if (isOwn) {
+    if (shown.reactionCount === 0) return null;
+    return (
+      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-neutral-100 pt-3 dark:border-neutral-700" aria-label="Reactions to your material">
+        {REACTION_TYPES.filter((t) => shown.reactions[t] > 0).map((t) => (
+          <span key={t} className={`${chip} bg-neutral-100 text-neutral-600 dark:bg-neutral-700/50 dark:text-neutral-400`}>
+            {REACTIONS[t].emoji} {REACTIONS[t].label} <span className="font-semibold">{shown.reactions[t]}</span>
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative mt-3 flex flex-wrap gap-1.5 border-t border-neutral-100 pt-3 dark:border-neutral-700">
+      {REACTION_TYPES.map((t) => {
+        const active = shown.userReaction === t;
+        const count = shown.reactions[t];
+        return (
+          <button
+            key={t}
+            type="button"
+            onClick={() => react(t)}
+            disabled={busy}
+            aria-pressed={isAuthenticated ? active : undefined}
+            title={REACTIONS[t].meaning}
+            className={`${chip} border transition-colors disabled:cursor-wait ${
+              active
+                ? "border-primary/30 bg-primary/15 text-primary"
+                : "border-transparent bg-neutral-100 text-neutral-600 hover:bg-primary/10 hover:text-primary dark:bg-neutral-700/50 dark:text-neutral-400"
+            }`}
+          >
+            <span aria-hidden>{REACTIONS[t].emoji}</span>
+            <span>{REACTIONS[t].label}</span>
+            {count > 0 && <span className="font-semibold">{count}</span>}
+          </button>
+        );
+      })}
+      {promptOpen && (
+        <SignInPrompt
+          from={pathname}
+          message="Sign in to react to this material."
+          onClose={() => setPromptOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+export function MaterialCard({ material, isAuthenticated, onRead, userReaction }: MaterialCardProps) {
   const [promptOpen, setPromptOpen] = useState(false);
   const badge = categoryBadge(material.category, material.subcategory);
   const readHref = `/read/${material.bookId}`;
@@ -160,6 +318,8 @@ export function MaterialCard({ material, isAuthenticated, onRead }: MaterialCard
         ·{" "}
         {timeAgo(material.createdAt)}
       </p>
+
+      <ReactionBar material={material} userReaction={userReaction} isAuthenticated={isAuthenticated} />
 
       <div className="mt-3 flex items-end justify-between gap-3">
         <div className="flex min-w-0 flex-wrap gap-1.5">
