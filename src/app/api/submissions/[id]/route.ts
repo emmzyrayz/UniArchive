@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isValidObjectId } from "mongoose";
 import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { getBookModel } from "@/lib/models/bookModel";
 import { toBookDto, type BookDoc } from "@/lib/dto/book";
 import {
@@ -63,7 +63,7 @@ export async function PATCH(request: NextRequest, context: Context) {
     const found = await findOwnSubmission(request, context);
     if (!found) return notFound();
     const { session, submission } = found;
-    enforceRateLimit(request, `submissions:${session.userId}`, 30);
+    await enforceRateLimit(request, "standard", `submissions:${session.userId}`);
 
     if (!EDITABLE_SUBMISSION_STATUSES.includes(submission.status)) {
       return NextResponse.json(

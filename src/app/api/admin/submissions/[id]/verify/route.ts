@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAuth, type SessionUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { getBookModel } from "@/lib/models/bookModel";
 import { getUserModel } from "@/lib/models/userModel";
 import { getContributionEventModel } from "@/lib/models/contributionEventModel";
@@ -44,7 +44,7 @@ const fail = (status: number, message: string) =>
 export async function PATCH(request: NextRequest, context: Context) {
   try {
     const session = await requireAuth(request);
-    enforceRateLimit(request, `admin-submissions:${session.userId}`, 60);
+    await enforceRateLimit(request, "admin", `admin-submissions:${session.userId}`);
     const { id } = await context.params;
 
     const body = await readJson<{ tier: number; note: string }>(request);

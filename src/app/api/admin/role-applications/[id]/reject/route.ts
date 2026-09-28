@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isValidObjectId } from "mongoose";
 import { requireAuth } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { getRoleApplicationModel } from "@/lib/models/roleApplicationModel";
 import { loadSubmitterContact } from "@/lib/adminSubmissions";
 import {
@@ -27,7 +27,7 @@ export async function PATCH(request: NextRequest, context: Context) {
   try {
     const session = await requireAuth(request);
     if (!canDecideRoleApplications(session.role)) return fail(403, "Forbidden");
-    enforceRateLimit(request, `admin-role-applications:${session.userId}`, 60);
+    await enforceRateLimit(request, "admin", `admin-role-applications:${session.userId}`);
 
     const { id } = await context.params;
     if (!isValidObjectId(id)) return fail(404, "Application not found.");

@@ -4,7 +4,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { getBookModel } from "@/lib/models/bookModel";
 import { getCloudinaryPdf } from "@/lib/cloudinary";
 import { CLOUDINARY_MAX_SIZE } from "@/lib/storageRouter";
@@ -22,7 +22,7 @@ interface FinalizeBody extends BookAcademicBody {
 export async function POST(request: NextRequest) {
   try {
     const session = await requirePermission(request, "upload");
-    enforceRateLimit(request, `finalize:${session.userId}`, 20);
+    await enforceRateLimit(request, "upload", `finalize:${session.userId}`);
 
     const body = await readJson<FinalizeBody>(request);
     const publicId = asTrimmedString(body?.publicId, 400);

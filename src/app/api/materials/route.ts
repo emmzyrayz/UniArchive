@@ -15,7 +15,8 @@ import {
   toMaterialSummary,
   type PublicMaterialDoc,
 } from "@/lib/publicMaterials";
-import { handleRouteError } from "@/lib/api";
+import { getClientIp, handleRouteError } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { escapeRegex } from "@/lib/escapeRegex";
 import {
   isMaterialCategory,
@@ -35,6 +36,7 @@ function positiveInt(value: string | null, fallback: number): number {
 
 export async function GET(request: NextRequest) {
   try {
+    await enforceRateLimit(request, "public", `materials:${getClientIp(request)}`);
     const params = request.nextUrl.searchParams;
 
     const category = params.get("category");

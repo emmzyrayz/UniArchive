@@ -10,7 +10,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { escapeRegex } from "@/lib/escapeRegex";
 import { getUserModel } from "@/lib/models/userModel";
 import {
@@ -56,7 +56,7 @@ function badRequest(message: string, status = 400) {
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);
-    enforceRateLimit(request, `suggest:${session.userId}`, 5);
+    await enforceRateLimit(request, "suggest", `suggest:${session.userId}`);
 
     const body = await readJson<{
       universityName: string;

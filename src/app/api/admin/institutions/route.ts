@@ -9,7 +9,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { escapeRegex } from "@/lib/escapeRegex";
 import { fail, isDuplicateKey, optionalString, pagination, totalPages } from "@/lib/adminApi";
 import {
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await requirePermission(request, "manage_institution");
-    enforceRateLimit(request, `admin-institutions:${session.userId}`, 30);
+    await enforceRateLimit(request, "admin", `admin-institutions:${session.userId}`);
 
     const body = await readJson(request);
     if (!body) return fail(400, "Invalid request body.");

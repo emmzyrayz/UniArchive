@@ -7,7 +7,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { escapeRegex } from "@/lib/escapeRegex";
 import { fail, isDuplicateKey, optionalString } from "@/lib/adminApi";
 import { getDepartmentModel, type IDepartment } from "@/lib/models/university/departmentModel";
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, context: Context) {
 export async function POST(request: NextRequest, context: Context) {
   try {
     const session = await requirePermission(request, "manage_institution");
-    enforceRateLimit(request, `admin-institutions:${session.userId}`, 60);
+    await enforceRateLimit(request, "admin", `admin-institutions:${session.userId}`);
     const { id, fid } = await context.params;
     const faculty = await loadFacultyOf(id, fid);
     if (!faculty) return fail(404, "Faculty not found.");

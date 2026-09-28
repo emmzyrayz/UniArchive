@@ -11,7 +11,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import type { Annotations, Bookmark, Highlight } from "@/types/reader";
+import type { Annotations, Bookmark, Highlight, VersionedAnnotations } from "@/types/reader";
 import { useDeviceCapability } from "@/hooks/useDeviceCapability";
 import {
   DEFAULT_HIGHLIGHT_COLOR,
@@ -41,6 +41,33 @@ function mergeById<T extends { id: string }>(server: T[], local: T[]): T[] {
   const ids = new Set(server.map((item) => item.id));
   return [...server, ...local.filter((item) => !ids.has(item.id))];
 }
+
+/**
+ * Merges this tab's list with another tab's saved list, relative to `base`
+ * (the last copy both agreed on). Additions from either side are kept;
+ * a deletion on either side sticks. A plain union would resurrect items the
+ * other tab deleted.
+ */
+function threeWayMerge<T extends { id: string }>(base: T[], local: T[], remote: T[]): T[] {
+  const baseIds = new Set(base.map((i) => i.id));
+  const localIds = new Set(local.map((i) => i.id));
+  const remoteIds = new Set(remote.map((i) => i.id));
+  return [
+    // Theirs, minus what this tab deleted
+    ...remote.filter((i) => !(baseIds.has(i.id) && !localIds.has(i.id))),
+    // This tab's new items (ones in base but gone remotely were deleted there)
+    ...local.filter((i) => !remoteIds.has(i.id) && !baseIds.has(i.id)),
+  ];
+}
+
+/** One bookmark per page, as the toggle assumes; the first one wins. */
+function onePerPage(bookmarks: Bookmark[]): Bookmark[] {
+  const seen = new Set<number>();
+  return bookmarks.filter((b) => !seen.has(b.pageNumber) && !!seen.add(b.pageNumber));
+}
+
+const sameIds = (a: { id: string }[], b: { id: string }[]) =>
+  a.length === b.length && a.every((item) => b.some((other) => other.id === item.id));
 
 type NewHighlight = Omit<Highlight, "id" | "createdAt" | "color"> & { color?: string };
 
@@ -82,6 +109,10 @@ const ReaderContext = createContext<ReaderContextType | undefined>(undefined);
  * state when it has changed (every 30s, when the tab is hidden, and when the
  * reader closes). Nothing is saved until the load has succeeded, so a failed
  * load can never overwrite what's stored.
+ *
+ * Two tabs on the same book: every save names the syncVersion it's based on.
+ * If the other tab saved in between, the server answers 409 with its copy;
+ * this tab merges (threeWayMerge) and saves again a moment later.
  */
 function useAnnotationSync(
   bookId: string,
@@ -102,10 +133,19 @@ function useAnnotationSync(
 
   useEffect(() => {
     const url = `/api/books/${encodeURIComponent(bookId)}/annotations`;
-    const sync = { loaded: false, disabled: false, dirty: false, saving: false };
+    const sync = {
+      loaded: false,
+      disabled: false,
+      dirty: false,
+      saving: false,
+      // The server version and content this tab last loaded or saved
+      version: 0,
+      base: { highlights: [], bookmarks: [] } as Annotations,
+    };
     syncRef.current = sync;
     let active = true;
     let loading = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
     const load = () => {
       if (loading || sync.loaded || sync.disabled) return;
@@ -119,8 +159,10 @@ function useAnnotationSync(
             }
             throw new Error(`GET annotations ${res.status}`);
           }
-          const data = (await res.json()) as Partial<Annotations>;
+          const data = (await res.json()) as Partial<VersionedAnnotations>;
           if (!active) return;
+          sync.version = data.syncVersion ?? 0;
+          sync.base = { highlights: data.highlights ?? [], bookmarks: data.bookmarks ?? [] };
           setHighlights((prev) => mergeById(data.highlights ?? [], prev));
           setBookmarks((prev) => {
             const pages = new Set((data.bookmarks ?? []).map((b) => b.pageNumber));
@@ -137,9 +179,31 @@ function useAnnotationSync(
         });
     };
 
+    /** Folds another tab's saved copy into this tab's state. */
+    const mergeRemote = (remote: VersionedAnnotations) => {
+      const base = sync.base;
+      setHighlights((prev) => threeWayMerge(base.highlights, prev, remote.highlights));
+      setBookmarks((prev) => onePerPage(threeWayMerge(base.bookmarks, prev, remote.bookmarks)));
+      // Only save again if this tab had something the other didn't
+      const local = latestRef.current;
+      const merged = {
+        highlights: threeWayMerge(base.highlights, local.highlights, remote.highlights),
+        bookmarks: onePerPage(threeWayMerge(base.bookmarks, local.bookmarks, remote.bookmarks)),
+      };
+      sync.base = { highlights: remote.highlights, bookmarks: remote.bookmarks };
+      sync.version = remote.syncVersion;
+      if (!sameIds(merged.highlights, remote.highlights) || !sameIds(merged.bookmarks, remote.bookmarks)) {
+        sync.dirty = true;
+        // Once the merged state has rendered into latestRef
+        clearTimeout(retryTimer);
+        retryTimer = setTimeout(() => save(false), 1000);
+      }
+    };
+
     const save = (leaving: boolean) => {
       if (!sync.loaded || !sync.dirty || (sync.saving && !leaving)) return;
-      const body = JSON.stringify(latestRef.current);
+      const snapshot = latestRef.current;
+      const body = JSON.stringify({ ...snapshot, syncVersion: sync.version });
       sync.dirty = false;
       sync.saving = true;
       fetch(url, {
@@ -150,8 +214,20 @@ function useAnnotationSync(
         // keepalive lets the request outlive the page, within the size cap
         keepalive: leaving && body.length <= KEEPALIVE_MAX_BYTES,
       })
-        .then((res) => {
-          if (res.ok) return;
+        .then(async (res) => {
+          if (res.ok) {
+            const data = (await res.json()) as { syncVersion?: number };
+            sync.version = data.syncVersion ?? sync.version + 1;
+            sync.base = snapshot;
+            return;
+          }
+          if (res.status === 409) {
+            // Another tab saved first. Once this reader is gone there's no
+            // state left to merge into, so a closing tab's save is dropped.
+            const data = (await res.json()) as { current?: VersionedAnnotations };
+            if (active && data.current) mergeRemote(data.current);
+            return;
+          }
           // Retrying won't help a rejected body or a lost session
           if (res.status >= 500 || res.status === 429) sync.dirty = true;
           console.warn(`Failed to save annotations (HTTP ${res.status})`);
@@ -183,6 +259,7 @@ function useAnnotationSync(
     return () => {
       active = false;
       clearInterval(interval);
+      clearTimeout(retryTimer);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
       // Leaving the reader inside the app

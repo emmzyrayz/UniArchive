@@ -16,13 +16,14 @@ import { Types, isValidObjectId } from "mongoose";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail, optionalString } from "@/lib/adminApi";
 import { getUserModel } from "@/lib/models/userModel";
 import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
 import { getRoleApplicationModel } from "@/lib/models/roleApplicationModel";
 import { ADMIN_USER_FIELDS, toAdminUserDto, type AdminUserDoc } from "@/lib/adminUsers";
 import { ASSIGNABLE_ROLES, PROTECTED_ROLES, outranks } from "@/lib/constants/roles";
+import { cacheTokenVersion } from "@/lib/auth/tokenVersionCache";
 import type { UserRole } from "@/types/roles";
 
 type Context = { params: Promise<{ id: string }> };
@@ -32,7 +33,7 @@ const MAX_VIOLATIONS = 1000;
 export async function PATCH(request: NextRequest, context: Context) {
   try {
     const session = await requirePermission(request, "manage_users");
-    enforceRateLimit(request, `admin-users:${session.userId}`, 60);
+    await enforceRateLimit(request, "admin", `admin-users:${session.userId}`);
     const { id } = await context.params;
     if (!isValidObjectId(id)) return fail(404, "User not found.");
     if (id === session.userId) return fail(403, "You can't change your own account here.");
@@ -128,6 +129,11 @@ export async function PATCH(request: NextRequest, context: Context) {
       .lean<AdminUserDoc>();
     if (!updated) return fail(409, "This user changed while you were editing. Reload and try again.");
 
+    if (bumpTokenVersion) {
+      // Let the proxy see the old JWT is revoked (src/proxy.ts)
+      const bumped = await User.findById(id).select("tokenVersion").lean();
+      if (bumped) await cacheTokenVersion(id, bumped.tokenVersion ?? 0);
+    }
     if (suspending) {
       const SessionCache = await getSessionCacheModel();
       await SessionCache.invalidateAllUserSessions(id);

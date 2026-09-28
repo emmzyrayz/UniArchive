@@ -5,8 +5,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserModel } from "@/lib/models/userModel";
 import { decryptSensitiveData, hashForSearch } from "@/lib/encryption";
-import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { getClientIp, handleRouteError, readJson } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import {
   MAX_CODE_ATTEMPTS,
   RESET_SESSION_TTL_MS,
@@ -25,7 +25,7 @@ const invalid = () =>
 
 export async function POST(request: NextRequest) {
   try {
-    enforceRateLimit(request, "verify-reset-code", 10);
+    await enforceRateLimit(request, "auth", `verify-reset-code:${getClientIp(request)}`);
 
     const body = await readJson<{ email: string; code: string; token: string }>(
       request,

@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isValidObjectId } from "mongoose";
 import { requirePermission } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail, optionalString } from "@/lib/adminApi";
 import { getMaterialModel } from "@/lib/models/materialModel";
 import {
@@ -71,7 +71,7 @@ const CLEARABLE: {
 export async function PATCH(request: NextRequest, context: Context) {
   try {
     const session = await requirePermission(request, "admin.view_submissions");
-    enforceRateLimit(request, `admin-materials:${session.userId}`, 60);
+    await enforceRateLimit(request, "admin", `admin-materials:${session.userId}`);
     const { id } = await context.params;
     if (!isValidObjectId(id)) return fail(404, "Material not found.");
 

@@ -14,7 +14,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Types } from "mongoose";
 import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail } from "@/lib/adminApi";
 import { findReadableBook } from "@/lib/bookAccess";
 import { getReadingProgressModel } from "@/lib/models/readingProgressModel";
@@ -33,7 +33,7 @@ const isInt = (v: unknown, min: number, max: number): v is number =>
 export async function PATCH(request: NextRequest, context: Context) {
   try {
     const session = await requireAuth(request);
-    enforceRateLimit(request, `reading-progress:${session.userId}`, 20);
+    await enforceRateLimit(request, "standard", `reading-progress:${session.userId}`);
     const found = await findReadableBook((await context.params).id, session);
     if (!found) return fail(404, "Book not found.");
 

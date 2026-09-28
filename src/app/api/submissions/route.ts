@@ -4,7 +4,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { getBookModel } from "@/lib/models/bookModel";
 import {
   SUBMISSION_STATUSES,
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);
-    enforceRateLimit(request, `submissions:${session.userId}`, 30);
+    await enforceRateLimit(request, "standard", `submissions:${session.userId}`);
 
     const body = await readJson<SubmissionBody>(request);
     const input = parseSubmissionBody(body);

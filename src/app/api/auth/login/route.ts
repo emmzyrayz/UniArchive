@@ -13,7 +13,7 @@ import {
   handleRouteError,
   readJson,
 } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { generateToken, normaliseEmail } from "@/lib/auth/tokens";
 import {
   SESSION_COOKIE,
@@ -25,6 +25,7 @@ import {
   sessionJwtCookieOptions,
   signSessionJwt,
 } from "@/lib/auth/jwt";
+import { cacheTokenVersion } from "@/lib/auth/tokenVersionCache";
 
 // Compared against when the email is unknown, so both paths cost one bcrypt.
 const DUMMY_HASH = bcrypt.hashSync("uniarchive-timing-equaliser", 12);
@@ -37,7 +38,7 @@ const invalidCredentials = () =>
 
 export async function POST(request: NextRequest) {
   try {
-    enforceRateLimit(request, "login", 10);
+    await enforceRateLimit(request, "auth", `login:${getClientIp(request)}`);
 
     const body = await readJson<{ email: string; password: string }>(request);
     const email =
@@ -95,6 +96,9 @@ export async function POST(request: NextRequest) {
       getDeviceInfo(request),
       getClientIp(request),
     );
+
+    // The proxy compares JWTs against this (src/proxy.ts)
+    await cacheTokenVersion(String(user._id), user.tokenVersion ?? 0);
 
     const response = NextResponse.json({
       success: true,

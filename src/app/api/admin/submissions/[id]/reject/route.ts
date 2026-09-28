@@ -6,7 +6,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { getMaterialSubmissionModel } from "@/lib/models/materialSubmissionModel";
 import {
   DECIDABLE_STATUSES,
@@ -23,7 +23,7 @@ type Context = { params: Promise<{ id: string }> };
 export async function PATCH(request: NextRequest, context: Context) {
   try {
     const session = await requirePermission(request, "submission.reject");
-    enforceRateLimit(request, `admin-submissions:${session.userId}`, 60);
+    await enforceRateLimit(request, "admin", `admin-submissions:${session.userId}`);
     const { id } = await context.params;
 
     const body = await readJson<{ reason: string; note: string }>(request);

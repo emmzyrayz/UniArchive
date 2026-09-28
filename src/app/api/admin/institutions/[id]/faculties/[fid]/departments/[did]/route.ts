@@ -7,7 +7,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail, isDuplicateKey, optionalString } from "@/lib/adminApi";
 import { getDepartmentModel, type IDepartment } from "@/lib/models/university/departmentModel";
 import {
@@ -31,7 +31,7 @@ async function load(context: Context) {
 export async function PATCH(request: NextRequest, context: Context) {
   try {
     const session = await requirePermission(request, "manage_institution");
-    enforceRateLimit(request, `admin-institutions:${session.userId}`, 60);
+    await enforceRateLimit(request, "admin", `admin-institutions:${session.userId}`);
     const current = await load(context);
     if (!current) return fail(404, "Department not found.");
 
@@ -94,7 +94,7 @@ export async function PATCH(request: NextRequest, context: Context) {
 export async function DELETE(request: NextRequest, context: Context) {
   try {
     const session = await requirePermission(request, "manage_institution");
-    enforceRateLimit(request, `admin-institutions:${session.userId}`, 60);
+    await enforceRateLimit(request, "admin", `admin-institutions:${session.userId}`);
     const current = await load(context);
     if (!current) return fail(404, "Department not found.");
 

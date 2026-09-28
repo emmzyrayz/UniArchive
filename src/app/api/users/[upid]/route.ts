@@ -3,15 +3,15 @@
 // read (see src/lib/publicProfile.ts); unknown and suspended accounts are
 // both a plain 404. Rate-limited per IP to slow down scraping.
 import { NextResponse, type NextRequest } from "next/server";
-import { handleRouteError } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { getClientIp, handleRouteError } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { findPublicUser, toPublicProfile } from "@/lib/publicProfile";
 
 type Context = { params: Promise<{ upid: string }> };
 
 export async function GET(request: NextRequest, context: Context) {
   try {
-    enforceRateLimit(request, "public-profile", 60);
+    await enforceRateLimit(request, "public", `public-profile:${getClientIp(request)}`);
     const user = await findPublicUser((await context.params).upid);
     if (!user) return NextResponse.json({ message: "User not found." }, { status: 404 });
 

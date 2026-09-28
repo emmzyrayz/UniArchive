@@ -7,13 +7,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { createSignedAvatarUpload } from "@/lib/cloudinary";
 
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);
-    enforceRateLimit(request, `avatar-presign:${session.userId}`, 10);
+    await enforceRateLimit(request, "upload", `avatar-presign:${session.userId}`);
 
     return NextResponse.json(createSignedAvatarUpload(session.userId), {
       headers: { "Cache-Control": "no-store" },

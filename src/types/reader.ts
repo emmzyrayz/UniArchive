@@ -33,3 +33,8 @@ export interface Annotations {
   highlights: Highlight[];
   bookmarks: Bookmark[];
 }
+
+/** GET /api/books/[id]/annotations, and the server copy in a 409 conflict. */
+export interface VersionedAnnotations extends Annotations {
+  syncVersion: number;
+}

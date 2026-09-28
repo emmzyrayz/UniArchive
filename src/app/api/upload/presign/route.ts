@@ -6,7 +6,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { storageClient } from "@/lib/storage";
 import { createSignedPdfUpload } from "@/lib/cloudinary";
 import { getStorageProvider } from "@/lib/storageRouter";
@@ -21,7 +21,7 @@ import {
 export async function POST(request: NextRequest) {
   try {
     const session = await requirePermission(request, "upload");
-    enforceRateLimit(request, `presign:${session.userId}`, 20);
+    await enforceRateLimit(request, "upload", `presign:${session.userId}`);
 
     const body = await readJson<{
       fileName: string;

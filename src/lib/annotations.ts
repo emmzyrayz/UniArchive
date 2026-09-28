@@ -11,7 +11,7 @@ import {
   MAX_HIGHLIGHT_TEXT,
   MAX_NOTE_LENGTH,
 } from "@/lib/constants/annotations";
-import type { Annotations, Bookmark, Highlight } from "@/types/reader";
+import type { Annotations, Bookmark, Highlight, VersionedAnnotations } from "@/types/reader";
 
 const MAX_ID_LENGTH = 64;
 const MAX_PAGE = 100_000;
@@ -149,6 +149,13 @@ export function toAnnotationsDto(
 }
 
 type WithBook<T> = T & { bookId: string; bookTitle: string };
+
+/** toAnnotationsDto plus the document's syncVersion (0 when there's none). */
+export function toVersionedAnnotationsDto(
+  doc: { highlights?: IHighlight[]; bookmarks?: IBookmark[]; syncVersion?: number } | null,
+): VersionedAnnotations {
+  return { ...toAnnotationsDto(doc), syncVersion: doc?.syncVersion ?? 0 };
+}
 
 /**
  * Every bookmark or highlight the user has, across all their books, newest

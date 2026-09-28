@@ -33,6 +33,10 @@ export interface IAnnotation {
   bookId: Types.ObjectId;
   highlights: IHighlight[];
   bookmarks: IBookmark[];
+  // Bumped by every save. A save must name the version it was based on, so
+  // a tab working from an older copy gets a conflict instead of silently
+  // overwriting another tab's changes.
+  syncVersion: number;
   lastSyncedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -73,6 +77,7 @@ const AnnotationSchema = new Schema<IAnnotation, IAnnotationModel>(
     bookId: { type: Schema.Types.ObjectId, ref: "Book", required: true },
     highlights: { type: [HighlightSchema], default: [] },
     bookmarks: { type: [BookmarkSchema], default: [] },
+    syncVersion: { type: Number, default: 0 },
     lastSyncedAt: { type: Date, default: Date.now },
   },
   { timestamps: true },

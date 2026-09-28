@@ -3,8 +3,8 @@
 // needed. Same item shape as GET /api/materials.
 // Query: category, page, limit (default 12, max 50).
 import { NextResponse, type NextRequest } from "next/server";
-import { handleRouteError } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { getClientIp, handleRouteError } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail, pagination, totalPages } from "@/lib/adminApi";
 import { getMaterialModel } from "@/lib/models/materialModel";
 import { isMaterialCategory } from "@/lib/constants/materialCategories";
@@ -20,7 +20,7 @@ type Context = { params: Promise<{ upid: string }> };
 
 export async function GET(request: NextRequest, context: Context) {
   try {
-    enforceRateLimit(request, "public-profile", 60);
+    await enforceRateLimit(request, "public", `public-profile:${getClientIp(request)}`);
     const params = request.nextUrl.searchParams;
     const rawCategory = params.get("category");
     if (rawCategory && !isMaterialCategory(rawCategory)) return fail(400, "Unknown category.");

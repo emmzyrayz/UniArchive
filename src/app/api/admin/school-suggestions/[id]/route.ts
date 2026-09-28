@@ -14,7 +14,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail, optionalString } from "@/lib/adminApi";
 import {
   ReviewError,
@@ -51,7 +51,7 @@ function overrides(body: Record<string, unknown>): ApproveOverrides | null {
 export async function PATCH(request: NextRequest, context: Context) {
   try {
     const session = await requirePermission(request, "manage_institution");
-    enforceRateLimit(request, `admin-suggestions:${session.userId}`, 30);
+    await enforceRateLimit(request, "admin", `admin-suggestions:${session.userId}`);
     const { id } = await context.params;
 
     const body = await readJson(request);

@@ -3,7 +3,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { getMaterialSubmissionModel } from "@/lib/models/materialSubmissionModel";
 import {
   adminSubmissionResponse,
@@ -17,7 +17,7 @@ type Context = { params: Promise<{ id: string }> };
 export async function POST(request: NextRequest, context: Context) {
   try {
     const session = await requirePermission(request, "admin.view_submissions");
-    enforceRateLimit(request, `admin-submissions:${session.userId}`, 60);
+    await enforceRateLimit(request, "admin", `admin-submissions:${session.userId}`);
     const { id } = await context.params;
 
     const body = await readJson<{ note: string }>(request);

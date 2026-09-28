@@ -6,13 +6,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserModel } from "@/lib/models/userModel";
 import { encryptSensitiveData, hashForSearch } from "@/lib/encryption";
-import {
-  EMAIL_REGEX,
-  asTrimmedString,
-  handleRouteError,
-  readJson,
-} from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { asTrimmedString, EMAIL_REGEX, getClientIp, handleRouteError, readJson } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { isPasswordValid } from "@/lib/validation/password";
 import {
   OTP_TTL_MS,
@@ -43,7 +38,7 @@ interface RegisterBody {
 
 export async function POST(request: NextRequest) {
   try {
-    enforceRateLimit(request, "register", 5);
+    await enforceRateLimit(request, "authEmail", `register:${getClientIp(request)}`);
 
     const body = await readJson<RegisterBody>(request);
     const email = normaliseEmail(asTrimmedString(body?.email, 254));

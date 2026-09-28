@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Types } from "mongoose";
 import { requireAuth } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { getRoleApplicationModel } from "@/lib/models/roleApplicationModel";
 import { buildSnapshot, loadEligibility, toRoleApplicationDto } from "@/lib/roleApplications";
 
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);
-    enforceRateLimit(request, `role-application:${session.userId}`, 5);
+    await enforceRateLimit(request, "standard", `role-application:${session.userId}`);
 
     const body = await readJson<{ supportingNote: string }>(request);
     if (body?.supportingNote !== undefined && typeof body.supportingNote !== "string") {

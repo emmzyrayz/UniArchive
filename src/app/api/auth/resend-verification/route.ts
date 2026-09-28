@@ -4,8 +4,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserModel } from "@/lib/models/userModel";
 import { hashForSearch } from "@/lib/encryption";
-import { EMAIL_REGEX, handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { EMAIL_REGEX, getClientIp, handleRouteError, readJson } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import {
   OTP_TTL_MS,
   generateOtp,
@@ -23,7 +23,7 @@ const GENERIC_RESPONSE = {
 
 export async function POST(request: NextRequest) {
   try {
-    enforceRateLimit(request, "resend-verification", 3);
+    await enforceRateLimit(request, "authEmail", `resend-verification:${getClientIp(request)}`);
 
     const body = await readJson<{ email: string }>(request);
     const email =

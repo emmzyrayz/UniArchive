@@ -4,8 +4,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserModel } from "@/lib/models/userModel";
 import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
-import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { getClientIp, handleRouteError, readJson } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { isPasswordValid } from "@/lib/validation/password";
 import { hashToken } from "@/lib/auth/tokens";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
@@ -13,7 +13,7 @@ import { SESSION_JWT_COOKIE, sessionJwtCookieOptions } from "@/lib/auth/jwt";
 
 export async function POST(request: NextRequest) {
   try {
-    enforceRateLimit(request, "reset-password", 10);
+    await enforceRateLimit(request, "auth", `reset-password:${getClientIp(request)}`);
 
     const body = await readJson<{
       resetToken: string;

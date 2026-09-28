@@ -8,11 +8,10 @@
 // sender gets a confirmation. 3 sent messages per IP per hour.
 import { NextResponse, type NextRequest } from "next/server";
 import { EMAIL_REGEX, getClientIp, handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { sendContactConfirmationEmail, sendContactMessageEmail } from "@/utils/email";
 
 const LIMITS = { name: 100, email: 254, subject: 200, message: 2000 } as const;
-const HOUR_MS = 60 * 60 * 1000;
 const SENT = { success: true, message: "Message sent" };
 
 const fail = (status: number, message: string) => NextResponse.json({ message }, { status });
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Only messages that would actually be sent count toward the limit
-    enforceRateLimit(request, "contact", 3, HOUR_MS);
+    await enforceRateLimit(request, "contact", `contact:${getClientIp(request)}`);
 
     const sent = await sendContactMessageEmail({
       name,

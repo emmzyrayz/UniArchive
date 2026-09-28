@@ -9,6 +9,7 @@ import {
   sessionJwtCookieOptions,
   signSessionJwt,
 } from "@/lib/auth/jwt";
+import { cacheTokenVersion } from "@/lib/auth/tokenVersionCache";
 
 // Only same-site relative paths, never "//evil.com" or absolute URLs
 function safeReturnPath(value: string | null): string {
@@ -32,6 +33,9 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
+  // Re-sync the proxy's copy from the database, which is the truth; this is
+  // also how a stale or missing cache entry heals itself
+  await cacheTokenVersion(user.userId, user.tokenVersion);
   const jwt = await signSessionJwt({
     sub: user.userId,
     role: user.role,

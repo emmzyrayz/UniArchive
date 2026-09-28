@@ -15,7 +15,7 @@ import { getFacultyModel } from "@/lib/models/university/facultyModel";
 import { getDepartmentModel } from "@/lib/models/university/departmentModel";
 import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { encryptSensitiveData, hashForSearch } from "@/lib/encryption";
 import { isOwnAvatarUrl } from "@/lib/cloudinary";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
@@ -82,7 +82,7 @@ function objectIdField(
 export async function PATCH(request: NextRequest) {
   try {
     const session = await requireAuth(request);
-    enforceRateLimit(request, `profile-update:${session.userId}`, 30);
+    await enforceRateLimit(request, "standard", `profile-update:${session.userId}`);
 
     const body = await readJson<ProfileUpdateBody>(request);
     if (!body) {

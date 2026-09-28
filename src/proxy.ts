@@ -9,15 +9,23 @@
 // API routes are not redirected here: they authenticate against the database
 // session themselves (lib/auth/session.ts), and a redirect would hand fetch()
 // an HTML sign-in page instead of a JSON 401.
+//
+// Role-sensitive pages (/admin, /profile/edit) also compare the JWT's
+// tokenVersion with the copy in Redis, so a revoked JWT (suspension, role
+// change) can't keep routing by an old role for its last 15 minutes. That
+// one Redis read is skipped everywhere else to keep page loads fast.
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_JWT_COOKIE, verifySessionJwt } from "@/lib/auth/jwt";
 import type { UserRole } from "@/types/roles";
 import { isPublicProfilePath, isReviewerAdminPath } from "@/lib/routeAccess";
+import { getCachedTokenVersion } from "@/lib/auth/tokenVersionCache";
 
 // /unilibrary: anyone can browse; reading a material (/read/...) needs a session
 const PUBLIC_PATHS = new Set(["/", "/about", "/contact", "/help", "/offline", "/unilibrary"]);
 const PUBLIC_PREFIXES = ["/auth", "/_next", "/api"];
 const ADMIN_PREFIXES = ["/admin", "/moderation"];
+// Pages where a revoked JWT's old role or access matters (tokenVersion check)
+const SENSITIVE_PREFIXES = ["/admin", "/profile/edit"];
 const ADMIN_ROLES: UserRole[] = ["ed_admin", "com_admin", "webmaster", "dev"];
 // Admin pages open to non-admin reviewers (isReviewerAdminPath) only need a
 // session here; the page checks the permission.
@@ -59,6 +67,19 @@ export async function proxy(request: NextRequest) {
     signInUrl.searchParams.set("view", "signin");
     signInUrl.searchParams.set("from", from);
     return NextResponse.redirect(signInUrl);
+  }
+
+  if (matchesPrefix(pathname, SENSITIVE_PREFIXES)) {
+    const cachedVersion = await getCachedTokenVersion(claims.sub);
+    // A different version means this JWT predates a suspension or role
+    // change. Refresh checks the session in the database: a revoked one is
+    // signed out, a valid one gets a current JWT (and the cache is re-synced,
+    // so a stale cache entry can't cause a loop). No entry: skip the check.
+    if (cachedVersion !== null && cachedVersion !== claims.tokenVersion) {
+      const refreshUrl = new URL("/api/auth/refresh", request.url);
+      refreshUrl.searchParams.set("from", from);
+      return NextResponse.redirect(refreshUrl);
+    }
   }
 
   if (

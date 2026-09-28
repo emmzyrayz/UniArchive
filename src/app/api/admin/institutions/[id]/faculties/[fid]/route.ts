@@ -7,7 +7,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail, isDuplicateKey, optionalString } from "@/lib/adminApi";
 import { getFacultyModel, type IFaculty } from "@/lib/models/university/facultyModel";
 import {
@@ -24,7 +24,7 @@ type Context = { params: Promise<{ id: string; fid: string }> };
 export async function PATCH(request: NextRequest, context: Context) {
   try {
     const session = await requirePermission(request, "manage_institution");
-    enforceRateLimit(request, `admin-institutions:${session.userId}`, 60);
+    await enforceRateLimit(request, "admin", `admin-institutions:${session.userId}`);
     const { id, fid } = await context.params;
     const current = await loadFacultyOf(id, fid);
     if (!current) return fail(404, "Faculty not found.");
@@ -88,7 +88,7 @@ export async function PATCH(request: NextRequest, context: Context) {
 export async function DELETE(request: NextRequest, context: Context) {
   try {
     const session = await requirePermission(request, "manage_institution");
-    enforceRateLimit(request, `admin-institutions:${session.userId}`, 60);
+    await enforceRateLimit(request, "admin", `admin-institutions:${session.userId}`);
     const { id, fid } = await context.params;
     const current = await loadFacultyOf(id, fid);
     if (!current) return fail(404, "Faculty not found.");

@@ -4,8 +4,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserModel } from "@/lib/models/userModel";
 import { hashForSearch } from "@/lib/encryption";
-import { handleRouteError, readJson } from "@/lib/api";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { getClientIp, handleRouteError, readJson } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import {
   MAX_CODE_ATTEMPTS,
   hashOtp,
@@ -21,7 +21,7 @@ const invalid = () =>
 
 export async function POST(request: NextRequest) {
   try {
-    enforceRateLimit(request, "verify-email", 10);
+    await enforceRateLimit(request, "auth", `verify-email:${getClientIp(request)}`);
 
     const body = await readJson<{ email: string; code: string }>(request);
     const email =
