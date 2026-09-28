@@ -12,3 +12,23 @@ export interface StorageInfo {
   totalBytes: number;
   documentCount: number;
 }
+/** GET /api/user/reading-stats */
+export interface ReadingStats {
+  totalPagesRead: number;
+  totalTimeMinutes: number;
+  totalTimeHours: number;
+  booksStarted: number;
+  booksCompleted: number;
+  totalBookmarks: number;
+  totalHighlights: number;
+  /** Consecutive days with reading, up to today or yesterday */
+  currentStreak: number;
+  recentBooks: {
+    bookId: string;
+    title?: string;
+    currentPage: number;
+    totalPages: number;
+    percentComplete: number;
+    lastReadAt: string;
+  }[];
+}

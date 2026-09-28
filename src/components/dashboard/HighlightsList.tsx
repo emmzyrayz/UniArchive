@@ -4,9 +4,8 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import type { SavedHighlight } from "@/types/dashboard";
+import { highlightColorName } from "@/lib/constants/annotations";
 import { readerHref, timeAgo } from "./BookmarksList";
-
-const COLOR_NAMES: Record<string, string> = { "#FFEB3B": "Yellow" };
 
 export function HighlightsList({ highlights }: { highlights: SavedHighlight[] }) {
   if (highlights.length === 0) {
@@ -51,7 +50,7 @@ export function HighlightsList({ highlights }: { highlights: SavedHighlight[] })
                   style={{ backgroundColor: hl.color }}
                   aria-hidden
                 />
-                {COLOR_NAMES[hl.color.toUpperCase()] ?? "Colour"} highlight · {timeAgo(hl.createdAt)}
+                {highlightColorName(hl.color) ?? "Colour"} highlight · {timeAgo(hl.createdAt)}
               </span>
               <span className="shrink-0 text-sm font-medium text-primary">Read →</span>
             </div>

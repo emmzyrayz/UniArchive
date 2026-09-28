@@ -6,9 +6,37 @@ import Link from "next/link";
 import { useReader } from "@/context/readerContext";
 import { useDeviceCapability } from "@/hooks/useDeviceCapability";
 import { canRunModernPdf } from "@/lib/deviceCapability";
+import { HIGHLIGHT_COLORS } from "@/lib/constants/annotations";
 import type { Book } from "@/types/library";
 
 const noopSubscribe = () => () => {};
+
+/** The highlight palette: one dot per colour, the active one ringed. */
+function HighlightColorPicker({ className = "" }: { className?: string }) {
+  const { activeHighlightColor, setActiveHighlightColor } = useReader();
+  return (
+    <div role="radiogroup" aria-label="Highlight colour" className={`items-center gap-1.5 ${className}`}>
+      {HIGHLIGHT_COLORS.map(({ color, label }) => {
+        const active = activeHighlightColor.toUpperCase() === color;
+        return (
+          <button
+            key={color}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={`${label} highlight`}
+            title={label}
+            onClick={() => setActiveHighlightColor(color)}
+            className={`h-4 w-4 rounded-full border-2 transition-transform hover:scale-110 ${
+              active ? "border-white" : "border-transparent"
+            }`}
+            style={{ backgroundColor: color }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 export function ReaderToolbar({ book }: { book: Book }) {
   const {
@@ -168,6 +196,8 @@ export function ReaderToolbar({ book }: { book: Book }) {
               <path d="M3 17l6-6 4 4 8-8M21 3v6h-6" />
             </svg>
           </button>
+          {/* Desktop: inline; mobile gets its own row below */}
+          {highlightMode && <HighlightColorPicker className="hidden md:flex mx-1" />}
 
           {/* Bookmark */}
           <button
@@ -253,6 +283,13 @@ export function ReaderToolbar({ book }: { book: Book }) {
           </button>
         </div>
       </div>
+
+      {highlightMode && (
+        <div className="flex items-center justify-center gap-3 border-t border-neutral-800 px-4 py-2 md:hidden">
+          <span className="text-xs text-neutral-400">Colour</span>
+          <HighlightColorPicker className="flex" />
+        </div>
+      )}
 
       {/* Reader notices — sit below the toolbar */}
       {imageMode ? (

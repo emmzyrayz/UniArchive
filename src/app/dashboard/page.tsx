@@ -11,6 +11,7 @@ import { StorageUsage } from "@/components/dashboard/StorageUsage";
 import { BookmarksList } from "@/components/dashboard/BookmarksList";
 import { HighlightsList } from "@/components/dashboard/HighlightsList";
 import { RoleProgression } from "@/components/dashboard/RoleProgression";
+import { ReadingStatsCard } from "@/components/dashboard/ReadingStatsCard";
 import { Button } from "@/components/UI/Buttons";
 import { formatBytes } from "@/assets/data/dashboardData";
 import type { Book } from "@/types/library";
@@ -267,9 +268,7 @@ export default function DashboardPage() {
                   />
                 </div>
 
-                <EmptyState>
-                  Reading stats coming soon — start reading to track your progress.
-                </EmptyState>
+                <ReadingStatsCard />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <motion.div

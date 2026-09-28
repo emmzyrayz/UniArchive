@@ -50,6 +50,8 @@ interface ReaderContextType {
   zoom: number;
   sidebarOpen: boolean;
   highlightMode: boolean;
+  /** Colour for new highlights, from the toolbar palette */
+  activeHighlightColor: string;
   highlights: Highlight[];
   bookmarks: Bookmark[];
   viewMode: ViewMode;
@@ -62,6 +64,7 @@ interface ReaderContextType {
   setZoom: (z: number) => void;
   toggleSidebar: () => void;
   toggleHighlightMode: () => void;
+  setActiveHighlightColor: (color: string) => void;
   addHighlight: (h: NewHighlight) => void;
   removeHighlight: (id: string) => void;
   toggleBookmark: (pageNumber: number) => void;
@@ -190,6 +193,153 @@ function useAnnotationSync(
   return markDirty;
 }
 
+// Reading progress: only active time counts. The clock stops after this long
+// without a page turn, scroll, tap or key press, and while the tab is hidden.
+const IDLE_MS = 2 * 60 * 1000;
+const PROGRESS_SYNC_MS = 30_000;
+// The server accepts up to 600s per report; keep unsent time below that
+const MAX_REPORT_SECONDS = 590;
+
+/**
+ * Reports reading progress to PATCH /api/books/[bookId]/progress every 30s,
+ * when the tab is hidden and when the reader closes. Unsent time and pages
+ * carry over to the next report if one fails.
+ *
+ * Kept separate from the annotation sync: it's a different endpoint, so
+ * sharing a timer wouldn't save a request, and each skips its request when
+ * there's nothing new to send.
+ */
+function useReadingProgress(bookId: string, currentPage: number, numPages: number) {
+  // Everything the listeners need, without re-subscribing on every page turn
+  const track = useRef({
+    currentPage,
+    numPages,
+    pages: new Set<number>(),
+    lastActivity: 0,
+    countedTo: 0,
+    pendingSeconds: 0,
+    visible: true,
+    newSession: true,
+  });
+
+  // A page turn is reading activity, and a page viewed in this window
+  useEffect(() => {
+    const t = track.current;
+    t.currentPage = currentPage;
+    t.numPages = numPages;
+    if (numPages > 0) t.pages.add(currentPage);
+    t.lastActivity = Date.now();
+  }, [currentPage, numPages]);
+
+  useEffect(() => {
+    const t = track.current;
+    const url = `/api/books/${encodeURIComponent(bookId)}/progress`;
+    const start = Date.now();
+    Object.assign(t, {
+      lastActivity: start,
+      countedTo: start,
+      pendingSeconds: 0,
+      visible: document.visibilityState === "visible",
+      newSession: true,
+    });
+    t.pages.clear();
+    if (t.numPages > 0) t.pages.add(t.currentPage);
+    let sending = false;
+
+    /** Adds active time up to now, stopping IDLE_MS after the last activity. */
+    const accrue = () => {
+      const now = Date.now();
+      if (t.visible) {
+        const until = Math.min(now, t.lastActivity + IDLE_MS);
+        if (until > t.countedTo) t.pendingSeconds += (until - t.countedTo) / 1000;
+      }
+      t.countedTo = now;
+    };
+
+    const onActivity = () => {
+      accrue();
+      t.lastActivity = Date.now();
+    };
+
+    const sync = (leaving: boolean) => {
+      accrue();
+      if (!t.numPages || (sending && !leaving)) return;
+      const seconds = Math.min(Math.floor(t.pendingSeconds), MAX_REPORT_SECONDS);
+      const pages = [...t.pages];
+      if (seconds === 0 && pages.length === 0 && !t.newSession) return;
+
+      const newSession = t.newSession;
+      // Taken out of the pool now so an overlapping report (closing while
+      // one is in flight) can't send them twice; restored if this one fails
+      t.pendingSeconds -= seconds;
+      for (const p of pages) t.pages.delete(p);
+      t.newSession = false;
+      sending = true;
+      fetch(url, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPage: t.currentPage,
+          totalPages: t.numPages,
+          sessionSeconds: seconds,
+          pagesViewedThisSession: pages.length,
+          newSession,
+        }),
+        keepalive: leaving,
+      })
+        .then((res) => {
+          if (res.ok) return;
+          // A rejected report or lost access won't succeed on retry
+          if (res.status < 500 && res.status !== 429) {
+            console.warn(`Reading progress not saved (HTTP ${res.status})`);
+            return;
+          }
+          throw new Error(`HTTP ${res.status}`);
+        })
+        .catch((error) => {
+          // Non-fatal: whatever wasn't sent goes with the next report
+          console.warn("Failed to save reading progress:", error);
+          t.pendingSeconds = Math.min(t.pendingSeconds + seconds, MAX_REPORT_SECONDS);
+          for (const p of pages) t.pages.add(p);
+          if (newSession) t.newSession = true;
+        })
+        .finally(() => {
+          sending = false;
+        });
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        accrue();
+        t.visible = false;
+        sync(true);
+      } else {
+        // Time away doesn't count
+        t.visible = true;
+        t.countedTo = Date.now();
+        t.lastActivity = Date.now();
+      }
+    };
+    const onPageHide = () => sync(true);
+
+    const activityEvents = ["pointerdown", "keydown", "wheel", "scroll", "touchstart"] as const;
+    for (const e of activityEvents) window.addEventListener(e, onActivity, { passive: true });
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+    const interval = setInterval(() => sync(false), PROGRESS_SYNC_MS);
+
+    return () => {
+      clearInterval(interval);
+      for (const e of activityEvents) window.removeEventListener(e, onActivity);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+      // Leaving the reader inside the app
+      sync(true);
+    };
+  }, [bookId]);
+}
+
 export function ReaderProvider({
   bookId,
   initialPage = 1,
@@ -207,6 +357,7 @@ export function ReaderProvider({
   const [zoom, setZoom] = useState(defaultZoom);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [highlightMode, setHighlightMode] = useState(false);
+  const [activeHighlightColor, setActiveHighlightColor] = useState<string>(DEFAULT_HIGHLIGHT_COLOR);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [isMobile, setIsMobile] = useState(() => getIsMobile());
@@ -224,6 +375,7 @@ export function ReaderProvider({
 
   const annotations = useMemo(() => ({ highlights, bookmarks }), [highlights, bookmarks]);
   const markDirty = useAnnotationSync(bookId, setHighlights, setBookmarks, annotations);
+  useReadingProgress(bookId, currentPage, numPages);
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 768px)");
@@ -354,6 +506,7 @@ export function ReaderProvider({
         zoom,
         sidebarOpen,
         highlightMode,
+        activeHighlightColor,
         highlights,
         bookmarks,
         viewMode,
@@ -366,6 +519,7 @@ export function ReaderProvider({
         setZoom,
         toggleSidebar,
         toggleHighlightMode,
+        setActiveHighlightColor,
         addHighlight,
         removeHighlight,
         toggleBookmark,

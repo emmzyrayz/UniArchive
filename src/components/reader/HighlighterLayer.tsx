@@ -36,7 +36,8 @@ const fill = (color: string) => `${color}4D`;
 const edge = (color: string) => `${color}80`;
 
 export function HighlightLayer({ pageNumber }: { pageNumber: number }) {
-  const { highlights, highlightMode, addHighlight, removeHighlight } = useReader();
+  const { highlights, highlightMode, activeHighlightColor, addHighlight, removeHighlight } =
+    useReader();
   const containerRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<Box | null>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);
@@ -81,6 +82,7 @@ export function HighlightLayer({ pageNumber }: { pageNumber: number }) {
         width: draft.w,
         height: draft.h,
         text: textUnder(containerRef.current, draft),
+        color: activeHighlightColor,
       });
     }
     setDraft(null);
