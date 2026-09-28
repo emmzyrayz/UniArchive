@@ -17,7 +17,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_JWT_COOKIE, verifySessionJwt } from "@/lib/auth/jwt";
 import type { UserRole } from "@/types/roles";
-import { isPublicProfilePath, isReviewerAdminPath } from "@/lib/routeAccess";
+import { isPublicMaterialPath, isPublicProfilePath, isReviewerAdminPath } from "@/lib/routeAccess";
 import { getCachedTokenVersion } from "@/lib/auth/tokenVersionCache";
 
 // /unilibrary: anyone can browse; reading a material (/read/...) needs a session
@@ -43,6 +43,7 @@ function isPublic(pathname: string): boolean {
     matchesPrefix(pathname, PUBLIC_PREFIXES) ||
     // Other users' public profiles; /profile and /profile/edit stay private
     isPublicProfilePath(pathname) ||
+    isPublicMaterialPath(pathname) ||
     STATIC_FILE.test(pathname)
   );
 }

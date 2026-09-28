@@ -5,15 +5,9 @@
 import { Schema, type Model, type Types } from "mongoose";
 import { connectDB } from "@/lib/mongoose";
 
-export const QUESTION_TYPES = [
-  "objective", // MCQ
-  "theory", // long answer
-  "calculation", // math/science workings
-  "essay", // discursive
-  "practical", // lab/practical
-  "fill_in_blank",
-] as const;
-export type QuestionType = (typeof QUESTION_TYPES)[number];
+import { QUESTION_TYPES, type QuestionType } from "@/lib/constants/layer2";
+
+export { QUESTION_TYPES, type QuestionType };
 
 export interface IQuestionOption {
   label: string; // "A", "B", "C", "D"

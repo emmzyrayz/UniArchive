@@ -1,7 +1,8 @@
 // components/unilibrary/MaterialCard.tsx
-// One verified material in the UniLibrary feed. Signed-in readers open the
-// backing Book in the reader and can react; everyone else sees the reaction
-// counts and gets a sign-in prompt.
+// One verified material in the UniLibrary feed. "Read"/"Open" goes to the
+// material's public page (/materials/[id]: PDF, typed questions, notes).
+// Signed-in readers can react; everyone else sees the counts and gets a
+// sign-in prompt.
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
@@ -24,7 +25,7 @@ import { CommentSection } from "./CommentSection";
 interface MaterialCardProps {
   material: MaterialSummary;
   isAuthenticated: boolean;
-  /** Called as a signed-in user opens the material (counts the view). */
+  /** Called as the material is opened (counts the view). */
   onRead: (materialId: string) => void;
   /** The viewer's reaction: undefined while unknown, null for none */
   userReaction?: ReactionType | null;
@@ -236,13 +237,11 @@ function ReactionBar({
 }
 
 export function MaterialCard({ material, isAuthenticated, onRead, userReaction }: MaterialCardProps) {
-  const [promptOpen, setPromptOpen] = useState(false);
   const [showComments, setShowComments] = useState(false);
   // Comments posted or deleted here since the feed loaded
   const [commentDelta, setCommentDelta] = useState(0);
   const commentCount = Math.max(0, material.commentCount + commentDelta);
   const badge = categoryBadge(material.category, material.subcategory);
-  const readHref = `/read/${material.bookId}`;
 
   const heading = material.courseCode
     ? `${material.courseCode} — ${material.title}`
@@ -373,31 +372,15 @@ export function MaterialCard({ material, isAuthenticated, onRead, userReaction }
           ))}
         </div>
 
-        <div className="relative shrink-0">
-          {isAuthenticated ? (
-            <Link
-              href={readHref}
-              onClick={() => onRead(material._id)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-            >
-              Read <FiArrowRight size={14} aria-hidden />
-            </Link>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setPromptOpen((open) => !open)}
-                aria-expanded={promptOpen}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-              >
-                Read <FiArrowRight size={14} aria-hidden />
-              </button>
-              {promptOpen && (
-                <SignInPrompt from={readHref} onClose={() => setPromptOpen(false)} />
-              )}
-            </>
-          )}
-        </div>
+        {/* The material page is public: it has the PDF (sign-in needed) and
+            any typed questions or notes */}
+        <Link
+          href={`/materials/${material._id}`}
+          onClick={() => onRead(material._id)}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+        >
+          {material.hasTypedContent ? "Open" : "Read"} <FiArrowRight size={14} aria-hidden />
+        </Link>
       </div>
     </article>
   );

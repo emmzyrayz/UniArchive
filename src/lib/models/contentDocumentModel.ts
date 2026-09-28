@@ -6,12 +6,9 @@ import { Schema, type Model, type Types } from "mongoose";
 import { connectDB } from "@/lib/mongoose";
 import { CONTENT_BLOCK_TYPES, type ContentBlock } from "@/types/content";
 
-export const CONTENT_DOCUMENT_TYPES = [
-  "lecture_note",
-  "chapter_summary",
-  "topic_explainer",
-] as const;
-export type ContentDocumentType = (typeof CONTENT_DOCUMENT_TYPES)[number];
+import { CONTENT_DOCUMENT_TYPES, type ContentDocumentType } from "@/lib/constants/layer2";
+
+export { CONTENT_DOCUMENT_TYPES, type ContentDocumentType };
 
 export interface IContentDocument {
   _id: Types.ObjectId;

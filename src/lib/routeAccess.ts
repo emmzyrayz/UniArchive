@@ -9,6 +9,11 @@ export function isPublicProfilePath(pathname: string): boolean {
   return !!match && match[1] !== "edit";
 }
 
+/** "/materials/<id>": a UniLibrary material's page is public, like the feed. */
+export function isPublicMaterialPath(pathname: string): boolean {
+  return /^\/materials\/[^/]+\/?$/.test(pathname);
+}
+
 // Admin pages open to every reviewer ("admin.view_submissions"), not just
 // admins: auditors, course reps and lecturers too. Each page still checks
 // the permission itself.
