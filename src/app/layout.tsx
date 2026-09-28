@@ -8,6 +8,7 @@ import { NavigationWrapper } from "@/components/navigationWrapper";
 import { UserProvider } from "@/context/userContext";
 import { PwaInstallButton } from "@/components/UI/PwaInstallButton";
 import ProfileCompletionModal from "@/components/profile/ProfileCompletionModal";
+import { BadgeToast } from "@/components/UI/BadgeToast";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -126,6 +127,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <NavigationWrapper>{children}</NavigationWrapper>
             <PwaInstallButton />
             <ProfileCompletionModal />
+            <BadgeToast />
           </ClientWrapper>
         </UserProvider>
       </body>

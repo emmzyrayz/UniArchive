@@ -25,6 +25,7 @@ import { ADMIN_USER_FIELDS, toAdminUserDto, type AdminUserDoc } from "@/lib/admi
 import { ASSIGNABLE_ROLES, PROTECTED_ROLES, outranks } from "@/lib/constants/roles";
 import { cacheTokenVersion } from "@/lib/auth/tokenVersionCache";
 import type { UserRole } from "@/types/roles";
+import { awardBadgesAfter } from "@/lib/badges";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -134,6 +135,7 @@ export async function PATCH(request: NextRequest, context: Context) {
       const bumped = await User.findById(id).select("tokenVersion").lean();
       if (bumped) await cacheTokenVersion(id, bumped.tokenVersion ?? 0);
     }
+    if (newRole) awardBadgesAfter(id, "role_changed");
     if (suspending) {
       const SessionCache = await getSessionCacheModel();
       await SessionCache.invalidateAllUserSessions(id);

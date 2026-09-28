@@ -44,6 +44,14 @@ export interface MaterialSummary {
   trendingScore?: number;
   /** The signed-in viewer's reaction, merged in on the client */
   userReaction?: ReactionType | null;
+  /** The uploader's rarest badge, only when it's rare or legendary */
+  uploaderTopBadge?: {
+    badgeId: string;
+    name: string;
+    emoji: string;
+    rarity: "rare" | "legendary" | "uncommon" | "common";
+    description: string;
+  };
 }
 
 export interface MaterialsResponse {

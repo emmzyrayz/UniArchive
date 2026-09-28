@@ -319,7 +319,17 @@ export function MaterialCard({ material, isAuthenticated, onRead, userReaction }
           className="text-primary hover:underline"
         >
           @{material.submittedByUpid}
-        </Link>{" "}
+        </Link>
+        {material.uploaderTopBadge && (
+          <span
+            className="ml-1"
+            title={`${material.uploaderTopBadge.name}: ${material.uploaderTopBadge.description}`}
+            aria-label={`${material.uploaderTopBadge.name} badge`}
+            role="img"
+          >
+            {material.uploaderTopBadge.emoji}
+          </span>
+        )}{" "}
         ·{" "}
         {timeAgo(material.createdAt)}
       </p>

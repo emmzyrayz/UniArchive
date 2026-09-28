@@ -15,6 +15,7 @@ import {
   RoleBadge,
 } from "@/components/profile/profileUi";
 import { MaterialCard } from "@/components/unilibrary/MaterialCard";
+import { BadgeList } from "@/components/profile/BadgeList";
 import { MaterialCardSkeleton } from "@/components/unilibrary/MaterialCardSkeleton";
 import { levelLabel } from "@/components/unilibrary/materialLabels";
 import type { PublicMaterialsResponse, PublicProfile } from "@/types/publicProfile";
@@ -284,6 +285,8 @@ function ProfileView({ profile: p }: { profile: PublicProfile }) {
         📄 <strong className="text-text-primary">{p.verifiedMaterialCount}</strong> verified material
         {p.verifiedMaterialCount === 1 ? "" : "s"} · Joined {since}
       </div>
+
+      <BadgeList url={`/api/users/${encodeURIComponent(p.upid)}/badges`} />
 
       <Contributions upid={p.upid} />
     </>

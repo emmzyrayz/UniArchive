@@ -16,6 +16,7 @@ import {
   type SubmissionStatus,
 } from "@/lib/models/materialSubmissionModel";
 import { resolveBookAcademic, type BookAcademicBody } from "@/lib/submissions";
+import { awardBadgesAfter } from "@/lib/badges";
 
 const MAX_LIMIT = 50;
 
@@ -156,6 +157,7 @@ export async function POST(request: NextRequest) {
       visibility: "private",
     });
 
+    awardBadgesAfter(session.userId, "book_uploaded");
     return NextResponse.json(
       { book: toBookDto(doc.toObject() as BookDoc) },
       { status: 201 },

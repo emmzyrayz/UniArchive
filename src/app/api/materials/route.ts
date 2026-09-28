@@ -13,7 +13,7 @@ import { Types, isValidObjectId } from "mongoose";
 import { getMaterialModel } from "@/lib/models/materialModel";
 import {
   PUBLIC_MATERIAL_FIELDS,
-  toMaterialSummary,
+  toMaterialSummaries,
   type PublicMaterialDoc,
 } from "@/lib/publicMaterials";
 import { getClientIp, handleRouteError } from "@/lib/api";
@@ -120,9 +120,11 @@ export async function GET(request: NextRequest) {
             new Date(b.doc.createdAt).getTime() - new Date(a.doc.createdAt).getTime(),
         );
       total = ranked.length;
-      materials = ranked.slice(skip, skip + limit).map(({ doc, score }) => ({
-        ...toMaterialSummary(doc),
-        trendingScore: Math.round(score * 1000) / 1000,
+      const pageRanked = ranked.slice(skip, skip + limit);
+      const summaries = await toMaterialSummaries(pageRanked.map((r) => r.doc));
+      materials = summaries.map((summary, i) => ({
+        ...summary,
+        trendingScore: Math.round(pageRanked[i].score * 1000) / 1000,
       }));
     } else {
       const [docs, count] = await Promise.all([
@@ -134,7 +136,7 @@ export async function GET(request: NextRequest) {
           .lean<PublicMaterialDoc[]>(),
         Material.countDocuments(listFilter),
       ]);
-      materials = docs.map(toMaterialSummary);
+      materials = await toMaterialSummaries(docs);
       total = count;
     }
 

@@ -25,6 +25,7 @@ import {
   type ReactionCounts,
   type ReactionType,
 } from "@/lib/constants/reactions";
+import { awardBadgesAfter } from "@/lib/badges";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest, context: Context) {
       .select("submittedBy")
       .lean();
     if (!material) return fail(404, "Material not found.");
+    const uploaderId = material.submittedBy;
     if (String(material.submittedBy) === session.userId) {
       return fail(403, "You cannot react to your own material.");
     }
@@ -118,6 +120,9 @@ export async function POST(request: NextRequest, context: Context) {
     )
       .select("reactions reactionCount")
       .lean();
+
+    // The uploader may have earned first_reaction / well_received
+    if (action === "added") awardBadgesAfter(uploaderId, "reaction_received");
 
     return NextResponse.json({
       action,

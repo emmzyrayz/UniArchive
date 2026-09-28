@@ -14,6 +14,7 @@ import { fail } from "@/lib/adminApi";
 import { redis } from "@/lib/redis";
 import { getCommentModel, type IComment } from "@/lib/models/commentModel";
 import { findCommentOf, upvotesKey } from "@/lib/comments";
+import { awardBadgesAfter } from "@/lib/badges";
 
 type Context = { params: Promise<{ id: string; commentId: string }> };
 
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest, context: Context) {
     if ((await redis.sadd(key, commentId)) === 1) {
       upvoted = true;
       await Comment.updateOne({ _id: comment._id }, { $inc: { upvoteCount: 1 } }, { timestamps: false });
+      awardBadgesAfter(comment.authorId, "comment_upvoted");
     } else {
       // Already upvoted: this click takes it back
       upvoted = false;

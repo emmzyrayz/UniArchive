@@ -28,6 +28,7 @@ import {
   normalizeNigerianPhone,
   validateDob,
 } from "@/lib/constants/profile";
+import { awardBadgesAfter } from "@/lib/badges";
 
 interface ProfileUpdateBody {
   firstName: string;
@@ -289,6 +290,7 @@ export async function PATCH(request: NextRequest) {
       user,
       await loadPendingSuggestionForCompletion(user.pendingSuggestionId),
     );
+    if (profileCompletion.percentage === 100) awardBadgesAfter(session.userId, "profile_completed");
 
     return NextResponse.json(
       {

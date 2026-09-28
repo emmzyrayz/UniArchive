@@ -11,6 +11,7 @@ import { CLOUDINARY_MAX_SIZE } from "@/lib/storageRouter";
 import { isOwnCloudinaryId } from "@/lib/uploads";
 import { toBookDto, type BookDoc } from "@/lib/dto/book";
 import { resolveBookAcademic, type BookAcademicBody } from "@/lib/submissions";
+import { awardBadgesAfter } from "@/lib/badges";
 
 interface FinalizeBody extends BookAcademicBody {
   publicId: string;
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
       visibility: "private",
     });
 
+    awardBadgesAfter(session.userId, "book_uploaded");
     return NextResponse.json(
       { book: toBookDto(doc.toObject() as BookDoc) },
       { status: 201 },

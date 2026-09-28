@@ -7,8 +7,11 @@ import { isValidObjectId } from "mongoose";
 import { getMaterialModel } from "@/lib/models/materialModel";
 import { getClientIp, handleRouteError } from "@/lib/api";
 import { checkRateLimit, enforceRateLimit } from "@/lib/rateLimitRedis";
+import { awardBadgesAfter } from "@/lib/badges";
 
 type Context = { params: Promise<{ id: string }> };
+
+const POPULAR_VIEWS = 100;
 
 export async function POST(request: NextRequest, context: Context) {
   try {
@@ -28,13 +31,19 @@ export async function POST(request: NextRequest, context: Context) {
     if (!firstViewThisHour) return NextResponse.json({ success: true, counted: false });
 
     const Material = await getMaterialModel();
-    const updated = await Material.updateOne(
+    const updated = await Material.findOneAndUpdate(
       { _id: id, isActive: true },
       { $inc: { viewCount: 1 } },
-      { timestamps: false },
-    );
-    if (updated.matchedCount === 0) {
+      { returnDocument: "after", timestamps: false },
+    )
+      .select("viewCount submittedBy")
+      .lean();
+    if (!updated) {
       return NextResponse.json({ message: "Material not found." }, { status: 404 });
+    }
+    // popular_material is at 100 views; check each 10th view from there
+    if (updated.viewCount >= POPULAR_VIEWS && updated.viewCount % 10 === 0) {
+      awardBadgesAfter(updated.submittedBy, "view_milestone");
     }
     return NextResponse.json({ success: true, counted: true });
   } catch (error) {

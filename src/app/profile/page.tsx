@@ -24,6 +24,7 @@ import {
   RoleBadge,
   completionColor,
 } from "@/components/profile/profileUi";
+import { BadgeList } from "@/components/profile/BadgeList";
 
 function formatDate(value: string | Date | undefined): string | null {
   if (!value) return null;
@@ -291,6 +292,13 @@ export default function ProfilePage() {
           <p className="text-sm text-text-secondary border-t border-neutral-200 dark:border-neutral-700 pt-4">
             {roleProgress(user)}
           </p>
+        </motion.section>
+
+        <motion.section {...fadeUp(0.2)} className={`${PROFILE_CARD_CLASS} p-6`}>
+          <BadgeList
+            url="/api/user/badges"
+            emptyText="No badges yet. Upload, contribute and complete your profile to earn them."
+          />
         </motion.section>
       </div>
     </div>

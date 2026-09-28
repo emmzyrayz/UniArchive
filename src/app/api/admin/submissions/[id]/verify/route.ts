@@ -32,6 +32,7 @@ import {
   reviewNote,
 } from "@/lib/adminSubmissions";
 import { sendSubmissionVerifiedEmail } from "@/utils/email";
+import { awardBadgesAfter } from "@/lib/badges";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -169,6 +170,7 @@ async function verifyTier1(
 
   const User = await getUserModel();
   await User.updateOne({ _id: verified.submittedBy }, { $inc: { verifiedMaterialCount: 1 } });
+  awardBadgesAfter(verified.submittedBy, "material_verified");
 
   // The role-progression audit trail. The verification is already committed,
   // so a failed ledger write is logged rather than failing the request.
@@ -237,6 +239,7 @@ async function verifyTier2(
       ? fail(409, "This material has already been endorsed.")
       : fail(404, "No material record exists for this submission.");
   }
+  awardBadgesAfter(material.submittedBy, "tier2_endorsed");
 
   let updated = submission;
   if (note) {

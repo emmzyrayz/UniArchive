@@ -10,7 +10,7 @@ import { getMaterialModel } from "@/lib/models/materialModel";
 import { isMaterialCategory } from "@/lib/constants/materialCategories";
 import {
   PUBLIC_MATERIAL_FIELDS,
-  toMaterialSummary,
+  toMaterialSummaries,
   type PublicMaterialDoc,
 } from "@/lib/publicMaterials";
 import { findPublicUser } from "@/lib/publicProfile";
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest, context: Context) {
     ]);
 
     const body: PublicMaterialsResponse = {
-      materials: docs.map(toMaterialSummary),
+      materials: await toMaterialSummaries(docs),
       total,
       page,
       totalPages: totalPages(total, limit),

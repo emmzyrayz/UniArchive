@@ -24,6 +24,7 @@ import {
 import { sendRoleApplicationApprovedEmail } from "@/utils/email";
 import { cacheTokenVersion } from "@/lib/auth/tokenVersionCache";
 import type { UserRole } from "@/types/roles";
+import { awardBadgesAfter } from "@/lib/badges";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -94,6 +95,7 @@ export async function PATCH(request: NextRequest, context: Context) {
     // Let the proxy see the old JWT is revoked (src/proxy.ts)
     const bumped = await User.findById(approved.applicantId).select("tokenVersion").lean();
     if (bumped) await cacheTokenVersion(String(approved.applicantId), bumped.tokenVersion ?? 0);
+    awardBadgesAfter(approved.applicantId, "role_changed");
 
     const contact = await loadSubmitterContact(approved.applicantId);
     if (contact) {
