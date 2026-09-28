@@ -34,6 +34,7 @@ export const PUBLIC_MATERIAL_FIELDS = [
   "createdAt",
   "reactions",
   "reactionCount",
+  "commentCount",
 ].join(" ");
 
 export type PublicMaterialDoc = Pick<
@@ -65,6 +66,7 @@ export type PublicMaterialDoc = Pick<
   | "createdAt"
   | "reactions"
   | "reactionCount"
+  | "commentCount"
 >;
 
 export function toMaterialSummary(doc: PublicMaterialDoc): MaterialSummary {
@@ -97,5 +99,6 @@ export function toMaterialSummary(doc: PublicMaterialDoc): MaterialSummary {
     // Materials from before reactions existed have neither field
     reactions: { ...EMPTY_REACTIONS, ...doc.reactions },
     reactionCount: doc.reactionCount ?? 0,
+    commentCount: doc.commentCount ?? 0,
   };
 }

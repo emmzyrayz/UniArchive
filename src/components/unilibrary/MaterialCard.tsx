@@ -7,7 +7,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiArrowRight, FiEye, FiX } from "react-icons/fi";
+import { FiArrowRight, FiChevronDown, FiEye, FiMessageCircle, FiX } from "react-icons/fi";
 import { formatFileSize } from "@/assets/data/libraryData";
 import { timeAgo } from "@/components/admin/reviewShared";
 import { useUser } from "@/context/userContext";
@@ -19,6 +19,7 @@ import {
 } from "@/lib/constants/reactions";
 import type { MaterialSummary } from "@/types/unilibrary";
 import { BADGE_CLASS, categoryBadge, levelLabel } from "./materialLabels";
+import { CommentSection } from "./CommentSection";
 
 interface MaterialCardProps {
   material: MaterialSummary;
@@ -236,6 +237,10 @@ function ReactionBar({
 
 export function MaterialCard({ material, isAuthenticated, onRead, userReaction }: MaterialCardProps) {
   const [promptOpen, setPromptOpen] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  // Comments posted or deleted here since the feed loaded
+  const [commentDelta, setCommentDelta] = useState(0);
+  const commentCount = Math.max(0, material.commentCount + commentDelta);
   const badge = categoryBadge(material.category, material.subcategory);
   const readHref = `/read/${material.bookId}`;
 
@@ -320,6 +325,31 @@ export function MaterialCard({ material, isAuthenticated, onRead, userReaction }
       </p>
 
       <ReactionBar material={material} userReaction={userReaction} isAuthenticated={isAuthenticated} />
+
+      {/* Comments load only when opened, to keep the feed light */}
+      <button
+        type="button"
+        onClick={() => setShowComments((open) => !open)}
+        aria-expanded={showComments}
+        className="mt-2 flex items-center gap-1.5 text-xs text-neutral-500 transition-colors hover:text-neutral-700 dark:hover:text-neutral-300"
+      >
+        <FiMessageCircle size={14} aria-hidden />
+        {commentCount > 0
+          ? `${commentCount} comment${commentCount !== 1 ? "s" : ""}`
+          : "Add a comment"}
+        <FiChevronDown
+          size={12}
+          aria-hidden
+          className={`transition-transform ${showComments ? "rotate-180" : ""}`}
+        />
+      </button>
+      {showComments && (
+        <CommentSection
+          materialId={material._id}
+          isAuthenticated={isAuthenticated}
+          onCountChange={(delta) => setCommentDelta((d) => d + delta)}
+        />
+      )}
 
       <div className="mt-3 flex items-end justify-between gap-3">
         <div className="flex min-w-0 flex-wrap gap-1.5">

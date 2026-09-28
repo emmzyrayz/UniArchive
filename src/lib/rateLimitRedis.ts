@@ -40,6 +40,8 @@ const limiters = {
   suggest: make(3, "24 h", "rl:suggest"),
   // Admin routes — generous
   admin: make(120, "1 m", "rl:admin"),
+  // Posting comments
+  comment: make(10, "1 m", "rl:comment"),
   // Public read (materials, profiles) — generous
   public: make(60, "1 m", "rl:public"),
   // Not a throttle: counts one material view per IP per hour

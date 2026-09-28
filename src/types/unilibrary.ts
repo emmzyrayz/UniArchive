@@ -39,6 +39,7 @@ export interface MaterialSummary {
   fileSize: number;
   reactions: ReactionCounts;
   reactionCount: number;
+  commentCount: number;
   /** Only on sort=trending */
   trendingScore?: number;
   /** The signed-in viewer's reaction, merged in on the client */

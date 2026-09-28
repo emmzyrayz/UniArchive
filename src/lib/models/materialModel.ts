@@ -85,6 +85,8 @@ export interface IMaterial {
   // disagree (see POST /api/materials/[id]/react).
   reactions: ReactionCounts;
   reactionCount: number;
+  // Comments that aren't deleted (top-level and replies)
+  commentCount: number;
 
   // Visibility (an admin can deactivate a material)
   isActive: boolean;
@@ -166,6 +168,7 @@ const MaterialSchema = new Schema<IMaterial, IMaterialModel>(
       accurate: { type: Number, default: 0 },
     },
     reactionCount: { type: Number, default: 0 },
+    commentCount: { type: Number, default: 0 },
 
     isActive: { type: Boolean, default: true },
   },
