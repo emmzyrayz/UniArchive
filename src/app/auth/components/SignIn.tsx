@@ -10,6 +10,7 @@ import { useUser } from "@/context/userContext";
 import { errorMessage, postJson, signInWithGoogle } from "@/lib/authClient";
 import type { Provider } from "./UI/AuthSocial";
 import { DeviceVerification } from "./DeviceVerification";
+import { DeviceNoticeBanner } from "./DeviceNoticeBanner";
 
 interface SignInInstanceProps {
   defaultEmail?: string;
@@ -175,6 +176,8 @@ export default function SignInInstance({
           Welcome Back! <span className="text-xl">👋</span>
         </h1>
       </div>
+
+      <DeviceNoticeBanner />
 
       {error === "forbidden" && !status && (
         <div
