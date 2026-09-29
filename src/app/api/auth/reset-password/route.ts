@@ -1,6 +1,7 @@
 // POST /api/auth/reset-password
 // Sets a new password using the short-lived token from verify-reset-code,
-// then signs the user out everywhere.
+// then signs the user out everywhere and forgets all their trusted devices,
+// so the next sign-in on any device needs an emailed code.
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserModel } from "@/lib/models/userModel";
 import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
@@ -10,6 +11,7 @@ import { isPasswordValid } from "@/lib/validation/password";
 import { hashToken } from "@/lib/auth/tokens";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
 import { SESSION_JWT_COOKIE, sessionJwtCookieOptions } from "@/lib/auth/jwt";
+import { clearDeviceCookie, revokeTrustedDevices } from "@/lib/auth/deviceRecognition";
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,10 +68,12 @@ export async function POST(request: NextRequest) {
 
     const SessionCache = await getSessionCacheModel();
     await SessionCache.invalidateAllUserSessions(String(user._id));
+    await revokeTrustedDevices(String(user._id));
 
     const response = NextResponse.json({ success: true });
     response.cookies.set(SESSION_COOKIE, "", sessionCookieOptions(0));
     response.cookies.set(SESSION_JWT_COOKIE, "", sessionJwtCookieOptions(0));
+    clearDeviceCookie(response);
     return response;
   } catch (error) {
     return handleRouteError(error, "reset-password");

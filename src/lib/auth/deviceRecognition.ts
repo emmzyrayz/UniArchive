@@ -117,6 +117,21 @@ export async function trustDevice(
   response.cookies.set(DEVICE_COOKIE, token, cookieOptions(DEVICE_TRUST_SECONDS));
 }
 
+/**
+ * Forgets every trusted device of the user (after a password reset: whoever
+ * knew the old password may have trusted their own browser). Their next
+ * sign-in anywhere asks for an emailed code again.
+ */
+export async function revokeTrustedDevices(userId: string): Promise<void> {
+  const TrustedDevice = await getTrustedDeviceModel();
+  await TrustedDevice.deleteMany({ userId });
+}
+
+/** Deletes this browser's `ua_device` cookie. */
+export function clearDeviceCookie(response: NextResponse): void {
+  response.cookies.set(DEVICE_COOKIE, "", cookieOptions(0));
+}
+
 /** Re-sets a still-trusted device's cookie so it slides with the database. */
 export function refreshDeviceCookie(response: NextResponse, deviceToken: string): void {
   response.cookies.set(DEVICE_COOKIE, deviceToken, cookieOptions(DEVICE_TRUST_SECONDS));
