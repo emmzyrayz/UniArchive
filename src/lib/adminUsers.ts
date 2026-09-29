@@ -3,6 +3,7 @@
 // src/lib/constants/roles.ts.
 import type { IUser } from "@/lib/models/userModel";
 import { decryptSensitiveData } from "@/lib/encryption";
+import { maskEmailAddress } from "@/lib/auth/tokens";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
 import type { AdminUserDto } from "@/types/admin";
 
@@ -40,10 +41,7 @@ export type AdminUserDoc = Pick<
 /** "user@gmail.com" -> "use***@gmail.com"; "" when it can't be read. */
 export function maskEmail(ciphertext: string): string {
   try {
-    const email = decryptSensitiveData(ciphertext);
-    const [local, domain] = email.split("@");
-    if (!domain) return "***";
-    return `${local.slice(0, Math.min(3, Math.max(1, local.length - 1)))}***@${domain}`;
+    return maskEmailAddress(decryptSensitiveData(ciphertext));
   } catch {
     return "";
   }

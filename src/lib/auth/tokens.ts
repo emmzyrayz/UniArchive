@@ -39,6 +39,13 @@ export function normaliseEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/** "user@gmail.com" -> "use***@gmail.com", for showing where a code went. */
+export function maskEmailAddress(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return "***";
+  return `${local.slice(0, Math.min(3, Math.max(1, local.length - 1)))}***@${domain}`;
+}
+
 /**
  * Pads a response to a minimum duration so that "account exists" and
  * "account doesn't exist" paths take roughly the same time.

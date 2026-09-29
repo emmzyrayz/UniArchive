@@ -498,3 +498,95 @@ export async function sendContactConfirmationEmail(params: {
     text,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Sign-in security: Google account linking and new-device codes
+// ---------------------------------------------------------------------------
+
+function codeBlockHtml(label: string, code: string): string {
+  return `
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border-left: 4px solid #667eea;">
+            <h3 style="margin: 0 0 10px 0; color: #667eea;">${escapeHtml(label)}</h3>
+            <div style="font-size: 32px; font-weight: bold; color: #333; letter-spacing: 4px; font-family: monospace;">
+              ${escapeHtml(code)}
+            </div>
+          </div>`;
+}
+
+/** Code confirming that a Google account may be linked to this account. */
+export async function sendLinkConfirmationEmail(params: {
+  toEmail: string;
+  toName: string;
+  otp: string;
+  googleEmail: string;
+}): Promise<boolean> {
+  const { toEmail, toName, otp, googleEmail } = params;
+  const text = [
+    `Hi ${toName},`,
+    "",
+    `Someone is trying to link the Google account ${googleEmail} to your UniArchive account. If this was you, enter this code:`,
+    "",
+    `    ${otp}`,
+    "",
+    "This code expires in 10 minutes.",
+    "If you didn't request this, ignore this email. Your account is safe.",
+  ].join("\n");
+  const html = reviewEmailHtml(
+    "Confirm linking Google to your UniArchive account",
+    "Link Google Account",
+    `
+          <h2 style="color: #333; margin-top: 0;">Hi ${escapeHtml(toName)},</h2>
+          <p>Someone is trying to link the Google account <strong>${escapeHtml(googleEmail)}</strong> to your UniArchive account. If this was you, enter this code:</p>
+          ${codeBlockHtml("Your Confirmation Code", otp)}
+          <p>This code expires in 10 minutes.</p>
+          <p>If you didn't request this, ignore this email. Your account is safe.</p>`,
+  );
+  return emailService.sendEmail({
+    to: toEmail,
+    subject: "Confirm linking Google to your UniArchive account",
+    html,
+    text,
+  });
+}
+
+/** Code for a sign-in from a device the user hasn't trusted yet. */
+export async function sendDeviceVerificationEmail(params: {
+  toEmail: string;
+  toName: string;
+  otp: string;
+  deviceName: string;
+}): Promise<boolean> {
+  const { toEmail, toName, otp, deviceName } = params;
+  const resetUrl = appUrl("/auth?view=forgot-password");
+  const text = [
+    `Hi ${toName},`,
+    "",
+    "A sign-in was attempted from a new device:",
+    `Device: ${deviceName}`,
+    "",
+    "Enter this code to complete sign-in:",
+    "",
+    `    ${otp}`,
+    "",
+    "This code expires in 10 minutes.",
+    `If this wasn't you, your password may be compromised. Change it immediately: ${resetUrl}`,
+  ].join("\n");
+  const html = reviewEmailHtml(
+    "New sign-in attempt on UniArchive",
+    "New Sign-in",
+    `
+          <h2 style="color: #333; margin-top: 0;">Hi ${escapeHtml(toName)},</h2>
+          <p>A sign-in was attempted from a new device:</p>
+          <p><strong>Device:</strong> ${escapeHtml(deviceName)}</p>
+          <p>Enter this code to complete sign-in:</p>
+          ${codeBlockHtml("Your Sign-in Code", otp)}
+          <p>This code expires in 10 minutes.</p>
+          <p>If this wasn't you, your password may be compromised. <a href="${escapeHtml(resetUrl)}" style="color: #667eea;">Change it immediately</a>.</p>`,
+  );
+  return emailService.sendEmail({
+    to: toEmail,
+    subject: "New sign-in attempt on UniArchive",
+    html,
+    text,
+  });
+}

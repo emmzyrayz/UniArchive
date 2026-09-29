@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useUser } from "@/context/userContext";
 import { errorMessage, postJson, signInWithGoogle } from "@/lib/authClient";
 import type { Provider } from "./UI/AuthSocial";
+import { DeviceVerification } from "./DeviceVerification";
 
 interface SignInInstanceProps {
   defaultEmail?: string;
@@ -26,6 +27,8 @@ const OAUTH_ERRORS: Record<string, string> = {
   oauth_unverified: "Your Google account's email isn't verified. Verify it with Google or sign in with email.",
   oauth_conflict: "This email is already linked to a different Google account. Sign in with that account or use your email and password.",
   suspended: "This account has been suspended. Contact support if you think this is a mistake.",
+  rate_limited: "Too many sign-in attempts. Please wait a minute and try again.",
+  email_failed: "We couldn't send your verification email. Please try again shortly.",
   AccessDenied: "Google sign-in was cancelled or denied.",
   OAuthSignin: "Could not connect to Google. Please try again.",
   OAuthCallback: "Google sign-in was cancelled or failed.",
@@ -77,6 +80,8 @@ export default function SignInInstance({
   const [status, setStatus] = useState<LoginStatus>(null);
   const [socialNotice, setSocialNotice] = useState("");
   const [isRedirecting, setIsRedirecting] = useState(false);
+  // Set when the password was right but this device isn't trusted yet
+  const [deviceCodeSentTo, setDeviceCodeSentTo] = useState<string | null>(null);
   const oauthError = oauthErrorMessage(error);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,11 +91,18 @@ export default function SignInInstance({
     setIsSubmitting(true);
     setStatus(null);
     try {
-      const result = await postJson<{ requiresVerification?: boolean }>(
-        "/api/auth/login",
-        { email: email.trim(), password },
-      );
+      const result = await postJson<{
+        requiresVerification?: boolean;
+        requiresDeviceVerification?: boolean;
+        maskedEmail?: string;
+      }>("/api/auth/login", { email: email.trim(), password });
 
+      // 202: new device, a code was emailed; no session yet
+      if (result.ok && result.data.requiresDeviceVerification) {
+        setPassword("");
+        setDeviceCodeSentTo(result.data.maskedEmail || "your email");
+        return;
+      }
       if (result.ok) {
         // The session cookie is set; load the user before leaving the page
         await refreshUserData({ force: true });
@@ -127,6 +139,26 @@ export default function SignInInstance({
     await postJson("/api/auth/resend-verification", { email: trimmed });
     router.push(`/auth?view=verify&mode=signup&email=${encodeURIComponent(trimmed)}`);
   };
+
+  if (deviceCodeSentTo) {
+    return (
+      <div className="space-y-8 bg-white dark:bg-neutral-800 p-8 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-xl">
+        <DeviceVerification
+          maskedEmail={deviceCodeSentTo}
+          defaultRedirect={safeRedirectPath(from)}
+          secondaryAction={
+            <button
+              type="button"
+              onClick={() => setDeviceCodeSentTo(null)}
+              className="text-text-secondary hover:text-text-primary"
+            >
+              ← Back to sign in
+            </button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 bg-white dark:bg-neutral-800 p-8 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-xl">

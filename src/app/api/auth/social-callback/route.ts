@@ -1,45 +1,30 @@
 // GET /api/auth/social-callback?from=/some/page
-// Where Auth.js sends the browser after Google sign-in. Reads the short-lived
-// Auth.js session, starts one of our own sessions exactly like
-// /api/auth/login (SessionCache entry, `sessionId` + `session_jwt` cookies,
-// tokenVersion cache), deletes the Auth.js cookie and redirects on.
+// Where Auth.js sends the browser after Google sign-in. Reads the verified
+// Google identity from the short-lived Auth.js session, deletes that cookie
+// and then either:
+//  - signs in (trusted device, or a brand-new / just-verified account whose
+//    email Google has just proven - that browser becomes trusted),
+//  - asks for a new-device code (/auth/verify-device), or
+//  - asks the owner of an existing email account to confirm the link with a
+//    code (/auth/link-account).
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth/socialAuth";
-import { getUserModel } from "@/lib/models/userModel";
-import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
-import { decryptSensitiveData } from "@/lib/encryption";
-import { getClientIp, getDeviceInfo } from "@/lib/api";
-import { generateToken } from "@/lib/auth/tokens";
+import { checkRateLimit } from "@/lib/rateLimitRedis";
+import { getClientIp } from "@/lib/api";
+import { safeReturnPath, startSession } from "@/lib/auth/startSession";
+import { createPendingLink, resolveGoogleAccount } from "@/lib/auth/googleAccount";
+import { LINK_COOKIE, linkCookieOptions } from "@/lib/auth/linkCookie";
 import {
-  SESSION_COOKIE,
-  SESSION_TTL_HOURS,
-  sessionCookieOptions,
-} from "@/lib/auth/session";
-import {
-  SESSION_JWT_COOKIE,
-  sessionJwtCookieOptions,
-  signSessionJwt,
-} from "@/lib/auth/jwt";
-import { cacheTokenVersion } from "@/lib/auth/tokenVersionCache";
+  isDeviceTrusted,
+  readDeviceToken,
+  refreshDeviceCookie,
+  setChallengeCookie,
+  startDeviceChallenge,
+  trustDevice,
+} from "@/lib/auth/deviceRecognition";
 
 // Auth.js session cookie; large tokens are split into .0, .1, ... chunks
 const AUTHJS_SESSION_COOKIE = /^(__Secure-)?authjs\.session-token(\.\d+)?$/;
-
-// Only same-site relative paths, never "//evil.com", absolute URLs or /auth
-function safeReturnPath(value: string | null): string {
-  if (
-    !value ||
-    !value.startsWith("/") ||
-    value.startsWith("//") ||
-    value.includes("\\") ||
-    value === "/auth" ||
-    value.startsWith("/auth?") ||
-    value.startsWith("/auth/")
-  ) {
-    return "/home";
-  }
-  return value;
-}
 
 function clearAuthJsSession(request: NextRequest, response: NextResponse) {
   for (const { name } of request.cookies.getAll()) {
@@ -55,71 +40,68 @@ function clearAuthJsSession(request: NextRequest, response: NextResponse) {
   }
 }
 
-function failure(request: NextRequest, error: string) {
-  const url = new URL("/auth", request.url);
-  url.searchParams.set("view", "signin");
-  url.searchParams.set("error", error);
-  const response = NextResponse.redirect(url);
+function redirectTo(request: NextRequest, path: string) {
+  const response = NextResponse.redirect(new URL(path, request.url));
+  // The Auth.js session has done its job whichever way this goes
   clearAuthJsSession(request, response);
   return response;
 }
 
+const failure = (request: NextRequest, error: string) =>
+  redirectTo(request, `/auth?view=signin&error=${error}`);
+
+/** Codes are emailed from here, so cap how often one IP can trigger them. */
+async function emailAllowed(request: NextRequest): Promise<boolean> {
+  const { success } = await checkRateLimit(
+    request,
+    "authEmail",
+    `social-callback:${getClientIp(request)}`,
+  );
+  return success;
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const socialSession = await auth();
-    const userId = socialSession?.user?.id;
-    if (!userId) return failure(request, "oauth_failed");
+    const returnTo = safeReturnPath(request.nextUrl.searchParams.get("from"));
+    const google = (await auth())?.user;
+    if (!google?.id || !google.email) return failure(request, "oauth_failed");
 
-    const User = await getUserModel();
-    const user = await User.findById(userId);
-    if (!user) return failure(request, "oauth_failed");
-    // Checked again here: the account may have changed since the handshake
-    if (user.isSuspended) return failure(request, "suspended");
-    if (!user.isVerified) return failure(request, "oauth_failed");
+    const identity = {
+      sub: google.id,
+      email: google.email,
+      name: google.name,
+      picture: google.image,
+    };
+    const result = await resolveGoogleAccount(identity);
+    if (result.kind === "error") return failure(request, result.error);
 
-    // Same session as /api/auth/login
-    const rawToken = generateToken();
-    const SessionCache = await getSessionCacheModel();
-    await SessionCache.createFullSession(
-      String(user._id),
-      {
-        email: decryptSensitiveData(user.email),
-        fullName: user.fullName,
-        role: user.role,
-        school: user.school,
-        faculty: user.faculty,
-        department: user.department,
-        level: user.level,
-        upid: user.upid,
-        isVerified: user.isVerified,
-        profilePhoto: user.profilePhoto,
-        tokenVersion: user.tokenVersion ?? 0,
-      },
-      rawToken,
-      SESSION_TTL_HOURS,
-      getDeviceInfo(request),
-      getClientIp(request),
-    );
+    if (result.kind === "link") {
+      if (!(await emailAllowed(request))) return failure(request, "rate_limited");
+      const linkToken = await createPendingLink(result.user, identity, returnTo);
+      if (!linkToken) return failure(request, "email_failed");
+      const response = redirectTo(request, "/auth/link-account");
+      response.cookies.set(LINK_COOKIE, linkToken, linkCookieOptions());
+      return response;
+    }
 
-    // The proxy compares JWTs against this (src/proxy.ts)
-    await cacheTokenVersion(String(user._id), user.tokenVersion ?? 0);
+    const { user, emailJustProven } = result;
+    const userId = String(user._id);
+    const deviceToken = readDeviceToken(request);
 
-    const response = NextResponse.redirect(
-      new URL(safeReturnPath(request.nextUrl.searchParams.get("from")), request.url),
-    );
-    response.cookies.set(SESSION_COOKIE, rawToken, sessionCookieOptions());
-    response.cookies.set(
-      SESSION_JWT_COOKIE,
-      await signSessionJwt({
-        sub: String(user._id),
-        role: user.role,
-        upid: user.upid,
-        tokenVersion: user.tokenVersion ?? 0,
-      }),
-      sessionJwtCookieOptions(),
-    );
-    // The Auth.js session has done its job; ours is the only one from here
-    clearAuthJsSession(request, response);
+    if (emailJustProven || (await isDeviceTrusted(userId, deviceToken))) {
+      const response = redirectTo(request, returnTo);
+      await startSession(request, response, user);
+      if (emailJustProven) await trustDevice(request, response, userId);
+      else if (deviceToken) refreshDeviceCookie(response, deviceToken);
+      return response;
+    }
+
+    // Signed in with Google, but from a device we don't know yet
+    if (!(await emailAllowed(request))) return failure(request, "rate_limited");
+    const challenge = await startDeviceChallenge(request, user, returnTo);
+    if (!challenge) return failure(request, "email_failed");
+    const response = redirectTo(request, "/auth/verify-device");
+    setChallengeCookie(response, challenge.rawToken);
     return response;
   } catch (error) {
     console.error("[social-callback] failed:", error);

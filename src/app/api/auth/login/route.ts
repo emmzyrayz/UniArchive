@@ -1,31 +1,24 @@
 // POST /api/auth/login
-// Verifies credentials and starts a session. The raw session token goes only
-// into an httpOnly cookie; the database stores its hash. No JWT is issued and
-// other sessions are left alone (multiple devices are allowed).
+// Verifies credentials and starts a session (lib/auth/startSession.ts). Other
+// sessions are left alone (multiple devices are allowed). From a device that
+// isn't trusted yet (no valid `ua_device` cookie), it instead emails a code
+// and answers 202 { requiresDeviceVerification }; the sign-in finishes at
+// /api/auth/verify-device.
 import { NextResponse, type NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { getUserModel } from "@/lib/models/userModel";
-import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
 import { hashForSearch } from "@/lib/encryption";
-import {
-  getClientIp,
-  getDeviceInfo,
-  handleRouteError,
-  readJson,
-} from "@/lib/api";
+import { getClientIp, handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
-import { generateToken, normaliseEmail } from "@/lib/auth/tokens";
+import { normaliseEmail } from "@/lib/auth/tokens";
+import { startSession } from "@/lib/auth/startSession";
 import {
-  SESSION_COOKIE,
-  SESSION_TTL_HOURS,
-  sessionCookieOptions,
-} from "@/lib/auth/session";
-import {
-  SESSION_JWT_COOKIE,
-  sessionJwtCookieOptions,
-  signSessionJwt,
-} from "@/lib/auth/jwt";
-import { cacheTokenVersion } from "@/lib/auth/tokenVersionCache";
+  isDeviceTrusted,
+  readDeviceToken,
+  refreshDeviceCookie,
+  setChallengeCookie,
+  startDeviceChallenge,
+} from "@/lib/auth/deviceRecognition";
 
 // Compared against when the email is unknown, so both paths cost one bcrypt.
 const DUMMY_HASH = bcrypt.hashSync("uniarchive-timing-equaliser", 12);
@@ -74,54 +67,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rawToken = generateToken();
-    const SessionCache = await getSessionCacheModel();
-    await SessionCache.createFullSession(
-      String(user._id),
-      {
-        email,
-        fullName: user.fullName,
-        role: user.role,
-        school: user.school,
-        faculty: user.faculty,
-        department: user.department,
-        level: user.level,
-        upid: user.upid,
-        isVerified: user.isVerified,
-        profilePhoto: user.profilePhoto,
-        tokenVersion: user.tokenVersion ?? 0,
-      },
-      rawToken,
-      SESSION_TTL_HOURS,
-      getDeviceInfo(request),
-      getClientIp(request),
-    );
-
-    // The proxy compares JWTs against this (src/proxy.ts)
-    await cacheTokenVersion(String(user._id), user.tokenVersion ?? 0);
+    const userId = String(user._id);
+    const deviceToken = readDeviceToken(request);
+    if (!(await isDeviceTrusted(userId, deviceToken))) {
+      // Right password, unknown device: email a code before any session.
+      // The challenge token goes only into an httpOnly cookie.
+      // No destination: the sign-in form already knows where it was going
+      const challenge = await startDeviceChallenge(request, user, "");
+      if (!challenge) {
+        return NextResponse.json(
+          { message: "We couldn't send your sign-in code. Please try again shortly." },
+          { status: 503 },
+        );
+      }
+      const response = NextResponse.json(
+        { requiresDeviceVerification: true, maskedEmail: challenge.maskedEmail },
+        { status: 202 },
+      );
+      setChallengeCookie(response, challenge.rawToken);
+      return response;
+    }
 
     const response = NextResponse.json({
       success: true,
       user: {
-        id: String(user._id),
+        id: userId,
         upid: user.upid,
         role: user.role,
         fullName: user.fullName,
         isVerified: user.isVerified,
       },
     });
-    response.cookies.set(SESSION_COOKIE, rawToken, sessionCookieOptions());
-    // Short-lived access token for src/proxy.ts (renewed via /api/auth/refresh)
-    response.cookies.set(
-      SESSION_JWT_COOKIE,
-      await signSessionJwt({
-        sub: String(user._id),
-        role: user.role,
-        upid: user.upid,
-        tokenVersion: user.tokenVersion ?? 0,
-      }),
-      sessionJwtCookieOptions(),
-    );
+    await startSession(request, response, user);
+    if (deviceToken) refreshDeviceCookie(response, deviceToken);
     return response;
   } catch (error) {
     return handleRouteError(error, "login");

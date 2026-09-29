@@ -1,6 +1,7 @@
 // POST /api/auth/verify-email
 // Checks the 6-digit code against its stored hash. Five wrong attempts lock
-// the code until a new one is requested. Does not sign the user in.
+// the code until a new one is requested. Does not sign the user in, but
+// trusts this browser as the account's first device.
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserModel } from "@/lib/models/userModel";
 import { hashForSearch } from "@/lib/encryption";
@@ -12,6 +13,7 @@ import {
   normaliseEmail,
   safeEqualHex,
 } from "@/lib/auth/tokens";
+import { trustDevice } from "@/lib/auth/deviceRecognition";
 
 const invalid = () =>
   NextResponse.json(
@@ -60,7 +62,11 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    return NextResponse.json({ success: true });
+    // This browser just proved it can read the account's email, so it's the
+    // user's first trusted device: signing in here won't ask for a code
+    const response = NextResponse.json({ success: true });
+    await trustDevice(request, response, String(user._id));
+    return response;
   } catch (error) {
     return handleRouteError(error, "verify-email");
   }
