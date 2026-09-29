@@ -21,7 +21,9 @@ import { isPublicMaterialPath, isPublicProfilePath, isReviewerAdminPath } from "
 import { getCachedTokenVersion } from "@/lib/auth/tokenVersionCache";
 
 // /unilibrary: anyone can browse; reading a material (/read/...) needs a session
-const PUBLIC_PATHS = new Set(["/", "/about", "/contact", "/help", "/offline", "/unilibrary"]);
+const PUBLIC_PATHS = new Set([
+  "/", "/about", "/contact", "/help", "/offline", "/unilibrary", "/privacy", "/terms",
+]);
 const PUBLIC_PREFIXES = ["/auth", "/_next", "/api"];
 const ADMIN_PREFIXES = ["/admin", "/moderation"];
 // Pages where a revoked JWT's old role or access matters (tokenVersion check)
