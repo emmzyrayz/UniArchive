@@ -1,5 +1,6 @@
 // src/lib/authClient.ts
 // Browser-side helper for calling the /api/auth/* routes.
+import { signIn } from "next-auth/react";
 
 export interface ApiResult<T> {
   ok: boolean;
@@ -68,4 +69,14 @@ export function clearResetSession(): void {
   } catch {
     // ignore
   }
+}
+
+/**
+ * Starts Google sign-in (Auth.js). Google users land on
+ * /api/auth/social-callback, which starts a normal session and redirects to
+ * `from` (checked server-side) or /home.
+ */
+export function signInWithGoogle(from?: string): Promise<void> {
+  const query = from ? `?${new URLSearchParams({ from })}` : "";
+  return signIn("google", { redirectTo: `/api/auth/social-callback${query}` });
 }

@@ -21,7 +21,10 @@ export interface IUser extends Document {
   username?: string;
   email: string;
   emailHash: string;
-  password: string;
+  // Absent for accounts created through Google sign-in (see googleId)
+  password?: string;
+  // Google account id ("sub" claim), set when the user signs in with Google
+  googleId?: string;
   role: UserRole;
   // Collected later in profile completion; not part of the signup wizard.
   dob?: Date;
@@ -30,7 +33,8 @@ export interface IUser extends Document {
   gender?: "Male" | "Female" | "Other";
   level?: string;
   profilePhoto?: string;
-  school: string;
+  // Absent for Google sign-ups until they set their university in profile
+  school?: string;
   faculty?: string;
   department?: string;
   regNumber?: string;
@@ -108,7 +112,14 @@ const UserSchema = new Schema<IUser>(
     username: { type: String, trim: true, lowercase: true },
     email: { type: String, required: true },
     emailHash: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    // Google sign-ups have no password or school until they add them
+    password: {
+      type: String,
+      required(this: IUser) {
+        return !this.googleId;
+      },
+    },
+    googleId: { type: String },
     dob: { type: Date },
     phone: { type: String },
     phoneHash: { type: String },
@@ -130,7 +141,12 @@ const UserSchema = new Schema<IUser>(
       ],
       default: "student",
     },
-    school: { type: String, required: true },
+    school: {
+      type: String,
+      required(this: IUser) {
+        return !this.googleId;
+      },
+    },
     faculty: { type: String },
     department: { type: String },
     regNumber: { type: String },
@@ -186,12 +202,13 @@ const UserSchema = new Schema<IUser>(
 // Optional-but-unique fields: sparse so documents without them don't collide.
 UserSchema.index({ username: 1 }, { unique: true, sparse: true });
 UserSchema.index({ regNumberHash: 1 }, { unique: true, sparse: true });
+UserSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 UserSchema.index({ resetTokenHash: 1 }, { sparse: true });
 UserSchema.index({ resetSessionHash: 1 }, { sparse: true });
 
 UserSchema.pre("save", async function () {
   // If password is not modified, simply return to exit the function
-  if (!this.isModified("password")) return;
+  if (!this.isModified("password") || !this.password) return;
 
   // Otherwise, hash the password
   this.password = await bcrypt.hash(this.password, 12);
@@ -200,6 +217,8 @@ UserSchema.pre("save", async function () {
 UserSchema.methods.comparePassword = async function (
   candidatePassword: string,
 ): Promise<boolean> {
+  // Google-only accounts have no password to match
+  if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 

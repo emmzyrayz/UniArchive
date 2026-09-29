@@ -27,7 +27,7 @@ interface IDecryptedUserData {
   gender?: Gender;
   profilePhoto?: string;
   role: UserRole;
-  school: string;
+  school?: string;
   faculty?: string;
   department?: string;
   regNumber?: string;
@@ -59,7 +59,7 @@ export interface ISessionCache extends Document {
   gender?: Gender;
   profilePhoto?: string;
   role: UserRole;
-  school: string;
+  school?: string;
   faculty?: string;
   department?: string;
   regNumber?: string;
@@ -93,7 +93,7 @@ interface IUserData {
   gender?: Gender;
   profilePhoto?: string;
   role: UserRole;
-  school: string;
+  school?: string;
   faculty?: string;
   department?: string;
   regNumber?: string;
@@ -154,7 +154,8 @@ const SessionCacheSchema = new Schema<ISessionCache>({
     ],
     required: true,
   },
-  school: { type: String, required: true },
+  // Google sign-ups have no school until they set one in their profile
+  school: { type: String },
   faculty: { type: String },
   department: { type: String },
   level: { type: String },

@@ -7,7 +7,8 @@ import BrandLogo from "./UI/BrandLogo";
 import AuthSocial from "./UI/AuthSocial";
 import { useState } from "react";
 import { useUser } from "@/context/userContext";
-import { errorMessage, postJson } from "@/lib/authClient";
+import { errorMessage, postJson, signInWithGoogle } from "@/lib/authClient";
+import type { Provider } from "./UI/AuthSocial";
 
 interface SignInInstanceProps {
   defaultEmail?: string;
@@ -15,8 +16,25 @@ interface SignInInstanceProps {
   justVerified?: boolean;
   /** Where the proxy was sending the user before redirecting to sign-in. */
   from?: string;
-  /** "forbidden" when the proxy rejected the user's role. */
+  /** "forbidden" when the proxy rejected the user's role, or a Google sign-in error. */
   error?: string;
+}
+
+// Errors from Google sign-in: ours (socialAuth.ts, social-callback) and Auth.js's own
+const OAUTH_ERRORS: Record<string, string> = {
+  oauth_failed: "Google sign-in failed. Please try again.",
+  oauth_unverified: "Your Google account's email isn't verified. Verify it with Google or sign in with email.",
+  oauth_conflict: "This email is already linked to a different Google account. Sign in with that account or use your email and password.",
+  suspended: "This account has been suspended. Contact support if you think this is a mistake.",
+  AccessDenied: "Google sign-in was cancelled or denied.",
+  OAuthSignin: "Could not connect to Google. Please try again.",
+  OAuthCallback: "Google sign-in was cancelled or failed.",
+  Configuration: "Google sign-in is temporarily unavailable. Please use your email and password.",
+};
+
+function oauthErrorMessage(error: string | undefined): string | null {
+  if (!error || error === "forbidden") return null;
+  return OAUTH_ERRORS[error] ?? "Sign-in failed. Please try again or use your email and password.";
 }
 
 /**
@@ -58,6 +76,8 @@ export default function SignInInstance({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<LoginStatus>(null);
   const [socialNotice, setSocialNotice] = useState("");
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const oauthError = oauthErrorMessage(error);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +104,22 @@ export default function SignInInstance({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleProviderClick = (provider: Provider) => {
+    if (provider === "google") {
+      if (isRedirecting) return;
+      setIsRedirecting(true);
+      setSocialNotice("Redirecting to Google...");
+      signInWithGoogle(safeRedirectPath(from)).catch(() => {
+        setIsRedirecting(false);
+        setSocialNotice("Could not connect to Google. Please try again.");
+      });
+      return;
+    }
+    setSocialNotice(
+      `Signing in with ${provider.charAt(0).toUpperCase() + provider.slice(1)} isn't available yet.`,
+    );
   };
 
   const handleVerifyNow = async () => {
@@ -119,6 +155,15 @@ export default function SignInInstance({
             go home
           </Link>
           .
+        </div>
+      )}
+
+      {oauthError && !status && (
+        <div
+          role="alert"
+          className="rounded-md border border-error/30 bg-error/10 p-3 text-sm text-error"
+        >
+          {oauthError}
         </div>
       )}
 
@@ -212,13 +257,7 @@ export default function SignInInstance({
         </span>
       </div>
 
-      <AuthSocial
-        onProviderClick={(provider) =>
-          setSocialNotice(
-            `Signing in with ${provider.charAt(0).toUpperCase() + provider.slice(1)} isn't available yet.`,
-          )
-        }
-      />
+      <AuthSocial onProviderClick={handleProviderClick} />
       {socialNotice && (
         <p role="status" className="-mt-4 text-center text-sm text-text-secondary">
           {socialNotice}

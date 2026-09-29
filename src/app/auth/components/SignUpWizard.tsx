@@ -14,7 +14,7 @@ import { StepProfile } from "./steps/StepProfile";
 import { StepSchoolEmail } from "./steps/stepSchoolEmail";
 import { StepPassword } from "./steps/stepPassword";
 import type { Provider } from "./UI/AuthSocial";
-import { errorMessage, postJson } from "@/lib/authClient";
+import { errorMessage, postJson, signInWithGoogle } from "@/lib/authClient";
 
 export interface SignUpFormData {
   email: string;
@@ -130,6 +130,14 @@ export default function SignUpWizard() {
   };
 
   const handleSocialAuth = (provider: Provider) => {
+    // Google creates the account on first sign-in, or signs in an existing one
+    if (provider === "google") {
+      setNotice("Redirecting to Google...");
+      signInWithGoogle().catch(() =>
+        setNotice("Could not connect to Google. Please try again."),
+      );
+      return;
+    }
     const name = provider.charAt(0).toUpperCase() + provider.slice(1);
     setNotice(`Signing up with ${name} isn't available yet. Please use your email for now.`);
   };

@@ -66,7 +66,8 @@ export async function GET(request: NextRequest) {
           phoneMasked: user.phone ? MASKED_PHONE : null,
           isVerified: user.isVerified,
           // Legacy plain-string institution fields, still read by userContext
-          school: user.school,
+          // Google sign-ups have none until they pick a university
+          school: user.school ?? "",
           faculty: user.faculty ?? "",
           department: user.department ?? "",
           level: user.level ?? "",
