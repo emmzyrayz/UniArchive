@@ -2,6 +2,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 
 import { rootMetadata, rootViewport } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 import ClientWrapper from "@/components/clientWrapper";
 import { NavigationWrapper } from "@/components/navigationWrapper";
 import { UserProvider } from "@/context/userContext";
@@ -108,6 +109,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       {/* No manual <head> needed — Next.js injects metadata automatically */}
       <body className="min-h-full flex flex-col">
+        <JsonLd />
         <UserProvider>
           <ClientWrapper>
             <NavigationWrapper>{children}</NavigationWrapper>
