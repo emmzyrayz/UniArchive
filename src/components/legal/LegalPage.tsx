@@ -2,9 +2,9 @@
 // Shared layout for /privacy and /terms: a readable single column with
 // numbered sections.
 import type { ReactNode } from "react";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
-export const LEGAL_CONTACT_EMAIL = "emmanueldike275@gmail.com";
-export const LEGAL_LAST_UPDATED = "September 29, 2026";
+export const LEGAL_LAST_UPDATED = "September 30, 2026";
 
 export function LegalPage({
   title,
@@ -72,10 +72,10 @@ export function LegalList({ items }: { items: ReactNode[] }) {
 export function LegalEmail() {
   return (
     <a
-      href={`mailto:${LEGAL_CONTACT_EMAIL}`}
+      href={`mailto:${SUPPORT_EMAIL}`}
       className="font-medium text-text-primary underline underline-offset-2 break-all"
     >
-      {LEGAL_CONTACT_EMAIL}
+      {SUPPORT_EMAIL}
     </a>
   );
 }

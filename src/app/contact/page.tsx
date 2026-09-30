@@ -2,6 +2,7 @@
 import { ContactForm } from "@/components/contact/ContactForm";
 import { socialLinks } from "@/assets/data/layoutData";
 import { pageMetadata } from "@/lib/seo";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 export const metadata = pageMetadata.contact;
 
@@ -30,12 +31,10 @@ export default function ContactPage() {
                 Email us directly
               </h2>
               <a
-                href="mailto:hello@uniarchive.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline"
+                href={`mailto:${SUPPORT_EMAIL}`}
+                className="text-sm text-primary hover:underline break-all"
               >
-                hello@uniarchive.com
+                {SUPPORT_EMAIL}
               </a>
             </div>
 

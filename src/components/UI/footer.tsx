@@ -1,8 +1,7 @@
 // components/UI/footer.tsx
 import Link from "next/link";
 import BrandLogo from "@/app/auth/components/UI/BrandLogo";
-
-const CONTACT_EMAIL = "uniarchive.team@gmail.com";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 interface FooterLink {
   label: string;
@@ -138,7 +137,7 @@ export const Footer = () => {
               </li>
               <li>
                 <a
-                  href={`mailto:${CONTACT_EMAIL}`}
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className={`${linkClass} inline-flex items-center gap-2 break-all`}
                 >
                   <svg
@@ -156,7 +155,7 @@ export const Footer = () => {
                     <rect x="3" y="5" width="18" height="14" rx="2" />
                     <path d="M3 7l9 6 9-6" />
                   </svg>
-                  {CONTACT_EMAIL}
+                  {SUPPORT_EMAIL}
                 </a>
               </li>
             </ul>

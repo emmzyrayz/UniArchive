@@ -1,6 +1,7 @@
 // components/seo/JsonLd.tsx
 // Organization + WebSite structured data, rendered once in the root layout.
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, absoluteUrl } from "@/lib/seo";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 const graph = {
   "@context": "https://schema.org",
@@ -15,6 +16,13 @@ const graph = {
         url: absoluteUrl("/logo.png"),
         width: 512,
         height: 512,
+      },
+      email: SUPPORT_EMAIL,
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        email: SUPPORT_EMAIL,
+        availableLanguage: ["en"],
       },
     },
     {
