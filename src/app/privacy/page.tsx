@@ -7,7 +7,7 @@ import {
   LegalSection,
   Term,
 } from "@/components/legal/LegalPage";
-import { pageMetadata } from "@/lib/seo";
+import { SITE_URL, pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata.privacy;
 
@@ -160,10 +160,10 @@ export default function PrivacyPage() {
             <>
               Website:{" "}
               <a
-                href="https://www.uniarchive.com.ng"
+                href={SITE_URL}
                 className="font-medium text-text-primary underline underline-offset-2"
               >
-                https://www.uniarchive.com.ng
+                {SITE_URL.replace(/^https?:\/\//, "")}
               </a>
             </>,
           ]}

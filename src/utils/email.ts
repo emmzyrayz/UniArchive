@@ -1,4 +1,5 @@
 import nodemailer, { Transporter } from "nodemailer";
+import { absoluteUrl } from "@/lib/seo";
 
 interface EmailOptions {
   to: string;
@@ -111,7 +112,7 @@ class EmailService {
     resetToken: string,
     resetCode: string,
   ): string {
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth?view=verify&token=${encodeURIComponent(resetToken)}`;
+    const resetUrl = absoluteUrl(`/auth?view=verify&token=${encodeURIComponent(resetToken)}`);
 
     return `
       <!DOCTYPE html>
@@ -192,10 +193,8 @@ export const emailService = new EmailService();
 // UniLibrary submission review
 // ---------------------------------------------------------------------------
 
-function appUrl(path: string): string {
-  const origin = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "");
-  return `${origin}${path}`;
-}
+// Links in emails always use the canonical site URL (src/lib/seo.ts)
+const appUrl = absoluteUrl;
 
 /** Shared frame for the review emails; `bodyHtml` must already be escaped. */
 function reviewEmailHtml(title: string, heading: string, bodyHtml: string): string {
