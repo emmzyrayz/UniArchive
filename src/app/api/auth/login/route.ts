@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       // Right password, unknown device: email a code before any session.
       // The challenge token goes only into an httpOnly cookie.
       // No destination: the sign-in form already knows where it was going
-      const challenge = await startDeviceChallenge(request, user, "");
+      const challenge = await startDeviceChallenge(request, user, "", "password");
       if (!challenge) {
         return NextResponse.json(
           { message: "We couldn't send your sign-in code. Please try again shortly." },
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
         isVerified: user.isVerified,
       },
     });
-    await startSession(request, response, user);
+    await startSession(request, response, user, { method: "password" });
     if (deviceToken) refreshDeviceCookie(response, deviceToken);
     return response;
   } catch (error) {

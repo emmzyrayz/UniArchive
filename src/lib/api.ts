@@ -38,16 +38,6 @@ export function getClientIp(request: NextRequest): string {
   return request.headers.get("x-real-ip") ?? "unknown";
 }
 
-export function getDeviceInfo(request: NextRequest): string {
-  const ua = request.headers.get("user-agent") ?? "";
-  if (/Mobile|Android|iPhone/i.test(ua)) return "Mobile Device";
-  if (ua.includes("Edg/")) return "Edge Browser";
-  if (ua.includes("Chrome")) return "Chrome Browser";
-  if (ua.includes("Firefox")) return "Firefox Browser";
-  if (ua.includes("Safari")) return "Safari Browser";
-  return "Unknown Device";
-}
-
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function asTrimmedString(value: unknown, maxLength = 500): string {

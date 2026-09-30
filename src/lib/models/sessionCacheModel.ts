@@ -13,6 +13,7 @@ import {
 } from "@/lib/encryption";
 import { connectDB } from "@/lib/mongoose";
 import type { UserRole } from "@/types/roles";
+import type { LoginContext } from "@/lib/auth/loginContext";
 
 type Gender = "Male" | "Female" | "Other";
 
@@ -76,6 +77,9 @@ export interface ISessionCache extends Document {
   expiresAt: Date;
   lastActivity: Date;
   deviceInfo?: string;
+  // Missing on sessions created before these were added
+  deviceType?: LoginContext["deviceType"];
+  location?: string;
   ipAddress?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -114,8 +118,7 @@ interface ISessionCacheModel extends Model<ISessionCache> {
     userData: IUserData,
     rawSessionToken: string,
     expirationHours?: number,
-    deviceInfo?: string,
-    ipAddress?: string,
+    client?: LoginContext,
   ): Promise<ISessionCache>;
   findActiveSession(
     identifier: string,
@@ -169,6 +172,8 @@ const SessionCacheSchema = new Schema<ISessionCache>({
   expiresAt: { type: Date, required: true },
   lastActivity: { type: Date, default: Date.now },
   deviceInfo: { type: String },
+  deviceType: { type: String, enum: ["mobile", "tablet", "desktop"] },
+  location: { type: String },
   ipAddress: { type: String },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
@@ -296,8 +301,7 @@ SessionCacheSchema.statics.createFullSession = async function (
   userData: IUserData,
   rawSessionToken: string,
   expirationHours: number = 24 * 7,
-  deviceInfo?: string,
-  ipAddress?: string,
+  client?: LoginContext,
 ): Promise<ISessionCache> {
   try {
     const uuid = crypto.randomUUID();
@@ -326,8 +330,10 @@ SessionCacheSchema.statics.createFullSession = async function (
       isSignedIn: true,
       expiresAt,
       lastActivity: now,
-      deviceInfo: deviceInfo || "Unknown",
-      ipAddress: ipAddress || "unknown",
+      deviceInfo: client?.device || "Unknown",
+      deviceType: client?.deviceType,
+      location: client?.location,
+      ipAddress: client?.ipAddress || "unknown",
       createdAt: now,
       updatedAt: now,
     };

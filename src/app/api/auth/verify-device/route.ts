@@ -54,7 +54,11 @@ export async function POST(request: NextRequest) {
       success: true,
       redirectTo: result.challenge.returnTo || undefined,
     });
-    await startSession(request, response, user);
+    // Challenges from before `method` was recorded were almost all password sign-ins
+    await startSession(request, response, user, {
+      method: result.challenge.method ?? "password",
+      viaEmailCode: true,
+    });
     if (body?.trustDevice === true) await trustDevice(request, response, String(user._id));
     clearChallengeCookie(response);
     return response;

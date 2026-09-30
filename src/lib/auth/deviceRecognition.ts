@@ -24,6 +24,7 @@ import {
   safeEqualHex,
 } from "@/lib/auth/tokens";
 import { sendDeviceVerificationEmail } from "@/utils/email";
+import type { LoginMethod } from "@/lib/models/loginEventModel";
 
 export const DEVICE_COOKIE = "ua_device";
 export const DEVICE_TRUST_SECONDS = 30 * 24 * 60 * 60;
@@ -119,12 +120,15 @@ export async function trustDevice(
 
 /**
  * Forgets every trusted device of the user (after a password reset: whoever
- * knew the old password may have trusted their own browser). Their next
- * sign-in anywhere asks for an emailed code again.
+ * knew the old password may have trusted their own browser), except the one
+ * holding `keepToken`. Their next sign-in elsewhere asks for an emailed code.
  */
-export async function revokeTrustedDevices(userId: string): Promise<void> {
+export async function revokeTrustedDevices(userId: string, keepToken?: string | null): Promise<void> {
   const TrustedDevice = await getTrustedDeviceModel();
-  await TrustedDevice.deleteMany({ userId });
+  await TrustedDevice.deleteMany({
+    userId,
+    ...(keepToken ? { tokenHash: { $ne: hashToken(keepToken) } } : {}),
+  });
 }
 
 /** Deletes this browser's `ua_device` cookie. */
@@ -148,6 +152,7 @@ interface DeviceChallenge {
   deviceName: string;
   returnTo: string; // "" when the client knows where to go (password sign-in)
   resendCount: number;
+  method?: LoginMethod; // how the user signed in before the code
 }
 
 const challengeKey = (rawToken: string) => `device_challenge:${hashToken(rawToken)}`;
@@ -176,6 +181,7 @@ export async function startDeviceChallenge(
   request: NextRequest,
   user: ChallengeUser,
   returnTo: string,
+  method: LoginMethod,
 ): Promise<{ rawToken: string; maskedEmail: string } | null> {
   const email = decryptSensitiveData(user.email);
   const otp = generateOtp();
@@ -187,6 +193,7 @@ export async function startDeviceChallenge(
     deviceName: getDeviceName(userAgentOf(request)),
     returnTo,
     resendCount: 0,
+    method,
   };
   await redis.set(challengeKey(rawToken), challenge, { ex: DEVICE_CHALLENGE_TTL_SECONDS });
 

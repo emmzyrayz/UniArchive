@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
 
     if (emailJustProven || (await isDeviceTrusted(userId, deviceToken))) {
       const response = redirectTo(request, returnTo);
-      await startSession(request, response, user);
+      await startSession(request, response, user, { method: "google" });
       if (emailJustProven) await trustDevice(request, response, userId);
       else if (deviceToken) refreshDeviceCookie(response, deviceToken);
       return response;
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
 
     // Signed in with Google, but from a device we don't know yet
     if (!(await emailAllowed(request))) return failure(request, "rate_limited");
-    const challenge = await startDeviceChallenge(request, user, returnTo);
+    const challenge = await startDeviceChallenge(request, user, returnTo, "google");
     if (!challenge) return failure(request, "email_failed");
     const response = redirectTo(request, "/auth/verify-device");
     setChallengeCookie(response, challenge.rawToken);

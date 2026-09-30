@@ -9,6 +9,7 @@ import { useTheme, type Theme } from "@/hooks/useTheme";
 import AuthInput from "@/app/auth/components/UI/AuthInput";
 import { Button } from "@/components/UI/Buttons";
 import { ConnectedAccounts } from "./ConnectedAccounts";
+import { SessionsPanel } from "./SessionsPanel";
 
 type Tab = "account" | "appearance" | "notifications" | "privacy";
 
@@ -219,13 +220,7 @@ export default function SettingsPage({
                 </p>
                 <Button variant="secondary">Download my data</Button>
               </div>
-              <div className="rounded-xl border border-border bg-surface-raised p-6">
-                <h2 className="font-semibold text-text-primary mb-2">Active sessions</h2>
-                <p className="text-sm text-text-secondary mb-4">
-                  Sign out of all devices if you think your account has been compromised.
-                </p>
-                <Button variant="secondary">Sign out all devices</Button>
-              </div>
+              <SessionsPanel />
             </div>
           )}
         </motion.div>

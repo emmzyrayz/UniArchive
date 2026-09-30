@@ -61,6 +61,13 @@ via nodemailer (`src/lib/mailConfig.ts`, ZeptoMail-ready). PWA via
   (`intent=connect`).
 - Google is the only social provider. GitHub and Microsoft were removed on
   purpose (few students use them).
+- Sessions and login history: every sign-in goes through `startSession`
+  (method + whether an email code was used), which stores device, device
+  type, IP and location (from Vercel's `x-vercel-ip-*` headers, see
+  `loginContext.ts`) on the session and writes a `LoginEvent` (kept 90 days).
+  `/api/auth/sessions` lists them and signs out one device, all other devices
+  or everywhere (`scope=all` also bumps tokenVersion and forgets trusted
+  devices). Settings > Privacy shows them.
 - Field encryption: emails and phones are AES-encrypted, looked up by
   `emailHash` / `phoneHash` (`src/lib/encryption.ts`).
 
@@ -75,7 +82,9 @@ public profiles (`/profile/[upid]`), full admin panel (`/admin`), SEO
 
 ## Known gaps
 
-- `/settings`: profile editing, notification toggles, "Download my data",
-  "Sign out all devices" and account deletion are UI only (not wired).
+- `/settings`: profile editing, notification toggles, "Download my data"
+  and account deletion are UI only (not wired).
 - No automated test suite yet; verification is typecheck, lint, build and
-  manual endpoint checks (see Workflow rules).
+  manual endpoint checks (see Workflow rules). For logic that touches the
+  database, run it against a throwaway `mongodb-memory-server` installed in
+  a scratch folder (not a project dependency), never the `.env.local` DB.

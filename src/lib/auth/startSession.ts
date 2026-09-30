@@ -6,12 +6,14 @@
 //  - the raw token in the httpOnly `sessionId` cookie
 //  - a short-lived `session_jwt` for src/proxy.ts
 //  - the user's tokenVersion cached in Redis for the proxy's revocation check
+//  - a LoginEvent row for the login history in settings
 import type { NextRequest, NextResponse } from "next/server";
 import type { Types } from "mongoose";
 import type { IUser } from "@/lib/models/userModel";
 import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
 import { decryptSensitiveData } from "@/lib/encryption";
-import { getClientIp, getDeviceInfo } from "@/lib/api";
+import { getLoginContext } from "@/lib/auth/loginContext";
+import { getLoginEventModel, type LoginMethod } from "@/lib/models/loginEventModel";
 import { generateToken } from "@/lib/auth/tokens";
 import {
   SESSION_COOKIE,
@@ -40,17 +42,25 @@ export type SessionSubject = Pick<
   | "tokenVersion"
 > & { _id: Types.ObjectId | string };
 
+export interface HowSignedIn {
+  method: LoginMethod;
+  /** Confirmed with an emailed code (new device, or linking Google). */
+  viaEmailCode?: boolean;
+}
+
 export async function startSession(
   request: NextRequest,
   response: NextResponse,
   user: SessionSubject,
+  how: HowSignedIn,
 ): Promise<void> {
   const userId = String(user._id);
   const tokenVersion = user.tokenVersion ?? 0;
   const rawToken = generateToken();
+  const client = getLoginContext(request);
 
   const SessionCache = await getSessionCacheModel();
-  await SessionCache.createFullSession(
+  const session = await SessionCache.createFullSession(
     userId,
     {
       email: decryptSensitiveData(user.email),
@@ -67,9 +77,22 @@ export async function startSession(
     },
     rawToken,
     SESSION_TTL_HOURS,
-    getDeviceInfo(request),
-    getClientIp(request),
+    client,
   );
+
+  try {
+    const LoginEvent = await getLoginEventModel();
+    await LoginEvent.create({
+      userId,
+      sessionUuid: session.uuid,
+      method: how.method,
+      viaEmailCode: how.viaEmailCode === true,
+      ...client,
+    });
+  } catch (error) {
+    // History is informational; never fail a sign-in over it
+    console.error("startSession: failed to record login event", error);
+  }
 
   // The proxy compares JWTs against this (src/proxy.ts)
   await cacheTokenVersion(userId, tokenVersion);

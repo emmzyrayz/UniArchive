@@ -132,7 +132,9 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ success: true, redirectTo: pending.returnTo });
     // Connecting from settings: already signed in as this user
     const current = await getCurrentSessionUser(request);
-    if (current?.userId !== String(user._id)) await startSession(request, response, user);
+    if (current?.userId !== String(user._id)) {
+      await startSession(request, response, user, { method: "google", viaEmailCode: true });
+    }
     // The code proved this browser can read the account's email
     if (body?.trustDevice === true) await trustDevice(request, response, String(user._id));
     response.cookies.set(LINK_COOKIE, "", linkCookieOptions(0));
