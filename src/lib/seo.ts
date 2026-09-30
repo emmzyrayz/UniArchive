@@ -1,7 +1,8 @@
 // src/lib/seo.ts
-// One place for the site's URL, name and metadata. The canonical domain is
-// https://uniarchive.com.ng (set NEXT_PUBLIC_APP_URL to it in Vercel); www
-// and uni-archive.vercel.app redirect there in Vercel's domain settings.
+// One place for the site's URL, name and metadata. The canonical origin is
+// https://www.uniarchive.com.ng (set NEXT_PUBLIC_APP_URL to it in Vercel);
+// the apex and uni-archive.vercel.app redirect there in Vercel's domain
+// settings. Never hardcode the site URL elsewhere: use SITE_URL/absoluteUrl.
 //
 // Metadata from nested segments is merged SHALLOWLY: a page that sets
 // `openGraph` replaces the whole parent object, images included. So
@@ -20,7 +21,7 @@ function resolveSiteUrl(): string {
 /** Absolute origin, no trailing slash. Use for links in emails and metadata. */
 export const SITE_URL = resolveSiteUrl();
 
-/** `absoluteUrl("/auth")` -> "https://uniarchive.com.ng/auth" */
+/** `absoluteUrl("/auth")` -> "https://www.uniarchive.com.ng/auth" */
 export function absoluteUrl(path = "/"): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
