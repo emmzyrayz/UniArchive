@@ -1,8 +1,7 @@
-import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
-import { baseMetadata } from "@/utils/metadata";
+import { rootMetadata, rootViewport } from "@/lib/seo";
 import ClientWrapper from "@/components/clientWrapper";
 import { NavigationWrapper } from "@/components/navigationWrapper";
 import { UserProvider } from "@/context/userContext";
@@ -31,24 +30,11 @@ const sora = localFont({
   variable: "--font-sora",
 });
 
-export const viewport: Viewport = {
-  themeColor: "#000000",
-  minimumScale: 1,
-  initialScale: 1,
-  width: "device-width",
-  viewportFit: "cover",
-};
-
-// Merge baseMetadata with PWA-specific fields
-export const metadata: Metadata = {
-  ...baseMetadata,
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "UniArchive",
-  },
-};
+// Site-wide metadata and viewport live in src/lib/seo.ts. The manifest,
+// icons and OG image come from file conventions in src/app (manifest.ts,
+// favicon.ico, icon.png, apple-icon.png, opengraph-image.tsx).
+export const metadata = rootMetadata;
+export const viewport = rootViewport;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
