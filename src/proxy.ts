@@ -34,6 +34,9 @@ const ADMIN_ROLES: UserRole[] = ["ed_admin", "com_admin", "webmaster", "dev"];
 
 // Files served from /public (pdf.worker.min.mjs, icons, manifest, sw.js, ...)
 const STATIC_FILE = /\.[a-zA-Z0-9]+$/;
+// Generated social cards (app/**/opengraph-image.tsx): crawlers fetch these
+// signed out, and they have no file extension
+const METADATA_IMAGE = /\/(opengraph|twitter)-image(-[\w-]+)?$/;
 
 function matchesPrefix(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -46,7 +49,8 @@ function isPublic(pathname: string): boolean {
     // Other users' public profiles; /profile and /profile/edit stay private
     isPublicProfilePath(pathname) ||
     isPublicMaterialPath(pathname) ||
-    STATIC_FILE.test(pathname)
+    STATIC_FILE.test(pathname) ||
+    METADATA_IMAGE.test(pathname)
   );
 }
 
