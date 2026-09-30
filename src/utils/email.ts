@@ -1,5 +1,7 @@
 import nodemailer, { Transporter } from "nodemailer";
 import { absoluteUrl } from "@/lib/seo";
+import { SUPPORT_EMAIL } from "@/lib/site";
+import { resolveMailConfig, warnIfMailUnconfigured, type MailConfig } from "@/lib/mailConfig";
 
 interface EmailOptions {
   to: string;
@@ -25,39 +27,41 @@ function logEmailForDevelopment({ to, subject, html }: EmailOptions) {
   console.info(`[email:dev] to=${to} subject="${subject}"\n${text}`);
 }
 
-class EmailService {
-  private transporter: Transporter | null = null;
+// One transporter per server process, built from src/lib/mailConfig.ts on
+// first use (not per send, so SMTP connections can be reused)
+let cachedMail: { transporter: Transporter; config: MailConfig } | null = null;
 
-  private getTransporter(): Transporter {
-    if (this.transporter) return this.transporter;
-
-    const emailUser = process.env.EMAIL_USER;
-    const emailPass = process.env.EMAIL_PASS;
-
-    if (!emailUser || !emailPass) {
-      throw new Error("Email credentials are not properly configured");
-    }
-
-    this.transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: emailUser, pass: emailPass },
-    });
-
-    return this.transporter;
+/** The shared transporter and settings (also used by scripts/test-email.ts). */
+export function getMailTransport(): { transporter: Transporter; config: MailConfig } {
+  if (cachedMail) return cachedMail;
+  const result = resolveMailConfig();
+  if ("problem" in result) {
+    warnIfMailUnconfigured();
+    throw new Error(`Email is not configured: ${result.problem}`);
   }
+  cachedMail = {
+    transporter: nodemailer.createTransport(result.config.transport),
+    config: result.config,
+  };
+  return cachedMail;
+}
 
+class EmailService {
+  /**
+   * Every email goes out from MAIL_FROM. Replies go to MAIL_REPLY_TO
+   * (support) unless the message names its own, like a contact form message
+   * replying to the person who wrote in.
+   */
   async sendEmail({ to, subject, html, text, replyTo }: EmailOptions): Promise<boolean> {
     try {
-      const transporter = this.getTransporter();
-      const emailUser = process.env.EMAIL_USER;
-
+      const { transporter, config } = getMailTransport();
       await transporter.sendMail({
-        from: `"UniArchive" <${emailUser}>`,
+        from: config.from,
+        replyTo: replyTo ?? config.replyTo,
         to,
         subject,
         html,
         text,
-        ...(replyTo ? { replyTo } : {}),
       });
       return true;
     } catch (error) {
@@ -411,9 +415,13 @@ export async function sendRoleApplicationRejectedEmail(params: {
 // Contact form
 // ---------------------------------------------------------------------------
 
-/** Where contact form messages go: CONTACT_EMAIL, else the sending account. */
-function contactInbox(): string | undefined {
-  return process.env.CONTACT_EMAIL || process.env.EMAIL_USER;
+/**
+ * Where contact form messages go: CONTACT_EMAIL, else the legacy Gmail
+ * account, else the support address (which needs a real inbox: ZeptoMail
+ * only sends).
+ */
+function contactInbox(): string {
+  return process.env.CONTACT_EMAIL || process.env.EMAIL_USER || SUPPORT_EMAIL;
 }
 
 /**
@@ -429,10 +437,6 @@ export async function sendContactMessageEmail(params: {
   submittedAt: Date;
 }): Promise<boolean> {
   const to = contactInbox();
-  if (!to) {
-    console.error("contact: no CONTACT_EMAIL or EMAIL_USER configured");
-    return false;
-  }
   const { name, email, subject, message, ip, submittedAt } = params;
   const stamp = submittedAt.toISOString();
 
