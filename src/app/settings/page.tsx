@@ -1,13 +1,14 @@
 // src/app/settings/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { useUser } from "@/context/userContext";
 import { useTheme, type Theme } from "@/hooks/useTheme";
 import AuthInput from "@/app/auth/components/UI/AuthInput";
 import { Button } from "@/components/UI/Buttons";
+import { ConnectedAccounts } from "./ConnectedAccounts";
 
 type Tab = "account" | "appearance" | "notifications" | "privacy";
 
@@ -24,11 +25,21 @@ const THEME_OPTIONS: { value: Theme; label: string; desc: string }[] = [
   { value: "system", label: "System", desc: "Follows your device setting" },
 ];
 
-export default function SettingsPage() {
+function isTab(value: unknown): value is Tab {
+  return TABS.some((tab) => tab.id === value);
+}
+
+export default function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  // ?tab=privacy&google=... when coming back from connecting Google
+  const { tab, google } = use(searchParams);
   const router = useRouter();
   const { hasActiveSession, isLoading, getUserDisplayName } = useUser();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<Tab>("account");
+  const [activeTab, setActiveTab] = useState<Tab>(isTab(tab) ? tab : "account");
   const [notifications, setNotifications] = useState({
     newFeatures: true,
     weeklyDigest: false,
@@ -199,6 +210,7 @@ export default function SettingsPage() {
           {/* Privacy tab */}
           {activeTab === "privacy" && (
             <div className="space-y-4">
+              <ConnectedAccounts result={typeof google === "string" ? google : undefined} />
               <div className="rounded-xl border border-border bg-surface-raised p-6">
                 <h2 className="font-semibold text-text-primary mb-2">Your data</h2>
                 <p className="text-sm text-text-secondary mb-4">

@@ -8,7 +8,6 @@ import AuthSocial from "./UI/AuthSocial";
 import { useState } from "react";
 import { useUser } from "@/context/userContext";
 import { errorMessage, postJson, signInWithGoogle } from "@/lib/authClient";
-import type { Provider } from "./UI/AuthSocial";
 import { DeviceVerification } from "./DeviceVerification";
 import { DeviceNoticeBanner } from "./DeviceNoticeBanner";
 
@@ -26,7 +25,6 @@ interface SignInInstanceProps {
 const OAUTH_ERRORS: Record<string, string> = {
   oauth_failed: "Google sign-in failed. Please try again.",
   oauth_unverified: "Your Google account's email isn't verified. Verify it with Google or sign in with email.",
-  oauth_conflict: "This email is already linked to a different Google account. Sign in with that account or use your email and password.",
   suspended: "This account has been suspended. Contact support if you think this is a mistake.",
   rate_limited: "Too many sign-in attempts. Please wait a minute and try again.",
   email_failed: "We couldn't send your verification email. Please try again shortly.",
@@ -119,20 +117,14 @@ export default function SignInInstance({
     }
   };
 
-  const handleProviderClick = (provider: Provider) => {
-    if (provider === "google") {
-      if (isRedirecting) return;
-      setIsRedirecting(true);
-      setSocialNotice("Redirecting to Google...");
-      signInWithGoogle(safeRedirectPath(from)).catch(() => {
-        setIsRedirecting(false);
-        setSocialNotice("Could not connect to Google. Please try again.");
-      });
-      return;
-    }
-    setSocialNotice(
-      `Signing in with ${provider.charAt(0).toUpperCase() + provider.slice(1)} isn't available yet.`,
-    );
+  const handleGoogleClick = () => {
+    if (isRedirecting) return;
+    setIsRedirecting(true);
+    setSocialNotice("Redirecting to Google...");
+    signInWithGoogle(safeRedirectPath(from)).catch(() => {
+      setIsRedirecting(false);
+      setSocialNotice("Could not connect to Google. Please try again.");
+    });
   };
 
   const handleVerifyNow = async () => {
@@ -292,7 +284,7 @@ export default function SignInInstance({
         </span>
       </div>
 
-      <AuthSocial onProviderClick={handleProviderClick} />
+      <AuthSocial onGoogleClick={handleGoogleClick} />
       {socialNotice && (
         <p role="status" className="-mt-4 text-center text-sm text-text-secondary">
           {socialNotice}

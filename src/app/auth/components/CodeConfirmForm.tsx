@@ -1,13 +1,14 @@
 // components/auth/CodeConfirmForm.tsx
 // 6-digit code entry shared by the new-device and Google-link screens: posts
-// { otp, trustDevice } to `verifyUrl`, which starts the session, then loads
-// the user and navigates on.
+// { otp, password?, trustDevice } to `verifyUrl`, which starts the session,
+// then loads the user and navigates on.
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { OTPInput } from "./UI/AuthOTPInput";
 import AuthButton from "./UI/AuthButton";
+import AuthInput from "./UI/AuthInput";
 import { useUser } from "@/context/userContext";
 import { errorMessage, postJson } from "@/lib/authClient";
 
@@ -21,6 +22,8 @@ interface CodeConfirmFormProps {
   defaultRedirect?: string;
   /** Extra links under the resend button ("Back to sign in", ...). */
   secondaryAction?: ReactNode;
+  /** Also ask for the account password (replacing a linked Google account). */
+  requirePassword?: boolean;
 }
 
 /** The server already checks these; this is belt and braces. */
@@ -34,10 +37,12 @@ export function CodeConfirmForm({
   submitLabel,
   defaultRedirect = "/home",
   secondaryAction,
+  requirePassword = false,
 }: CodeConfirmFormProps) {
   const router = useRouter();
   const { refreshUserData } = useUser();
   const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
   const [trust, setTrust] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -67,13 +72,14 @@ export function CodeConfirmForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp.length !== 6 || expired) return;
+    if (otp.length !== 6 || expired || (requirePassword && !password)) return;
     setError("");
     setNotice("");
     setIsSubmitting(true);
     try {
       const result = await postJson<{ redirectTo?: string; expired?: boolean }>(verifyUrl, {
         otp,
+        ...(requirePassword ? { password } : {}),
         trustDevice: trust,
       });
       if (result.ok) {
@@ -106,6 +112,19 @@ export function CodeConfirmForm({
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
+      {requirePassword && (
+        <AuthInput
+          name="password"
+          label="UniArchive password"
+          type="password"
+          autoComplete="current-password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      )}
+
       <OTPInput length={6} value={otp} onChange={setOtp} error={error} />
 
       {notice && (
@@ -127,7 +146,7 @@ export function CodeConfirmForm({
       <AuthButton
         label={isSubmitting ? "Verifying..." : submitLabel}
         type="submit"
-        disabled={isSubmitting || expired || otp.length !== 6}
+        disabled={isSubmitting || expired || otp.length !== 6 || (requirePassword && !password)}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">

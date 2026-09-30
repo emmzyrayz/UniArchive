@@ -1,5 +1,6 @@
 // app/auth/link-account/page.tsx
-// Confirms linking a Google account to an existing email/password account.
+// Confirms linking a Google account to an existing account, or replacing the
+// Google account already linked to it (which also asks for the password).
 // The pending link comes from the httpOnly `ua_link` cookie set by
 // /api/auth/social-callback; nothing identifying is in the URL.
 import type { Metadata } from "next";
@@ -17,7 +18,7 @@ async function loadPendingLink(rawToken: string | null) {
   try {
     const PendingLink = await getPendingLinkModel();
     return await PendingLink.findOne({ linkTokenHash: hashToken(rawToken), used: false })
-      .select("maskedEmail googleEmail googleName")
+      .select("maskedEmail googleEmail googleName relink requiresPassword")
       .lean();
   } catch (error) {
     console.error("link-account page: failed to load pending link", error);
@@ -45,11 +46,24 @@ export default async function LinkAccountPage() {
       <div className="space-y-6">
         <div className="space-y-2">
           <h1 className="text-2xl font-extrabold text-text-primary">
-            Link Google to your UniArchive account
+            {pending.relink
+              ? "Switch the Google account on your UniArchive account"
+              : "Link Google to your UniArchive account"}
           </h1>
           <p className="text-sm text-text-secondary">
-            We found an existing account with{" "}
-            <span className="font-medium text-text-primary">{pending.maskedEmail}</span>.
+            {pending.relink ? (
+              <>
+                Your account (
+                <span className="font-medium text-text-primary">{pending.maskedEmail}</span>) is
+                linked to a different Google account. If this is your account, confirm below and
+                this Google account will replace it.
+              </>
+            ) : (
+              <>
+                We found an existing account with{" "}
+                <span className="font-medium text-text-primary">{pending.maskedEmail}</span>.
+              </>
+            )}
           </p>
         </div>
 
@@ -65,11 +79,13 @@ export default async function LinkAccountPage() {
         </dl>
 
         <p className="text-sm text-text-secondary">
-          To link these accounts, enter the 6-digit code we sent to your email. It expires in
-          10 minutes.
+          {pending.requiresPassword
+            ? "Enter your UniArchive password and the 6-digit code we sent to your email."
+            : "To link these accounts, enter the 6-digit code we sent to your email."}{" "}
+          The code expires in 10 minutes.
         </p>
 
-        <LinkAccountForm />
+        <LinkAccountForm requirePassword={pending.requiresPassword === true} />
       </div>
     </AuthCard>
   );

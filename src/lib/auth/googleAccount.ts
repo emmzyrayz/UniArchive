@@ -36,9 +36,13 @@ export type GoogleResolution =
    * proven the email, so it can be trusted without another code.
    */
   | { kind: "signin"; user: HydratedDocument<IUser>; emailJustProven: boolean }
-  /** An existing verified account has this email: confirm by code first. */
-  | { kind: "link"; user: HydratedDocument<IUser> }
-  | { kind: "error"; error: "suspended" | "oauth_conflict" };
+  /**
+   * An existing verified account has this email: confirm by code first.
+   * `relink` means it's already linked to a different Google account, which
+   * this one replaces once the owner confirms (with their password too).
+   */
+  | { kind: "link"; user: HydratedDocument<IUser>; relink: boolean }
+  | { kind: "error"; error: "suspended" };
 
 export async function resolveGoogleAccount(identity: GoogleIdentity): Promise<GoogleResolution> {
   const User = await getUserModel();
@@ -55,10 +59,10 @@ export async function resolveGoogleAccount(identity: GoogleIdentity): Promise<Go
 
   if (existing) {
     if (existing.isSuspended) return { kind: "error", error: "suspended" };
-    // Already linked to a different Google account
-    if (existing.googleId) return { kind: "error", error: "oauth_conflict" };
+    // Linked to a different Google account: the owner can switch it over
+    if (existing.googleId) return { kind: "link", user: existing, relink: true };
 
-    if (existing.isVerified) return { kind: "link", user: existing };
+    if (existing.isVerified) return { kind: "link", user: existing, relink: false };
 
     // Nobody had proven they own this email until Google just did, so a
     // password set during that unverified signup can't be trusted (someone
@@ -81,6 +85,30 @@ export async function resolveGoogleAccount(identity: GoogleIdentity): Promise<Go
   }
 
   return { kind: "signin", user: await createGoogleUser(identity, email, emailHash), emailJustProven: true };
+}
+
+export type ConnectResolution =
+  | { kind: "already" }
+  | { kind: "link"; user: HydratedDocument<IUser>; relink: boolean }
+  | { kind: "error"; error: "google_in_use" | "failed" };
+
+/**
+ * A signed-in user connecting (or reconnecting) Google from settings. The
+ * Google account may use a different email from theirs.
+ */
+export async function resolveGoogleConnect(
+  userId: string,
+  identity: GoogleIdentity,
+): Promise<ConnectResolution> {
+  const User = await getUserModel();
+  const user = await User.findById(userId);
+  if (!user) return { kind: "error", error: "failed" };
+  if (user.googleId === identity.sub) return { kind: "already" };
+
+  const other = await User.exists({ googleId: identity.sub });
+  if (other) return { kind: "error", error: "google_in_use" };
+
+  return { kind: "link", user, relink: Boolean(user.googleId) };
 }
 
 async function createGoogleUser(
@@ -128,11 +156,13 @@ async function createGoogleUser(
 /**
  * Records a pending link and emails the account's owner a code. Returns the
  * raw link token for the `ua_link` cookie, or null if the email didn't send.
+ * Replacing a linked Google account also needs the password, if there is one.
  */
 export async function createPendingLink(
   user: HydratedDocument<IUser>,
   identity: GoogleIdentity,
   returnTo: string,
+  relink: boolean,
 ): Promise<string | null> {
   const PendingLink = await getPendingLinkModel();
   const accountEmail = decryptSensitiveData(user.email);
@@ -147,6 +177,8 @@ export async function createPendingLink(
     googleEmail: normaliseEmail(identity.email),
     googleName: identity.name?.trim() ?? "",
     googlePhoto: identity.picture ?? undefined,
+    relink,
+    requiresPassword: relink && Boolean(user.password),
     otpHash: hashOtp(otp),
     otpExpiresAt: new Date(Date.now() + LINK_OTP_TTL_MS),
     returnTo,

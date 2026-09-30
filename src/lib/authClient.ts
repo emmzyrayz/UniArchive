@@ -80,3 +80,11 @@ export function signInWithGoogle(from?: string): Promise<void> {
   const query = from ? `?${new URLSearchParams({ from })}` : "";
   return signIn("google", { redirectTo: `/api/auth/social-callback${query}` });
 }
+
+/**
+ * Links a Google account to the signed-in user, or swaps the linked one.
+ * Comes back to the privacy tab of /settings.
+ */
+export function connectGoogle(): Promise<void> {
+  return signIn("google", { redirectTo: "/api/auth/social-callback?intent=connect" });
+}

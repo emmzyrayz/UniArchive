@@ -5,7 +5,7 @@ import { useState } from "react";
 import { CodeConfirmForm } from "../components/CodeConfirmForm";
 import { signInWithGoogle } from "@/lib/authClient";
 
-export function LinkAccountForm() {
+export function LinkAccountForm({ requirePassword }: { requirePassword: boolean }) {
   const [switching, setSwitching] = useState(false);
 
   // Drop this pending link, then let the user pick another Google account
@@ -22,6 +22,7 @@ export function LinkAccountForm() {
       verifyUrl="/api/auth/link-account"
       resendUrl="/api/auth/link-account/resend"
       submitLabel="Confirm & Link"
+      requirePassword={requirePassword}
       secondaryAction={
         <button
           type="button"

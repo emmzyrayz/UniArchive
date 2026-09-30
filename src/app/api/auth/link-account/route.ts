@@ -1,8 +1,9 @@
-// POST /api/auth/link-account   { otp, trustDevice? }
+// POST /api/auth/link-account   { otp, password?, trustDevice? }
 // Confirms a pending Google link with the code emailed to the existing
 // account, links it and signs in. The pending link is found by the httpOnly
 // `ua_link` cookie set by /api/auth/social-callback, never by an id from the
-// body. Three wrong codes cancel the link.
+// body. Replacing an already-linked Google account also needs the account's
+// password. Three wrong codes or passwords cancel the link.
 //
 // DELETE /api/auth/link-account
 // Cancels the pending link ("Use a different account").
@@ -17,6 +18,7 @@ import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { hashOtp, hashToken, safeEqualHex } from "@/lib/auth/tokens";
 import { LINK_COOKIE, linkCookieOptions, readLinkToken } from "@/lib/auth/linkCookie";
 import { startSession } from "@/lib/auth/startSession";
+import { getCurrentSessionUser } from "@/lib/auth/session";
 import { isSixDigitCode, trustDevice } from "@/lib/auth/deviceRecognition";
 
 function reply(status: number, message: string, clearCookie = false, extra: object = {}) {
@@ -34,8 +36,11 @@ export async function POST(request: NextRequest) {
   try {
     await enforceRateLimit(request, "auth", `link-account:${getClientIp(request)}`);
 
-    const body = await readJson<{ otp: string; trustDevice?: boolean }>(request);
+    const body = await readJson<{ otp: string; password?: string; trustDevice?: boolean }>(
+      request,
+    );
     const otp = typeof body?.otp === "string" ? body.otp.trim() : "";
+    const password = typeof body?.password === "string" ? body.password : "";
     if (!isSixDigitCode(otp)) return reply(400, "Enter the 6-digit code from your email.");
 
     const linkToken = readLinkToken(request.cookies.get(LINK_COOKIE)?.value);
@@ -52,7 +57,19 @@ export async function POST(request: NextRequest) {
       return reply(400, "This code has expired. Request a new one.");
     }
 
-    if (!safeEqualHex(pending.otpHash, hashOtp(otp))) {
+    const User = await getUserModel();
+    const user = await User.findById(pending.userId);
+    if (!user) return expired();
+
+    if (pending.requiresPassword && !password) {
+      return reply(400, "Enter your UniArchive password.");
+    }
+    const passwordOk =
+      !pending.requiresPassword ||
+      (password.length <= 128 && (await user.comparePassword(password)));
+    const otpOk = safeEqualHex(pending.otpHash, hashOtp(otp));
+
+    if (!passwordOk || !otpOk) {
       const updated = await PendingLink.findOneAndUpdate(
         { _id: pending._id, used: false },
         { $inc: { attempts: 1 } },
@@ -64,7 +81,8 @@ export async function POST(request: NextRequest) {
         return reply(429, "Too many attempts. Please try again.", true, { expired: true });
       }
       const left = LINK_MAX_ATTEMPTS - attempts;
-      return reply(400, `Incorrect code. ${left} attempt${left === 1 ? "" : "s"} left.`);
+      const what = passwordOk ? "code" : "password";
+      return reply(400, `Incorrect ${what}. ${left} attempt${left === 1 ? "" : "s"} left.`);
     }
 
     // Claim it: only one request may use a pending link
@@ -74,9 +92,6 @@ export async function POST(request: NextRequest) {
     );
     if (!claimed) return expired();
 
-    const User = await getUserModel();
-    const user = await User.findById(pending.userId);
-    if (!user) return expired();
     if (user.isSuspended) {
       return reply(
         403,
@@ -84,7 +99,8 @@ export async function POST(request: NextRequest) {
         true,
       );
     }
-    if (user.googleId && user.googleId !== pending.googleId) {
+    // Linked to another Google account since this request started
+    if (!pending.relink && user.googleId && user.googleId !== pending.googleId) {
       return reply(409, "This account is already linked to a different Google account.", true);
     }
 
@@ -114,7 +130,9 @@ export async function POST(request: NextRequest) {
     await PendingLink.deleteOne({ _id: pending._id });
 
     const response = NextResponse.json({ success: true, redirectTo: pending.returnTo });
-    await startSession(request, response, user);
+    // Connecting from settings: already signed in as this user
+    const current = await getCurrentSessionUser(request);
+    if (current?.userId !== String(user._id)) await startSession(request, response, user);
     // The code proved this browser can read the account's email
     if (body?.trustDevice === true) await trustDevice(request, response, String(user._id));
     response.cookies.set(LINK_COOKIE, "", linkCookieOptions(0));

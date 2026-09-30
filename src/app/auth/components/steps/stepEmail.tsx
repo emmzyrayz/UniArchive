@@ -5,7 +5,6 @@ import { useState } from "react";
 import AuthInput from "../UI/AuthInput";
 import AuthButton from "../UI/AuthButton";
 import AuthSocial from "../UI/AuthSocial";
-import type { Provider } from "../UI/AuthSocial";
 import { useRouter } from "next/navigation";
 import { errorMessage, postJson } from "@/lib/authClient";
 
@@ -14,7 +13,7 @@ interface StepEmailProps {
   locked: boolean;
   onChange: (value: string) => void;
   onNext: () => void;
-  onSocialAuth: (provider: Provider) => void;
+  onSocialAuth: () => void;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -121,7 +120,7 @@ export function StepEmail({
         </span>
       </div>
 
-      <AuthSocial onProviderClick={onSocialAuth} />
+      <AuthSocial onGoogleClick={onSocialAuth} />
     </div>
   );
 }

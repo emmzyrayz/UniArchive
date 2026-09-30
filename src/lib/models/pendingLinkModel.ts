@@ -1,6 +1,6 @@
 // src/lib/models/pendingLinkModel.ts
-// A Google account waiting to be linked to an existing email/password
-// account. Created by /api/auth/social-callback, confirmed with the emailed
+// A Google account waiting to be linked to an existing account (or to
+// replace the Google account already linked to it). Created by /api/auth/social-callback, confirmed with the emailed
 // code at /api/auth/link-account. The browser that started the Google sign-in
 // holds the raw link token in the httpOnly `ua_link` cookie; only its hash is
 // stored here, so the code is useless from any other browser.
@@ -25,6 +25,11 @@ export interface IPendingLink {
   googleName: string;
   googlePhoto?: string;
 
+  // Replaces the Google account already linked to this user
+  relink: boolean;
+  // The account's password must be entered along with the code
+  requiresPassword: boolean;
+
   otpHash: string;
   otpExpiresAt: Date;
   attempts: number;
@@ -46,6 +51,8 @@ const PendingLinkSchema = new Schema<IPendingLink, IPendingLinkModel>({
   googleEmail: { type: String, required: true },
   googleName: { type: String, default: "" },
   googlePhoto: { type: String },
+  relink: { type: Boolean, default: false },
+  requiresPassword: { type: Boolean, default: false },
   otpHash: { type: String, required: true },
   otpExpiresAt: { type: Date, required: true },
   attempts: { type: Number, default: 0 },

@@ -13,7 +13,6 @@ import { StepEmail } from "./steps/stepEmail";
 import { StepProfile } from "./steps/StepProfile";
 import { StepSchoolEmail } from "./steps/stepSchoolEmail";
 import { StepPassword } from "./steps/stepPassword";
-import type { Provider } from "./UI/AuthSocial";
 import { errorMessage, postJson, signInWithGoogle } from "@/lib/authClient";
 
 export interface SignUpFormData {
@@ -129,17 +128,10 @@ export default function SignUpWizard() {
     return errorMessage(result);
   };
 
-  const handleSocialAuth = (provider: Provider) => {
-    // Google creates the account on first sign-in, or signs in an existing one
-    if (provider === "google") {
-      setNotice("Redirecting to Google...");
-      signInWithGoogle().catch(() =>
-        setNotice("Could not connect to Google. Please try again."),
-      );
-      return;
-    }
-    const name = provider.charAt(0).toUpperCase() + provider.slice(1);
-    setNotice(`Signing up with ${name} isn't available yet. Please use your email for now.`);
+  // Google creates the account on first sign-in, or signs in an existing one
+  const handleSocialAuth = () => {
+    setNotice("Redirecting to Google...");
+    signInWithGoogle().catch(() => setNotice("Could not connect to Google. Please try again."));
   };
 
   function renderStep() {

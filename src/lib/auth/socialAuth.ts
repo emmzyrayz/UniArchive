@@ -36,7 +36,16 @@ export const { handlers, auth } = NextAuth({
       }
       return true;
     },
-    // The token's `sub` is the Google account id (the provider's user.id)
+    // Without a database adapter Auth.js gives every sign-in a fresh random
+    // user.id, so the default `sub` changes each time. Pin it to Google's
+    // stable account id instead.
+    async jwt({ token, account }) {
+      if (account?.provider === "google" && account.providerAccountId) {
+        token.sub = account.providerAccountId;
+      }
+      return token;
+    },
+    // The token's `sub` is the Google account id (set in jwt above)
     async session({ session, token }) {
       if (token.sub) session.user.id = token.sub;
       return session;
