@@ -1,6 +1,9 @@
 // app/about/page.tsx
 import { RoadmapTracker } from "@/components/about/RoadmapTracker";
 import { Button } from "@/components/UI/Buttons";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata.about;
 
 export default function AboutPage() {
   return (

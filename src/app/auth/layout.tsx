@@ -1,3 +1,9 @@
+// app/auth/layout.tsx
+// Sign-in, sign-up and verification screens: kept out of search.
+import { privateMetadata } from "@/lib/seo";
+
+export const metadata = privateMetadata("Sign in");
+
 export default function AuthLayout({
   children,
 }: {

@@ -7,7 +7,7 @@ import { getServerSessionUser } from "@/lib/auth/serverSession";
 import { can } from "@/lib/auth/permissions";
 import { InstitutionsAdmin } from "@/components/admin/InstitutionsAdmin";
 
-export const metadata: Metadata = { title: "Institutions · Admin · UniArchive" };
+export const metadata: Metadata = { title: "Institutions · Admin" };
 
 export default async function AdminInstitutionsPage() {
   const session = await getServerSessionUser();

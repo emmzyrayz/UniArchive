@@ -2,6 +2,9 @@
 import { FAQAccordion } from "@/components/help/FAQAccordion";
 import { faqCategories } from "@/assets/data/faqContent";
 import { Button } from "@/components/UI/Buttons";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata.help;
 
 export default function HelpPage() {
   return (

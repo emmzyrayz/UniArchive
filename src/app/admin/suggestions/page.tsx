@@ -7,7 +7,7 @@ import { getServerSessionUser } from "@/lib/auth/serverSession";
 import { can } from "@/lib/auth/permissions";
 import { SuggestionsAdmin } from "@/components/admin/SuggestionsAdmin";
 
-export const metadata: Metadata = { title: "School Suggestions · Admin · UniArchive" };
+export const metadata: Metadata = { title: "School Suggestions · Admin" };
 
 export default async function AdminSuggestionsPage() {
   const session = await getServerSessionUser();

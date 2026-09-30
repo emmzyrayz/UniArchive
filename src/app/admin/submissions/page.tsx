@@ -16,7 +16,7 @@ import {
   type UniversityOption,
 } from "@/components/admin/SubmissionsReview";
 
-export const metadata: Metadata = { title: "Submissions · UniArchive" };
+export const metadata: Metadata = { title: "Submissions" };
 
 export default async function AdminSubmissionsPage() {
   const session = await getServerSessionUser();

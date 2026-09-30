@@ -1,6 +1,5 @@
 // app/privacy/page.tsx
 // Keep this in step with the code: what's collected, encrypted and stored where.
-import type { Metadata } from "next";
 import {
   LegalEmail,
   LegalList,
@@ -8,8 +7,9 @@ import {
   LegalSection,
   Term,
 } from "@/components/legal/LegalPage";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Privacy Policy · UniArchive" };
+export const metadata = pageMetadata.privacy;
 
 export default function PrivacyPage() {
   return (

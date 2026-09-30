@@ -189,9 +189,13 @@ export function createMetadata({
   };
 }
 
-/** Metadata for signed-in/utility areas: a title, and kept out of search. */
-export function privateMetadata(title: string, path: string): Metadata {
-  return createMetadata({ title, path, noIndex: true });
+/**
+ * Signed-in and utility areas (a segment layout): a title and noindex. No
+ * canonical, so nested pages don't all point at the layout's path; the root
+ * Open Graph card is kept so shared links still show a UniArchive preview.
+ */
+export function privateMetadata(title: string): Metadata {
+  return { title, robots: NO_INDEX_ROBOTS, alternates: { canonical: null } };
 }
 
 export const pageMetadata = {

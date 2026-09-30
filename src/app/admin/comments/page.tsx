@@ -7,7 +7,7 @@ import { getServerSessionUser } from "@/lib/auth/serverSession";
 import { can } from "@/lib/auth/permissions";
 import { CommentsAdmin } from "@/components/admin/CommentsAdmin";
 
-export const metadata: Metadata = { title: "Reported Comments · Admin · UniArchive" };
+export const metadata: Metadata = { title: "Reported Comments · Admin" };
 
 export default async function AdminCommentsPage() {
   const session = await getServerSessionUser();

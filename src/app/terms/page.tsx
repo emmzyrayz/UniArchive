@@ -1,5 +1,4 @@
 // app/terms/page.tsx
-import type { Metadata } from "next";
 import Link from "next/link";
 import {
   LegalEmail,
@@ -7,8 +6,9 @@ import {
   LegalPage,
   LegalSection,
 } from "@/components/legal/LegalPage";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Terms of Service · UniArchive" };
+export const metadata = pageMetadata.terms;
 
 export default function TermsPage() {
   return (

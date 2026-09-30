@@ -10,7 +10,7 @@ import { getPendingLinkModel } from "@/lib/models/pendingLinkModel";
 import { LINK_COOKIE, readLinkToken } from "@/lib/auth/linkCookie";
 import { hashToken } from "@/lib/auth/tokens";
 
-export const metadata: Metadata = { title: "Link your Google account · UniArchive" };
+export const metadata: Metadata = { title: "Link your Google account" };
 
 async function loadPendingLink(rawToken: string | null) {
   if (!rawToken) return null;

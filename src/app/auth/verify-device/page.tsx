@@ -13,7 +13,7 @@ import {
   readChallengeToken,
 } from "@/lib/auth/deviceRecognition";
 
-export const metadata: Metadata = { title: "Verify this device · UniArchive" };
+export const metadata: Metadata = { title: "Verify this device" };
 
 export default async function VerifyDevicePage() {
   const cookieStore = await cookies();

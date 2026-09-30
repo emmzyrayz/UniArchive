@@ -3,6 +3,10 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { ReaderShell } from "@/components/reader/ReaderShell";
 import type { Book } from "@/types/library";
+import { privateMetadata } from "@/lib/seo";
+
+// A reader page is someone's own book: never indexed
+export const metadata = privateMetadata("Reader");
 
 // Origin for calling our own API from the server. Prefer the configured app
 // URL over the request's Host header, which the client controls.

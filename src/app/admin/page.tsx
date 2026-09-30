@@ -7,7 +7,7 @@ import { getServerSessionUser } from "@/lib/auth/serverSession";
 import { can } from "@/lib/auth/permissions";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 
-export const metadata: Metadata = { title: "Admin · UniArchive" };
+export const metadata: Metadata = { title: "Admin" };
 
 export default async function AdminPage() {
   const session = await getServerSessionUser();

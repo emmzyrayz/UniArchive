@@ -8,7 +8,7 @@ import { can } from "@/lib/auth/permissions";
 import { getMaterialModel } from "@/lib/models/materialModel";
 import { MaterialsAdmin, type UniversityOption } from "@/components/admin/MaterialsAdmin";
 
-export const metadata: Metadata = { title: "Materials · Admin · UniArchive" };
+export const metadata: Metadata = { title: "Materials · Admin" };
 
 export default async function AdminMaterialsPage() {
   const session = await getServerSessionUser();

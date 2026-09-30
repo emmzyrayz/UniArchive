@@ -14,7 +14,7 @@ import {
 import { canDecideRoleApplications } from "@/lib/roleApplications";
 import { RoleApplicationsReview } from "@/components/admin/RoleApplicationsReview";
 
-export const metadata: Metadata = { title: "Role Applications · UniArchive" };
+export const metadata: Metadata = { title: "Role Applications" };
 
 export default async function AdminRoleApplicationsPage() {
   const session = await getServerSessionUser();

@@ -1,6 +1,9 @@
 // app/contact/page.tsx
 import { ContactForm } from "@/components/contact/ContactForm";
 import { socialLinks } from "@/assets/data/layoutData";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata.contact;
 
 export default function ContactPage() {
   return (
