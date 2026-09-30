@@ -14,7 +14,7 @@
 //   public/logo.png              512                       JSON-LD Organization.logo
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 
 const SOURCE = "src/assets/svg/uniarchive.svg"; // 384×384, black mark on #fafafa
 const SOURCE_SIZE = 384;
@@ -24,13 +24,13 @@ const TILE = "#fafafa";
 const svg = readFileSync(SOURCE);
 
 /** The logo rasterised straight at `size` (vector, so no upscaling blur). */
-function logo(size: number): sharp.Sharp {
+function logo(size: number): Sharp {
   return sharp(svg, { density: Math.ceil((72 * size) / SOURCE_SIZE) + 1 })
     .resize(size, size)
     .flatten({ background: TILE });
 }
 
-async function writePng(path: string, image: sharp.Sharp): Promise<void> {
+async function writePng(path: string, image: Sharp): Promise<void> {
   mkdirSync(dirname(path), { recursive: true });
   await image.png({ compressionLevel: 9 }).toFile(path);
   console.log(`✓ ${path}`);
@@ -41,7 +41,7 @@ async function writePng(path: string, image: sharp.Sharp): Promise<void> {
  * must sit inside the central 80%. The logo is scaled to 80% on a tile of the
  * same colour, which leaves the mark itself with ~20% padding on every side.
  */
-async function maskable(size: number): Promise<sharp.Sharp> {
+async function maskable(size: number): Promise<Sharp> {
   const inner = Math.round(size * 0.8);
   const mark = await logo(inner).png().toBuffer();
   return sharp({
