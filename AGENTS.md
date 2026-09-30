@@ -47,9 +47,16 @@ vars are documented in `.env.example`.
   (`smtp.zeptomail.com:587`, STARTTLS, user `emailapikey`, password = the
   Mail Agent's SMTP token) from `UniArchive <no-reply@uniarchive.com.ng>`.
   Reply-To is `support@uniarchive.com.ng`.
-- `support@uniarchive.com.ng` has no mailbox: a free domain mail forwarder
-  delivers it to the team's Gmail. Contact-form messages are sent there
-  (Reply-To = the person who wrote in); `CONTACT_EMAIL` overrides.
+- `support@uniarchive.com.ng` has no mailbox: ImprovMX (free plan, 25 alias
+  limit) forwards it to `uniarchive.team@gmail.com`. Contact-form messages
+  are sent there (Reply-To = the person who wrote in); `CONTACT_EMAIL`
+  overrides, so leave it unset in production.
+- DNS is on Vercel (`ns1/ns2.vercel-dns.com`). MX points at ImprovMX, and
+  the root SPF is `v=spf1 include:spf.improvmx.com ~all`. ZeptoMail uses its
+  own return path (`bounce-zem` CNAME → `cluster89.zeptomail.com`, which
+  publishes ZeptoMail's SPF) plus a DKIM TXT record whose selector comes
+  from the ZeptoMail dashboard. There must only ever be one SPF TXT record
+  on the root.
 - The legacy Gmail sender (`EMAIL_USER`/`EMAIL_PASS`) is only used while
   `SMTP_*` is unset; delete it everywhere once ZeptoMail is live.
 - Check settings with `pnpm email:test uniarchive.team@gmail.com`. To test
