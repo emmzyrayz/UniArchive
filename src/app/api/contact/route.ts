@@ -4,8 +4,9 @@
 //
 // `website` is a honeypot the form hides from people; a bot that fills it
 // gets the normal success response and nothing is sent. Real messages go to
-// CONTACT_EMAIL (or EMAIL_USER) with Reply-To set to the sender, and the
-// sender gets a confirmation. 3 sent messages per IP per hour.
+// support@uniarchive.com.ng (forwarded to the team's Gmail; CONTACT_EMAIL
+// overrides) with Reply-To set to the sender, and the sender gets a
+// confirmation. 3 sent messages per IP per hour.
 import { NextResponse, type NextRequest } from "next/server";
 import { EMAIL_REGEX, getClientIp, handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";

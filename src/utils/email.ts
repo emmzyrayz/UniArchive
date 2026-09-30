@@ -48,7 +48,7 @@ export function getMailTransport(): { transporter: Transporter; config: MailConf
 
 class EmailService {
   /**
-   * Every email goes out from MAIL_FROM. Replies go to MAIL_REPLY_TO
+   * Every email goes out from MAIL_FROM (no-reply@). Replies go to MAIL_REPLY_TO
    * (support) unless the message names its own, like a contact form message
    * replying to the person who wrote in.
    */
@@ -416,12 +416,12 @@ export async function sendRoleApplicationRejectedEmail(params: {
 // ---------------------------------------------------------------------------
 
 /**
- * Where contact form messages go: CONTACT_EMAIL, else the legacy Gmail
- * account, else the support address (which needs a real inbox: ZeptoMail
- * only sends).
+ * Where contact form messages go: the support address, which the domain's
+ * mail forwarder delivers to the team's Gmail inbox. CONTACT_EMAIL overrides
+ * it (e.g. to test locally without the forwarder).
  */
 function contactInbox(): string {
-  return process.env.CONTACT_EMAIL || process.env.EMAIL_USER || SUPPORT_EMAIL;
+  return process.env.CONTACT_EMAIL?.trim() || SUPPORT_EMAIL;
 }
 
 /**

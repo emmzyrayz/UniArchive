@@ -1,23 +1,28 @@
 // src/lib/mailConfig.ts
-// Which SMTP server outgoing email uses, from env. Provider-agnostic
-// (ZeptoMail, or any SMTP host); switching providers is an env change only.
+// Which SMTP server outgoing email uses, from env. Transactional email goes
+// through ZeptoMail (smtp.zeptomail.com:587, user "emailapikey", password =
+// the Mail Agent's SMTP token) from no-reply@uniarchive.com.ng; any other
+// SMTP host works too, so switching providers is an env change only.
 //
 //   SMTP_HOST, SMTP_PORT, SMTP_SECURE ("true" for port 465), SMTP_USER,
-//   SMTP_PASS, MAIL_FROM ("UniArchive <noreply@uniarchive.com.ng>"),
+//   SMTP_PASS, MAIL_FROM (defaults to "UniArchive <no-reply@...>"),
 //   MAIL_REPLY_TO (defaults to SUPPORT_EMAIL)
 //
 // Until SMTP_* is set, the older Gmail settings (EMAIL_USER / EMAIL_PASS)
-// are used, so production keeps sending during the switch.
+// are used, so production keeps sending during the switch. Remove them from
+// the environment once ZeptoMail is live.
 //
 // No nodemailer import here: src/instrumentation.ts checks this at startup.
-import { SUPPORT_EMAIL } from "@/lib/site";
+import { NO_REPLY_EMAIL, SUPPORT_EMAIL } from "@/lib/site";
+
+export const DEFAULT_MAIL_FROM = `UniArchive <${NO_REPLY_EMAIL}>`;
 
 export interface MailConfig {
   source: "smtp" | "gmail";
   transport:
     | { host: string; port: number; secure: boolean; auth: { user: string; pass: string } }
     | { service: "gmail"; auth: { user: string; pass: string } };
-  /** Sender for every email, e.g. "UniArchive <noreply@uniarchive.com.ng>". */
+  /** Sender for every email, e.g. "UniArchive <no-reply@uniarchive.com.ng>". */
   from: string;
   /** Where replies go unless a message sets its own (the contact form does). */
   replyTo: string;
@@ -34,12 +39,9 @@ export function resolveMailConfig(): { config: MailConfig } | { problem: string 
   const user = env("SMTP_USER");
   const pass = env("SMTP_PASS");
   if (host || user || pass) {
-    const missing = [
-      !host && "SMTP_HOST",
-      !user && "SMTP_USER",
-      !pass && "SMTP_PASS",
-      !mailFrom && "MAIL_FROM",
-    ].filter(Boolean);
+    const missing = [!host && "SMTP_HOST", !user && "SMTP_USER", !pass && "SMTP_PASS"].filter(
+      Boolean,
+    );
     if (missing.length > 0) {
       return { problem: `SMTP settings are incomplete: set ${missing.join(", ")}.` };
     }
@@ -58,7 +60,7 @@ export function resolveMailConfig(): { config: MailConfig } | { problem: string 
           secure: secureSetting ? secureSetting === "true" : port === 465,
           auth: { user: user!, pass: pass! },
         },
-        from: mailFrom!,
+        from: mailFrom ?? DEFAULT_MAIL_FROM,
         replyTo,
       },
     };
@@ -80,7 +82,7 @@ export function resolveMailConfig(): { config: MailConfig } | { problem: string 
 
   return {
     problem:
-      "No email settings: set SMTP_HOST, SMTP_USER, SMTP_PASS and MAIL_FROM (or the legacy EMAIL_USER and EMAIL_PASS).",
+      "No email settings: set SMTP_HOST, SMTP_USER and SMTP_PASS (or the legacy EMAIL_USER and EMAIL_PASS).",
   };
 }
 

@@ -7,9 +7,10 @@
 // be tried without editing the file, e.g. in PowerShell:
 //
 //   $env:SMTP_HOST="smtp.zeptomail.com"; $env:SMTP_PORT="587"
-//   $env:SMTP_USER="emailapikey"; $env:SMTP_PASS="<Send Mail token>"
-//   $env:MAIL_FROM="UniArchive <noreply@uniarchive.com.ng>"
-//   pnpm email:test you@example.com
+//   $env:SMTP_USER="emailapikey"; $env:SMTP_PASS="<Mail Agent SMTP token>"
+//   pnpm email:test uniarchive.team@gmail.com
+//
+// MAIL_FROM defaults to "UniArchive <no-reply@uniarchive.com.ng>".
 import { config as loadEnv } from "dotenv";
 
 loadEnv({ path: ".env.local", quiet: true });

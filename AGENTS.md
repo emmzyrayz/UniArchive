@@ -38,8 +38,24 @@ Next.js 16 (App Router, `src/proxy.ts` replaces middleware), React 19 with the
 React Compiler, Tailwind 4, TypeScript, pnpm. MongoDB via Mongoose
 (`src/lib/models`), Upstash Redis for rate limits and the tokenVersion cache,
 Cloudinary (≤10 MB PDFs, images) and Backblaze B2 (larger PDFs), SMTP email
-via nodemailer (`src/lib/mailConfig.ts`, ZeptoMail-ready). PWA via
-`@ducanh2912/next-pwa`. Env vars are documented in `.env.example`.
+via nodemailer (`src/lib/mailConfig.ts`). PWA via `@ducanh2912/next-pwa`. Env
+vars are documented in `.env.example`.
+
+## Email
+
+- All transactional email goes through **ZeptoMail SMTP**
+  (`smtp.zeptomail.com:587`, STARTTLS, user `emailapikey`, password = the
+  Mail Agent's SMTP token) from `UniArchive <no-reply@uniarchive.com.ng>`.
+  Reply-To is `support@uniarchive.com.ng`.
+- `support@uniarchive.com.ng` has no mailbox: a free domain mail forwarder
+  delivers it to the team's Gmail. Contact-form messages are sent there
+  (Reply-To = the person who wrote in); `CONTACT_EMAIL` overrides.
+- The legacy Gmail sender (`EMAIL_USER`/`EMAIL_PASS`) is only used while
+  `SMTP_*` is unset; delete it everywhere once ZeptoMail is live.
+- Check settings with `pnpm email:test uniarchive.team@gmail.com`. To test
+  sending code without real mail, point `SMTP_HOST` at a local fake SMTP
+  server (`smtp-server` in a scratch folder) and run with
+  `NODE_ENV=production`; outside production a failed send is only logged.
 
 ## Auth (src/lib/auth, src/app/api/auth)
 
