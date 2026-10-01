@@ -94,6 +94,27 @@ vars are documented in `.env.example`.
 - Field encryption: emails and phones are AES-encrypted, looked up by
   `emailHash` / `phoneHash` (`src/lib/encryption.ts`).
 
+## Staff areas (/mod and /admin)
+
+- Moderators (`MOD_ROLES`: auditor, course_rep, lecturer, ed_admin) use
+  **/mod** only. Platform admins (`ADMIN_ROLES`: com_admin, webmaster, dev)
+  use **/admin** and can also use /mod. Both lists live in `src/types/roles.ts`;
+  the proxy and `userContext.canAccessRoute` read them through
+  `src/lib/routeAccess.ts`. A moderator on an old /admin link is redirected
+  to the /mod copy (`modPathFor`).
+- Pages that exist in both areas are written once in `src/app/_staff/` (a
+  private folder) and mounted by one-line page files in `app/admin/*` and
+  `app/mod/*`. Each still checks its own permission (`requireStaffPage`).
+  User management (`/admin/users`) is admin-only.
+- Shared client components get the area from `StaffAreaProvider`
+  (`components/admin/staffArea.tsx`, set by each layout) and build links with
+  `useStaffArea().base`; never hard-code `/admin` in them.
+- APIs stay under `/api/admin/*` and check fine-grained permissions.
+- Platform materials (in progress): `material.ingest` (all staff) uploads and
+  publishes PDFs credited to UniArchive; `material.review_gifts` (admins)
+  publishes PDFs students gift. Plan:
+  `~/.claude/plans/pasted-content-id-9064-tested-the-linked-hopper.md`.
+
 ## Features in place
 
 UniLibrary (public browsing, trending sort, reactions, threaded comments,

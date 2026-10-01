@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useUser } from "@/context/userContext";
-import type { UserRole } from "@/types/roles";
+import { ADMIN_ROLES, MOD_ROLES, type UserRole } from "@/types/roles";
 import { PERMISSIONS, can } from "@/lib/auth/permissions";
 import type { AdminCounts } from "@/types/admin";
 
@@ -34,14 +34,10 @@ export interface PageNavConfig {
   };
 }
 
-const ADMIN_ROLES: UserRole[] = ["webmaster", "com_admin", "ed_admin", "dev"];
-const MOD_ROLES: UserRole[] = [
-  ...ADMIN_ROLES,
-  "auditor",
-  "course_rep",
-  "lecturer",
-];
-const CONTRIBUTOR_ROLES: UserRole[] = [...MOD_ROLES, "collaborator"];
+const ADMIN_AREA_ROLES: UserRole[] = [...ADMIN_ROLES];
+// Everyone who can enter /mod: moderators and admins
+const STAFF_ROLES: UserRole[] = [...MOD_ROLES, ...ADMIN_ROLES];
+const CONTRIBUTOR_ROLES: UserRole[] = [...STAFF_ROLES, "collaborator"];
 const REVIEWER_ROLES = (Object.keys(PERMISSIONS) as UserRole[]).filter((role) =>
   can(role, "admin.view_submissions"),
 );
@@ -50,21 +46,30 @@ const rolesThatCan = (action: Parameters<typeof can>[1]) =>
 const USER_ADMIN_ROLES = rolesThatCan("manage_users");
 const INSTITUTION_ADMIN_ROLES = rolesThatCan("manage_institution");
 
-const SUBMISSIONS_PATH = "/admin/submissions";
-const ROLE_APPLICATIONS_PATH = "/admin/role-applications";
-const SUGGESTIONS_PATH = "/admin/suggestions";
-const COMMENTS_PATH = "/admin/comments";
+type StaffBase = "/admin" | "/mod";
 
-// Every admin page, each shown only to the roles its page accepts
-const ADMIN_ITEMS: NavItem[] = [
-  { name: "Admin Dashboard", path: "/admin", requiresAuth: true, roles: REVIEWER_ROLES },
-  { name: "Submissions", path: SUBMISSIONS_PATH, requiresAuth: true, roles: REVIEWER_ROLES },
-  { name: "Role Applications", path: ROLE_APPLICATIONS_PATH, requiresAuth: true, roles: REVIEWER_ROLES },
-  { name: "School Suggestions", path: SUGGESTIONS_PATH, requiresAuth: true, roles: INSTITUTION_ADMIN_ROLES },
-  { name: "Materials", path: "/admin/materials", requiresAuth: true, roles: REVIEWER_ROLES },
-  { name: "Comments", path: COMMENTS_PATH, requiresAuth: true, roles: REVIEWER_ROLES },
-  { name: "Users", path: "/admin/users", requiresAuth: true, roles: USER_ADMIN_ROLES },
-  { name: "Institutions", path: "/admin/institutions", requiresAuth: true, roles: INSTITUTION_ADMIN_ROLES },
+/** A staff member's main area: admins work in /admin, moderators in /mod. */
+const staffBaseFor = (role: UserRole): StaffBase =>
+  ADMIN_ROLES.includes(role) ? "/admin" : "/mod";
+
+// Every page of a staff area, each shown only to the roles its page accepts.
+// /admin and /mod share these pages; user management is /admin only.
+const staffItems = (base: StaffBase): NavItem[] => [
+  {
+    name: base === "/admin" ? "Admin Dashboard" : "Moderation Dashboard",
+    path: base,
+    requiresAuth: true,
+    roles: REVIEWER_ROLES,
+  },
+  { name: "Submissions", path: `${base}/submissions`, requiresAuth: true, roles: REVIEWER_ROLES },
+  { name: "Role Applications", path: `${base}/role-applications`, requiresAuth: true, roles: REVIEWER_ROLES },
+  { name: "School Suggestions", path: `${base}/suggestions`, requiresAuth: true, roles: INSTITUTION_ADMIN_ROLES },
+  { name: "Materials", path: `${base}/materials`, requiresAuth: true, roles: REVIEWER_ROLES },
+  { name: "Comments", path: `${base}/comments`, requiresAuth: true, roles: REVIEWER_ROLES },
+  ...(base === "/admin"
+    ? [{ name: "Users", path: "/admin/users", requiresAuth: true, roles: USER_ADMIN_ROLES }]
+    : []),
+  { name: "Institutions", path: `${base}/institutions`, requiresAuth: true, roles: INSTITUTION_ADMIN_ROLES },
 ];
 
 // Public: signed-out visitors can browse the UniLibrary too
@@ -146,15 +151,10 @@ const navConfig: PageNavConfig = {
       {
         name: "Management",
         requiresAuth: true,
-        roles: MOD_ROLES,
+        roles: STAFF_ROLES,
         items: [
-          ...ADMIN_ITEMS,
-          {
-            name: "Moderation",
-            path: "/moderation",
-            requiresAuth: true,
-            roles: MOD_ROLES,
-          },
+          { name: "Moderation", path: "/mod", requiresAuth: true, roles: STAFF_ROLES },
+          { name: "Admin", path: "/admin", requiresAuth: true, roles: ADMIN_AREA_ROLES },
         ],
       },
       {
@@ -171,7 +171,7 @@ const navConfig: PageNavConfig = {
             name: "Analytics",
             path: "/dashboard/analytics",
             requiresAuth: true,
-            roles: ADMIN_ROLES,
+            roles: ADMIN_AREA_ROLES,
           },
         ],
       },
@@ -189,50 +189,21 @@ const navConfig: PageNavConfig = {
     showSearch: true,
   },
 
-  // Also used for every /admin/* page (see getCurrentPageConfig)
+  // Also used for every /admin/* and /mod/* page (see getCurrentPageConfig)
   "/admin": {
     title: "Admin",
     standaloneItems: [{ name: "My Library", path: "/home", requiresAuth: true }],
-    categories: [{ name: "Admin", requiresAuth: true, roles: REVIEWER_ROLES, items: ADMIN_ITEMS }],
+    categories: [
+      { name: "Admin", requiresAuth: true, roles: ADMIN_AREA_ROLES, items: staffItems("/admin") },
+    ],
     showSearch: false,
   },
 
-  "/moderation": {
+  "/mod": {
     title: "Moderation",
-    standaloneItems: [
-      {
-        name: "Overview",
-        path: "/moderation",
-        requiresAuth: true,
-        roles: MOD_ROLES,
-      },
-    ],
+    standaloneItems: [{ name: "My Library", path: "/home", requiresAuth: true }],
     categories: [
-      {
-        name: "Content Review",
-        requiresAuth: true,
-        roles: MOD_ROLES,
-        items: [
-          {
-            name: "Reports",
-            path: "/moderation/reports",
-            requiresAuth: true,
-            roles: MOD_ROLES,
-          },
-          {
-            name: "Flagged Content",
-            path: "/moderation/review",
-            requiresAuth: true,
-            roles: MOD_ROLES,
-          },
-          {
-            name: "Spam Detection",
-            path: "/moderation/spam",
-            requiresAuth: true,
-            roles: MOD_ROLES,
-          },
-        ],
-      },
+      { name: "Moderation", requiresAuth: true, roles: STAFF_ROLES, items: staffItems("/mod") },
     ],
     showSearch: false,
   },
@@ -256,19 +227,22 @@ export const useNavConfig = () => {
         (
           data: Partial<AdminCounts> | null,
         ) => {
+          // Keyed by section, so the same badge shows in /admin and /mod
           setPendingCounts({
-            [SUBMISSIONS_PATH]: data?.pendingSubmissions ?? 0,
-            [ROLE_APPLICATIONS_PATH]: data?.pendingRoleApplications ?? 0,
-            [SUGGESTIONS_PATH]: (data?.pendingSchoolSuggestions ?? 0) + (data?.possibleDuplicates ?? 0),
-            [COMMENTS_PATH]: data?.reportedComments ?? 0,
+            submissions: data?.pendingSubmissions ?? 0,
+            "role-applications": data?.pendingRoleApplications ?? 0,
+            suggestions: (data?.pendingSchoolSuggestions ?? 0) + (data?.possibleDuplicates ?? 0),
+            comments: data?.reportedComments ?? 0,
           });
         },
       )
       .catch(() => {});
     return () => controller.abort();
   }, [isReviewer, pathname]);
-  const badgeFor = (path: string) =>
-    isReviewer && pendingCounts[path] ? pendingCounts[path] : undefined;
+  const badgeFor = (path: string) => {
+    const section = /^\/(?:admin|mod)\/([^/?]+)/.exec(path)?.[1];
+    return isReviewer && section && pendingCounts[section] ? pendingCounts[section] : undefined;
+  };
 
   const filterItems = (items: NavItem[]): NavItem[] => {
     return items
@@ -330,19 +304,25 @@ export const useNavConfig = () => {
       { name: "Dashboard", path: "/dashboard" },
       { name: "My Account", path: "/account" },
     ];
-    if (REVIEWER_ROLES.includes(userProfile.role))
+    if (ADMIN_AREA_ROLES.includes(userProfile.role))
       items.push({ name: "Admin Panel", path: "/admin" });
-    if (MOD_ROLES.includes(userProfile.role))
-      items.push({ name: "Moderation", path: "/moderation" });
-    if (REVIEWER_ROLES.includes(userProfile.role))
+    if (STAFF_ROLES.includes(userProfile.role))
+      items.push({ name: "Moderation", path: "/mod" });
+    if (REVIEWER_ROLES.includes(userProfile.role)) {
+      const base = staffBaseFor(userProfile.role);
       items.push(
-        { name: "Review Submissions", path: SUBMISSIONS_PATH, badge: badgeFor(SUBMISSIONS_PATH) },
+        {
+          name: "Review Submissions",
+          path: `${base}/submissions`,
+          badge: badgeFor(`${base}/submissions`),
+        },
         {
           name: "Role Applications",
-          path: ROLE_APPLICATIONS_PATH,
-          badge: badgeFor(ROLE_APPLICATIONS_PATH),
+          path: `${base}/role-applications`,
+          badge: badgeFor(`${base}/role-applications`),
         },
       );
+    }
     return items;
   };
 

@@ -23,7 +23,10 @@ type Action =
   | "submission.review" // start a review
   | "submission.verify_tier1" // grant tier 1 (green badge)
   | "submission.verify_tier2" // grant tier 2 (gold crown), never on own submission
-  | "submission.reject"; // reject with a reason
+  | "submission.reject" // reject with a reason
+  // Platform materials (credited to UniArchive, not the uploader)
+  | "material.ingest" // bulk-upload PDFs and publish them after filling in details
+  | "material.review_gifts"; // publish PDFs students gifted to UniArchive
 
 const PERMISSIONS: Record<UserRole, Action[]> = {
   student: ["download", "comment", "upload"],
@@ -39,8 +42,9 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "submission.review",
     "submission.verify_tier1",
     "submission.reject",
+    "material.ingest",
   ],
-  course_rep: ["download", "comment", "upload", "edit", "moderate", "admin.view_submissions"],
+  course_rep: ["download", "comment", "upload", "edit", "moderate", "admin.view_submissions", "material.ingest"],
   lecturer: [
     "download",
     "comment",
@@ -53,6 +57,7 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "create_course",
     "admin.view_submissions",
     "submission.verify_tier2",
+    "material.ingest",
   ],
   ed_admin: [
     "download",
@@ -71,6 +76,7 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "submission.verify_tier1",
     "submission.verify_tier2",
     "submission.reject",
+    "material.ingest",
   ],
   com_admin: [
     "download",
@@ -91,6 +97,8 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "submission.verify_tier1",
     "submission.verify_tier2",
     "submission.reject",
+    "material.ingest",
+    "material.review_gifts",
   ],
   webmaster: [
     "download",
@@ -112,6 +120,8 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "submission.verify_tier1",
     "submission.verify_tier2",
     "submission.reject",
+    "material.ingest",
+    "material.review_gifts",
   ],
   dev: [
     "download",
@@ -133,6 +143,8 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "submission.verify_tier1",
     "submission.verify_tier2",
     "submission.reject",
+    "material.ingest",
+    "material.review_gifts",
   ],
 };
 

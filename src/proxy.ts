@@ -10,14 +10,19 @@
 // session themselves (lib/auth/session.ts), and a redirect would hand fetch()
 // an HTML sign-in page instead of a JSON 401.
 //
-// Role-sensitive pages (/admin, /profile/edit) also compare the JWT's
+// Role-sensitive pages (/admin, /mod, /profile/edit) also compare the JWT's
 // tokenVersion with the copy in Redis, so a revoked JWT (suspension, role
 // change) can't keep routing by an old role for its last 15 minutes. That
 // one Redis read is skipped everywhere else to keep page loads fast.
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_JWT_COOKIE, verifySessionJwt } from "@/lib/auth/jwt";
-import type { UserRole } from "@/types/roles";
-import { isPublicMaterialPath, isPublicProfilePath, isReviewerAdminPath } from "@/lib/routeAccess";
+import {
+  canEnterStaffArea,
+  isPublicMaterialPath,
+  isPublicProfilePath,
+  modPathFor,
+  staffAreaOf,
+} from "@/lib/routeAccess";
 import { getCachedTokenVersion } from "@/lib/auth/tokenVersionCache";
 
 // /unilibrary: anyone can browse; reading a material (/read/...) needs a session
@@ -25,12 +30,10 @@ const PUBLIC_PATHS = new Set([
   "/", "/about", "/contact", "/help", "/offline", "/unilibrary", "/privacy", "/terms",
 ]);
 const PUBLIC_PREFIXES = ["/auth", "/_next", "/api"];
-const ADMIN_PREFIXES = ["/admin", "/moderation"];
 // Pages where a revoked JWT's old role or access matters (tokenVersion check)
-const SENSITIVE_PREFIXES = ["/admin", "/profile/edit"];
-const ADMIN_ROLES: UserRole[] = ["ed_admin", "com_admin", "webmaster", "dev"];
-// Admin pages open to non-admin reviewers (isReviewerAdminPath) only need a
-// session here; the page checks the permission.
+const SENSITIVE_PREFIXES = ["/admin", "/mod", "/profile/edit"];
+// Staff areas: /admin for platform admins, /mod for moderators and admins
+// (lib/routeAccess.ts). Each page still checks its own permission.
 
 // Files served from /public (pdf.worker.min.mjs, icons, manifest, sw.js, ...)
 const STATIC_FILE = /\.[a-zA-Z0-9]+$/;
@@ -89,11 +92,13 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  if (
-    matchesPrefix(pathname, ADMIN_PREFIXES) &&
-    !isReviewerAdminPath(pathname) &&
-    !ADMIN_ROLES.includes(claims.role)
-  ) {
+  const area = staffAreaOf(pathname);
+  if (area && !canEnterStaffArea(claims.role, area)) {
+    // A moderator on an old /admin link: send them to the /mod copy
+    const modPath =
+      area === "admin" && canEnterStaffArea(claims.role, "mod") ? modPathFor(pathname) : null;
+    if (modPath) return NextResponse.redirect(new URL(modPath + search, request.url));
+
     const signInUrl = new URL("/auth", request.url);
     signInUrl.searchParams.set("view", "signin");
     signInUrl.searchParams.set("error", "forbidden");

@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { FiArrowLeft, FiRefreshCw } from "react-icons/fi";
+import { useStaffArea } from "./staffArea";
 
 export const inputClass =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/40";
@@ -100,14 +101,15 @@ export function AdminPageShell({
   onRefresh?: () => void;
   children: ReactNode;
 }) {
+  const { base, label } = useStaffArea();
   return (
     <div className="mt-[70px] min-h-screen px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-6xl">
         <Link
-          href="/admin"
+          href={base}
           className="mb-4 inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary"
         >
-          <FiArrowLeft aria-hidden /> Admin
+          <FiArrowLeft aria-hidden /> {label}
         </Link>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>

@@ -43,8 +43,9 @@ function useBackLabel(): string {
   );
   try {
     const url = referrer ? new URL(referrer) : null;
-    if (url && url.origin === window.location.origin && url.pathname.startsWith("/admin")) {
-      return "Back to Admin";
+    if (url && url.origin === window.location.origin) {
+      if (url.pathname.startsWith("/admin")) return "Back to Admin";
+      if (url.pathname === "/mod" || url.pathname.startsWith("/mod/")) return "Back to Moderation";
     }
   } catch {
     // Malformed referrer: fall through

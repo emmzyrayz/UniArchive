@@ -5,7 +5,12 @@ import { USERS_DATA } from "@/assets/data/blogData";
 import universitiesData from "@/assets/data/schoolData";
 import type { UserRole } from "@/types/roles";
 import { can } from "@/lib/auth/permissions";
-import { isPublicMaterialPath, isPublicProfilePath, isReviewerAdminPath } from "@/lib/routeAccess";
+import {
+  canEnterStaffArea,
+  isPublicMaterialPath,
+  isPublicProfilePath,
+  staffAreaOf,
+} from "@/lib/routeAccess";
 import { IS_MOCK_MODE } from "@/lib/mockMode";
 import type { ProfileCompletion } from "@/lib/profileCompletion";
 
@@ -738,21 +743,10 @@ const canAccessRoute = useCallback(
     if (!hasActiveSession) return false;
     if (!userProfile) return false;
 
-    // Reviewers who aren't admins still get the review queues and dashboard
-    if (isReviewerAdminPath(path)) {
-      return can(userProfile.role, "admin.view_submissions");
-    }
-
-    const adminPrefixes = ["/admin", "/moderation"];
-    const adminRoles: UserRole[] = [
-      "ed_admin",
-      "com_admin",
-      "webmaster",
-      "dev",
-    ];
-    if (adminPrefixes.some((p) => path.startsWith(p))) {
-      return adminRoles.includes(userProfile.role);
-    }
+    // /admin: platform admins; /mod: moderators and admins (same rule as
+    // src/proxy.ts). Each page also checks its own permission.
+    const area = staffAreaOf(path);
+    if (area) return canEnterStaffArea(userProfile.role, area);
 
     return true; // authenticated users can access all other routes
   },

@@ -27,6 +27,15 @@ export const roleHierarchy: Record<UserRole, number> = {
   dev: 9,
 };
 
+/** Moderators: the /mod staff area only. */
+export const MOD_ROLES: readonly UserRole[] = ["auditor", "course_rep", "lecturer", "ed_admin"];
+/** Platform admins: /admin, and /mod as well. */
+export const ADMIN_ROLES: readonly UserRole[] = ["com_admin", "webmaster", "dev"];
+
+export const isAdminRole = (role: UserRole): boolean => ADMIN_ROLES.includes(role);
+/** Moderators and admins: everyone who can enter /mod. */
+export const isStaffRole = (role: UserRole): boolean => MOD_ROLES.includes(role) || isAdminRole(role);
+
 export const hasHigherOrEqualRole = (
   userRole: UserRole,
   requiredRole: UserRole,

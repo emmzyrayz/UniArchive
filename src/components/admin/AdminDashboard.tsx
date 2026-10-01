@@ -1,6 +1,6 @@
 // components/admin/AdminDashboard.tsx
-// /admin: queue and platform counts, refreshed every minute, with links to
-// every admin page this viewer can use.
+// /admin and /mod overview: queue and platform counts, refreshed every
+// minute, with links to every page this viewer can use in this area.
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,6 +8,7 @@ import Link from "next/link";
 import { FiChevronRight } from "react-icons/fi";
 import type { AdminCounts } from "@/types/admin";
 import { cardClass } from "./adminUi";
+import { useStaffArea } from "./staffArea";
 
 const REFRESH_MS = 60_000;
 
@@ -35,6 +36,7 @@ function StatCard({ label, value, href }: { label: string; value?: number; href?
 }
 
 export function AdminDashboard({ viewer }: { viewer: AdminViewer }) {
+  const { base, label } = useStaffArea();
   const [counts, setCounts] = useState<AdminCounts | null>(null);
   const [error, setError] = useState(false);
 
@@ -66,25 +68,25 @@ export function AdminDashboard({ viewer }: { viewer: AdminViewer }) {
     counts && counts.pendingSchoolSuggestions + counts.possibleDuplicates;
 
   const links: { label: string; href: string; count?: number; show: boolean }[] = [
-    { label: "Submissions", href: "/admin/submissions", count: counts?.pendingSubmissions, show: true },
-    { label: "Role applications", href: "/admin/role-applications", count: counts?.pendingRoleApplications, show: true },
+    { label: "Submissions", href: `${base}/submissions`, count: counts?.pendingSubmissions, show: true },
+    { label: "Role applications", href: `${base}/role-applications`, count: counts?.pendingRoleApplications, show: true },
     {
       label: "School suggestions",
-      href: "/admin/suggestions",
+      href: `${base}/suggestions`,
       count: suggestions ?? undefined,
       show: viewer.canManageInstitutions,
     },
-    { label: "Users", href: "/admin/users", show: viewer.canManageUsers },
-    { label: "Materials", href: "/admin/materials", show: true },
-    { label: "Reported comments", href: "/admin/comments", count: counts?.reportedComments, show: true },
-    { label: "Institutions", href: "/admin/institutions", show: viewer.canManageInstitutions },
+    { label: "Users", href: `${base}/users`, show: viewer.canManageUsers },
+    { label: "Materials", href: `${base}/materials`, show: true },
+    { label: "Reported comments", href: `${base}/comments`, count: counts?.reportedComments, show: true },
+    { label: "Institutions", href: `${base}/institutions`, show: viewer.canManageInstitutions },
   ];
 
   return (
     <div className="mt-[70px] min-h-screen px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-6xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Admin dashboard</h1>
+          <h1 className="text-2xl font-bold text-text-primary">{label} dashboard</h1>
           <p className="mt-1 text-sm text-text-secondary">
             {error
               ? "Couldn't refresh the counts. Retrying every minute."
@@ -93,14 +95,14 @@ export function AdminDashboard({ viewer }: { viewer: AdminViewer }) {
         </div>
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard label="Pending submissions" value={counts?.pendingSubmissions} href="/admin/submissions" />
-          <StatCard label="Role applications" value={counts?.pendingRoleApplications} href="/admin/role-applications" />
+          <StatCard label="Pending submissions" value={counts?.pendingSubmissions} href={`${base}/submissions`} />
+          <StatCard label="Role applications" value={counts?.pendingRoleApplications} href={`${base}/role-applications`} />
           <StatCard
             label="School suggestions"
             value={suggestions ?? undefined}
-            href={viewer.canManageInstitutions ? "/admin/suggestions" : undefined}
+            href={viewer.canManageInstitutions ? `${base}/suggestions` : undefined}
           />
-          <StatCard label="Total materials" value={counts?.totalMaterials} href="/admin/materials" />
+          <StatCard label="Total materials" value={counts?.totalMaterials} href={`${base}/materials`} />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">

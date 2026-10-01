@@ -1,7 +1,8 @@
 // src/lib/routeAccess.ts
 // Path rules shared by src/proxy.ts (server gate) and userContext's
 // canAccessRoute (client gate), so the two can't disagree. Keep this module
-// dependency-free: the proxy imports it.
+// free of server-only imports: the proxy imports it.
+import { isAdminRole, isStaffRole, type UserRole } from "@/types/roles";
 
 /** "/profile/<upid>" is public; "/profile" and "/profile/edit" are the owner's. */
 export function isPublicProfilePath(pathname: string): boolean {
@@ -14,21 +15,35 @@ export function isPublicMaterialPath(pathname: string): boolean {
   return /^\/materials\/[^/]+\/?$/.test(pathname);
 }
 
-// Admin pages open to every reviewer ("admin.view_submissions"), not just
-// admins: auditors, course reps and lecturers too. Each page still checks
-// the permission itself.
-const REVIEWER_ADMIN_PREFIXES = [
-  "/admin/submissions",
-  "/admin/role-applications",
-  "/admin/materials",
-  "/admin/comments",
-];
-// Exact paths only: "/admin" as a prefix would open every admin page
-const REVIEWER_ADMIN_PATHS = new Set(["/admin"]);
+// Staff areas. /admin is for platform admins only; /mod is for moderators
+// and admins. Each page still checks its own permission (e.g. "manage_users").
+export type StaffArea = "admin" | "mod";
 
-export function isReviewerAdminPath(pathname: string): boolean {
-  return (
-    REVIEWER_ADMIN_PATHS.has(pathname) ||
-    REVIEWER_ADMIN_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
-  );
+export function staffAreaOf(pathname: string): StaffArea | null {
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return "admin";
+  if (pathname === "/mod" || pathname.startsWith("/mod/")) return "mod";
+  return null;
+}
+
+export function canEnterStaffArea(role: UserRole, area: StaffArea): boolean {
+  return area === "admin" ? isAdminRole(role) : isStaffRole(role);
+}
+
+// Admin pages that also exist under /mod (same shared page), so a moderator
+// following an old /admin link (bookmarks, emails) lands on the /mod copy
+const MIRRORED_SECTIONS = new Set([
+  "submissions",
+  "role-applications",
+  "materials",
+  "comments",
+  "institutions",
+  "suggestions",
+]);
+
+/** "/admin/submissions/x" -> "/mod/submissions/x"; null when /mod has no copy. */
+export function modPathFor(adminPath: string): string | null {
+  if (adminPath === "/admin") return "/mod";
+  const match = /^\/admin\/([^/]+)(\/.*)?$/.exec(adminPath);
+  if (!match || !MIRRORED_SECTIONS.has(match[1])) return null;
+  return `/mod/${match[1]}${match[2] ?? ""}`;
 }
