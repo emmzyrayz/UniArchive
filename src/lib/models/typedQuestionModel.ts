@@ -42,6 +42,12 @@ export interface ITypedQuestion {
   // Denormalised, updated when an answer is submitted
   answerCount: number;
 
+  // Contribution stats (dashboard Conversions tab)
+  wordCount?: number;
+  // Idempotency key from the conversion workspace ("<draft>:<item>"), so a
+  // retried submit returns this question instead of creating another
+  submissionKey?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -77,6 +83,8 @@ const TypedQuestionSchema = new Schema<ITypedQuestion, ITypedQuestionModel>(
     verifiedAt: { type: Date },
 
     answerCount: { type: Number, default: 0 },
+    wordCount: { type: Number, min: 0 },
+    submissionKey: { type: String },
   },
   { timestamps: true },
 );
@@ -88,6 +96,8 @@ TypedQuestionSchema.index(
   { unique: true },
 );
 TypedQuestionSchema.index({ materialId: 1, status: 1 });
+TypedQuestionSchema.index({ submittedBy: 1, createdAt: -1 });
+TypedQuestionSchema.index({ submissionKey: 1 }, { unique: true, sparse: true });
 
 export async function getTypedQuestionModel(): Promise<ITypedQuestionModel> {
   const conn = await connectDB();

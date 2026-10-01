@@ -20,6 +20,7 @@ import {
 } from "@/lib/constants/layer2";
 import { CONTENT_BLOCK_TYPES, type ContentBlock } from "@/types/content";
 import { roleHierarchy, type UserRole } from "@/types/roles";
+import { countWords } from "@/lib/conversions";
 import type { AnswerDto, ContentDocumentDto, QuestionDto } from "@/types/layer2";
 
 // --- Who may do what ----------------------------------------------------------
@@ -29,6 +30,25 @@ export const atLeast = (role: UserRole, min: UserRole) => roleHierarchy[role] >=
 
 /** Lecturer+ accept answers and mark MCQ options correct (tier 2 reviewers). */
 export const canAcceptAnswers = (role: UserRole) => can(role, "submission.verify_tier2");
+
+/** Typed notes are written by Collaborators and above (typed questions: anyone signed in). */
+export const canWriteNotes = (role: UserRole) => atLeast(role, "collaborator");
+
+/** A note can be edited by whoever wrote it, and by auditors and above. */
+export const canEditNote = (session: { userId: string; role: UserRole }, doc: { createdBy: unknown }) =>
+  String(doc.createdBy) === session.userId || atLeast(session.role, "auditor");
+
+// --- Word counts (dashboard Conversions tab) -------------------------------------
+
+export const questionWordCount = (q: { questionText: string; options?: { text: string }[] }) =>
+  countWords(q.questionText) + (q.options ?? []).reduce((n, o) => n + countWords(o.text), 0);
+
+export const noteWordCount = (doc: { title?: string; contentBlocks?: ContentBlock[] }) =>
+  countWords(doc.title) +
+  (doc.contentBlocks ?? []).reduce(
+    (n, b) => n + countWords(b.content) + countWords(b.description) + countWords(b.imageDescription),
+    0,
+  );
 
 export const answerUpvotesKey = (userId: string) => `answer_upvotes:${userId}`;
 

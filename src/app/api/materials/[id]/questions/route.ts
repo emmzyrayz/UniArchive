@@ -7,6 +7,9 @@
 //   Body: { questionNumber, questionPart?, questionText, questionType,
 //   marks?, options? } (options: 2-6, objective only; isCorrect is only
 //   kept from lecturer+). The same number + part twice is a 409.
+//   Optional Idempotency-Key header (the conversion workspace sends
+//   "<draft>:<item>"): a retry with the same key returns the question it
+//   already created (200, replayed: true) instead of a duplicate or a 409.
 import { NextResponse, type NextRequest } from "next/server";
 import { Types } from "mongoose";
 import { getCurrentSessionUser, requireAuth } from "@/lib/auth/session";
@@ -17,10 +20,12 @@ import { getTypedQuestionModel, type ITypedQuestion } from "@/lib/models/typedQu
 import { getTypedAnswerModel, type ITypedAnswer } from "@/lib/models/typedAnswerModel";
 import { getUserModel } from "@/lib/models/userModel";
 import { QUESTION_CATEGORIES } from "@/lib/constants/layer2";
+import { IDEMPOTENCY_HEADER, isIdempotencyKey } from "@/lib/conversions";
 import {
   canAcceptAnswers,
   loadActiveMaterial,
   parseQuestionBody,
+  questionWordCount,
   refreshTypedContentFlag,
   toAnswerDto,
   toQuestionDto,
@@ -93,12 +98,27 @@ export async function POST(request: NextRequest, context: Context) {
     if (!parsed.ok) return fail(400, parsed.message);
 
     const Question = await getTypedQuestionModel();
+    const rawKey = request.headers.get(IDEMPOTENCY_HEADER);
+    if (rawKey !== null && !isIdempotencyKey(rawKey)) return fail(400, "Invalid Idempotency-Key.");
+    // Scoped to the user, so one person's key can't reveal another's question
+    const submissionKey = rawKey ? `${session.userId}:${rawKey}` : undefined;
+    const replay = async () => {
+      const existing = submissionKey ? await Question.findOne({ submissionKey }).lean<ITypedQuestion>() : null;
+      return existing
+        ? NextResponse.json({ question: toQuestionDto(existing, { answeredByMe: false }), replayed: true })
+        : null;
+    };
+    const earlier = await replay();
+    if (earlier) return earlier;
+
     try {
       const created = await Question.create({
         ...parsed.value,
         materialId: material._id,
         submittedBy: session.userId,
         submittedByUpid: session.upid,
+        wordCount: questionWordCount(parsed.value),
+        ...(submissionKey ? { submissionKey } : {}),
       });
       await refreshTypedContentFlag(material._id);
       return NextResponse.json(
@@ -107,6 +127,9 @@ export async function POST(request: NextRequest, context: Context) {
       );
     } catch (error) {
       if (isDuplicateKey(error)) {
+        // A concurrent retry with the same key won the race
+        const raced = await replay();
+        if (raced) return raced;
         const label = `${parsed.value.questionNumber}${parsed.value.questionPart ?? ""}`;
         return fail(409, `Question ${label} has already been typed for this material.`);
       }

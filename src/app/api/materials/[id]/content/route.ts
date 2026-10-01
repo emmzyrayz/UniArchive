@@ -5,16 +5,20 @@
 //   Notes and textbook materials only (LEARNING_AIDS, BOOKS).
 //   Body: { documentType, title, chapterNumber?, chapterTitle?,
 //   sourceTextbookId?, contentBlocks } (BlockEditor blocks, up to 500).
+//   Optional Idempotency-Key header: a retry with the same key returns the
+//   document it already created (200, replayed: true).
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/session";
 import { getClientIp, handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
-import { fail } from "@/lib/adminApi";
+import { fail, isDuplicateKey } from "@/lib/adminApi";
+import { IDEMPOTENCY_HEADER, isIdempotencyKey } from "@/lib/conversions";
 import { getContentDocumentModel, type IContentDocument } from "@/lib/models/contentDocumentModel";
 import { NOTE_CATEGORIES } from "@/lib/constants/layer2";
 import {
-  atLeast,
+  canWriteNotes,
   loadActiveMaterial,
+  noteWordCount,
   loadSourceTextbooks,
   parseContentBody,
   refreshTypedContentFlag,
@@ -52,7 +56,7 @@ export async function GET(request: NextRequest, context: Context) {
 export async function POST(request: NextRequest, context: Context) {
   try {
     const session = await requireAuth(request);
-    if (!atLeast(session.role, "collaborator")) {
+    if (!canWriteNotes(session.role)) {
       return fail(403, "Typed notes can be added by Collaborators and above.");
     }
     await enforceRateLimit(request, "standard", `content-write:${session.userId}`);
@@ -69,14 +73,40 @@ export async function POST(request: NextRequest, context: Context) {
     }
 
     const Doc = await getContentDocumentModel();
+    const rawKey = request.headers.get(IDEMPOTENCY_HEADER);
+    if (rawKey !== null && !isIdempotencyKey(rawKey)) return fail(400, "Invalid Idempotency-Key.");
+    const submissionKey = rawKey ? `${session.userId}:${rawKey}` : undefined;
+    const replay = async () => {
+      const existing = submissionKey ? await Doc.findOne({ submissionKey }).lean<IContentDocument>() : null;
+      if (!existing) return null;
+      const src = await loadSourceTextbooks([existing.sourceTextbookId]);
+      return NextResponse.json({
+        document: toContentDocumentDto(existing, existing.sourceTextbookId ? src.get(String(existing.sourceTextbookId)) : undefined),
+        replayed: true,
+      });
+    };
+    const earlier = await replay();
+    if (earlier) return earlier;
+
     const { sourceTextbookId, ...rest } = parsed.value;
-    const created = await Doc.create({
-      ...rest,
-      ...(sourceTextbookId ? { sourceTextbookId } : {}),
-      materialId: material._id,
-      createdBy: session.userId,
-      createdByUpid: session.upid,
-    });
+    let created;
+    try {
+      created = await Doc.create({
+        ...rest,
+        ...(sourceTextbookId ? { sourceTextbookId } : {}),
+        materialId: material._id,
+        createdBy: session.userId,
+        createdByUpid: session.upid,
+        wordCount: noteWordCount(rest),
+        ...(submissionKey ? { submissionKey } : {}),
+      });
+    } catch (error) {
+      if (isDuplicateKey(error)) {
+        const raced = await replay();
+        if (raced) return raced;
+      }
+      throw error;
+    }
     await refreshTypedContentFlag(material._id);
 
     const sources = await loadSourceTextbooks([created.sourceTextbookId]);

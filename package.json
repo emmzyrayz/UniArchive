@@ -10,7 +10,8 @@
     "postinstall": "node scripts/copy-pdf-worker.mjs",
     "icons": "tsx scripts/generate-icons.ts",
     "email:test": "tsx scripts/test-email.ts",
-    "db:text-index": "tsx scripts/rebuildMaterialTextIndex.ts"
+    "db:text-index": "tsx scripts/rebuildMaterialTextIndex.ts",
+    "db:word-counts": "tsx scripts/backfillWordCounts.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1137.0",

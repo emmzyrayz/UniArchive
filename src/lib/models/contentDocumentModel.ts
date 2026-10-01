@@ -41,6 +41,13 @@ export interface IContentDocument {
 
   viewCount: number;
   isActive: boolean;
+
+  // Contribution stats (dashboard Conversions tab)
+  wordCount?: number;
+  // Idempotency key from the conversion workspace, so a retried submit
+  // returns this document instead of creating another
+  submissionKey?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -83,12 +90,16 @@ const ContentDocumentSchema = new Schema<IContentDocument, IContentDocumentModel
 
     viewCount: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
+    wordCount: { type: Number, min: 0 },
+    submissionKey: { type: String },
   },
   { timestamps: true },
 );
 
 ContentDocumentSchema.index({ materialId: 1, documentType: 1 });
 ContentDocumentSchema.index({ sourceTextbookId: 1 });
+ContentDocumentSchema.index({ createdBy: 1, createdAt: -1 });
+ContentDocumentSchema.index({ submissionKey: 1 }, { unique: true, sparse: true });
 
 export async function getContentDocumentModel(): Promise<IContentDocumentModel> {
   const conn = await connectDB();
