@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { LuMapPin, LuMonitor, LuSmartphone, LuTablet } from "react-icons/lu";
 import { Button } from "@/components/UI/Buttons";
 import { useUser } from "@/context/userContext";
+import { clearLocalDrafts, unsyncedDrafts } from "@/lib/draftSync";
 
 type DeviceType = "mobile" | "tablet" | "desktop";
 
@@ -90,11 +91,14 @@ async function fetchSessions(): Promise<SessionsResponse> {
 
 export function SessionsPanel() {
   const router = useRouter();
-  const { clearUserData } = useUser();
+  const { clearUserData, userProfile } = useUser();
+  const upid = userProfile?.upid;
   const [data, setData] = useState<SessionsResponse | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
+  /** Conversion drafts on this device that couldn't be synced (signing out deletes them). */
+  const [unsyncedCount, setUnsyncedCount] = useState(0);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
   const load = useCallback(async () => {
@@ -144,6 +148,7 @@ export function SessionsPanel() {
   };
 
   const signedOutHere = () => {
+    if (upid) void clearLocalDrafts(upid);
     clearUserData();
     router.push("/auth?view=signin");
   };
@@ -261,6 +266,13 @@ export function SessionsPanel() {
           here. Every device, even ones you&apos;ve trusted, will need an emailed code at its
           next sign-in.
         </p>
+        {confirmAll && unsyncedCount > 0 && (
+          <p role="alert" className="mb-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-text-primary">
+            {unsyncedCount === 1 ? "1 conversion" : `${unsyncedCount} conversions`} you&apos;re typing out
+            haven&apos;t been saved to your account yet, probably because you&apos;re offline. Signing
+            out deletes {unsyncedCount === 1 ? "it" : "them"} from this device.
+          </p>
+        )}
         {confirmAll ? (
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={() => void signOutAll()} disabled={busy !== null}>
@@ -271,7 +283,16 @@ export function SessionsPanel() {
             </Button>
           </div>
         ) : (
-          <Button variant="secondary" onClick={() => setConfirmAll(true)} disabled={busy !== null}>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              setBusy("check");
+              setUnsyncedCount(upid ? (await unsyncedDrafts(upid)).length : 0);
+              setBusy(null);
+              setConfirmAll(true);
+            }}
+            disabled={busy !== null}
+          >
             Sign out all devices
           </Button>
         )}

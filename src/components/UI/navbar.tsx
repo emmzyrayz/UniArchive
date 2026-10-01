@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, startTransition } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { FiBook, FiGrid, FiLogOut, FiSettings, FiShield, FiUser } from "react-icons/fi";
@@ -10,6 +10,7 @@ import { useNavConfig, type NavItem } from "@/hooks/useNavConfig";
 import { useUser } from "@/context/userContext";
 import BrandLogo from "@/app/auth/components/UI/BrandLogo";
 import { Button } from "@/components/UI/Buttons";
+import { useDraftSafeSignOut } from "@/components/conversions/useDraftSafeSignOut";
 
 // ─── Inline icons ─────────────────────────────────────────────────────────────
 
@@ -190,28 +191,13 @@ const ACCOUNT_LINKS = [
 ];
 const ACCOUNT_PATHS = new Set(ACCOUNT_LINKS.map((l) => l.href));
 
-/** Signs out, then runs `onDone` (close the menu) and goes home. */
-function useSignOut(onDone: () => void) {
-  const { logout } = useUser();
-  const router = useRouter();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const signOut = async () => {
-    setIsSigningOut(true);
-    try {
-      await logout();
-    } finally {
-      onDone();
-      router.push("/");
-    }
-  };
-  return { signOut, isSigningOut };
-}
+/** Sign out, from Navbar's useDraftSafeSignOut (shared by both menus). */
+type SignOut = { signOut: () => Promise<void>; isSigningOut: boolean };
 
 // ─── User Dropdown ────────────────────────────────────────────────────────────
 
-function UserDropdown({ onClose }: { onClose: () => void }) {
+function UserDropdown({ onClose, signOut, isSigningOut }: { onClose: () => void } & SignOut) {
   const { getUserDisplayName, getRoleDisplayName } = useUser();
-  const { signOut, isSigningOut } = useSignOut(onClose);
 
   return (
     <motion.div
@@ -243,7 +229,7 @@ function UserDropdown({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           disabled={isSigningOut}
-          onClick={signOut}
+          onClick={() => void signOut()}
           className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-white/10 transition-colors border-t border-white/10 mt-1"
         >
           {isSigningOut ? "Signing out..." : "Sign out"}
@@ -262,12 +248,13 @@ function UserDropdown({ onClose }: { onClose: () => void }) {
 function MobileAccountSection({
   roleItems,
   onNavigate,
+  signOut,
+  isSigningOut,
 }: {
   roleItems: NavItem[];
   onNavigate: () => void;
-}) {
+} & SignOut) {
   const { getUserDisplayName, getRoleDisplayName, userProfile } = useUser();
-  const { signOut, isSigningOut } = useSignOut(onNavigate);
   const name = getUserDisplayName?.() ?? "User";
   const linkClass =
     "flex items-center gap-3 py-2.5 px-3 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors";
@@ -307,7 +294,7 @@ function MobileAccountSection({
         <button
           type="button"
           disabled={isSigningOut}
-          onClick={signOut}
+          onClick={() => void signOut()}
           className="flex w-full items-center gap-3 py-2.5 px-3 rounded-lg text-sm text-red-400 hover:bg-white/5 transition-colors disabled:opacity-60"
         >
           <FiLogOut aria-hidden className="shrink-0" />
@@ -372,6 +359,10 @@ export const Navbar: React.FC = () => {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const { dialog: unsyncedDraftsDialog, ...signOutProps } = useDraftSafeSignOut(() => {
+    setDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+  });
   const [ribbonHeight, setRibbonHeight] = useState(0);
 
   const navbarRef = useRef<HTMLDivElement>(null);
@@ -661,7 +652,7 @@ export const Navbar: React.FC = () => {
                   </button>
                   <AnimatePresence>
                     {dropdownOpen && (
-                      <UserDropdown onClose={() => setDropdownOpen(false)} />
+                      <UserDropdown onClose={() => setDropdownOpen(false)} {...signOutProps} />
                     )}
                   </AnimatePresence>
                 </div>
@@ -809,6 +800,7 @@ export const Navbar: React.FC = () => {
                 (item) => !ACCOUNT_PATHS.has(item.path) && item.path !== "/account",
               )}
               onNavigate={() => setIsMobileMenuOpen(false)}
+              {...signOutProps}
             />
           ) : (
             <div className="mt-6 pt-5 border-t border-white/10">
@@ -848,6 +840,7 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile bottom tab bar — authenticated only */}
       {hasActiveSession && mobileTabs.length > 0 && <MobileTabBar />}
+      {unsyncedDraftsDialog}
     </>
   );
 };
