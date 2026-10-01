@@ -29,7 +29,7 @@ export interface DraftQuestion {
   questionType: string;
   questionText: string;
   marks?: number | string;
-  options?: { label: string; text: string }[];
+  options?: { label: string; text: string; isCorrect?: boolean }[];
   /** PDF page the question was typed from. */
   sourcePage?: number;
   /** Set once submitted: the published TypedQuestion. */
@@ -43,6 +43,8 @@ export interface DraftNote {
   chapterNumber?: number | string;
   chapterTitle?: string;
   contentBlocks: { id: string; type: string; content: string; description?: string; imageDescription?: string }[];
+  /** The UniLibrary textbook the note summarises; null to unlink. Absent: unchanged (edits). */
+  source?: { id: string; title: string } | null;
   sourcePage?: number;
 }
 
@@ -123,6 +125,9 @@ export function checkDraftPayload(kind: ConversionKind, payload: unknown): Shape
   if (!Array.isArray(note.contentBlocks)) return { ok: false, message: "payload.note.contentBlocks must be a list." };
   return { ok: true };
 }
+
+/** A new question item's clientItemId. */
+export const newClientItemId = () => crypto.randomUUID().replace(/-/g, "").slice(0, 20);
 
 /** An empty payload for a new draft. */
 export function emptyPayload(kind: ConversionKind): DraftPayload {

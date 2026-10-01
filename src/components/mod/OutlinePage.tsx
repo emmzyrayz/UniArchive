@@ -12,9 +12,9 @@ import { useStaffArea } from "@/components/admin/staffArea";
 import { outlineKindFor, parseOutline, type MaterialOutline, type OutlineEntry } from "@/lib/outline";
 import { extractPdfOutline, type OutlineSource } from "@/lib/pdfOutline";
 import { OutlineEditor } from "./OutlineEditor";
-import type { PdfDocument, PdfPaneHandle } from "./PdfPane";
+import type { PdfDocument, PdfPaneHandle } from "@/components/pdf/PdfPane";
 
-const PdfPane = dynamic(() => import("./PdfPane"), {
+const PdfPane = dynamic(() => import("@/components/pdf/PdfPane"), {
   ssr: false,
   loading: () => <p className="p-8 text-center text-sm text-text-muted">Loading viewer…</p>,
 });

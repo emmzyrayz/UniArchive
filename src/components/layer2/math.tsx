@@ -8,7 +8,7 @@
 "use client";
 
 import "katex/dist/katex.min.css";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { FormulaModal } from "@/components/editor/FormulaModal";
 import { renderLatex } from "@/lib/sanitize";
 import { useIsClient } from "@/hooks/useIsClient";
@@ -64,6 +64,7 @@ export function MathTextarea({
   required?: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const inputId = useId();
   const [formulaOpen, setFormulaOpen] = useState(false);
 
   const insert = (formula: string) => {
@@ -83,7 +84,7 @@ export function MathTextarea({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <label className="text-xs font-medium text-text-secondary" htmlFor={`${label}-input`}>
+        <label className="text-xs font-medium text-text-secondary" htmlFor={inputId}>
           {label}
         </label>
         <button
@@ -95,7 +96,7 @@ export function MathTextarea({
         </button>
       </div>
       <textarea
-        id={`${label}-input`}
+        id={inputId}
         ref={ref}
         value={value}
         onChange={(e) => onChange(e.target.value)}

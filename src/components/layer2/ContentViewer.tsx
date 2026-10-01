@@ -175,6 +175,11 @@ export function ContentViewer({
                       Edit
                     </button>
                   )}
+                  {mayEdit && (
+                    <Link href={`/contribute/${materialId}?doc=${current.id}`} className="font-medium text-primary hover:underline">
+                      Edit beside the PDF
+                    </Link>
+                  )}
                   {mayDelete &&
                     (confirmDelete ? (
                       <span className="flex items-center gap-2">

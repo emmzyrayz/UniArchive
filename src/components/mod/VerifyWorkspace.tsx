@@ -28,13 +28,13 @@ import {
   type MaterialFormErrors,
   type MaterialFormState,
 } from "@/components/submit/materialFields";
-import type { PdfDocument, PdfPaneHandle } from "./PdfPane";
+import type { PdfDocument, PdfPaneHandle } from "@/components/pdf/PdfPane";
 import { OutlineEditor } from "./OutlineEditor";
 import { outlineKindFor, parseOutline, type OutlineEntry } from "@/lib/outline";
 import { extractPdfOutline, type OutlineSource } from "@/lib/pdfOutline";
 
 // pdf.js only runs in the browser
-const PdfPane = dynamic(() => import("./PdfPane"), {
+const PdfPane = dynamic(() => import("@/components/pdf/PdfPane"), {
   ssr: false,
   loading: () => <p className="p-8 text-center text-sm text-text-muted">Loading viewer…</p>,
 });

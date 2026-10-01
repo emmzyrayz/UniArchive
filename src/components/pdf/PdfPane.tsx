@@ -1,6 +1,7 @@
-// components/mod/PdfPane.tsx
-// The verify workspace's PDF view: a continuous scroll of pages with page
-// jump, prev/next and zoom. Only pages near the viewport are rendered; the
+// components/pdf/PdfPane.tsx
+// The PDF view of the staff verify workspace and the conversion workspace
+// (/contribute): a continuous scroll of pages with page jump, prev/next and
+// zoom. Only pages near the viewport are rendered; the
 // rest are placeholders sized from each page's real proportions (estimated
 // from the first page until a page has loaded), so a 900-page textbook stays
 // light. Reports the page in view so the form can use it.
@@ -44,10 +45,12 @@ interface Props {
   /** The loaded document, e.g. to read its bookmarks (lib/pdfOutline.ts). */
   onDocument?: (pdf: PdfDocument) => void;
   onPageChange?: (page: number) => void;
+  /** The page to open at once the document has loaded. */
+  initialPage?: number;
   ref?: Ref<PdfPaneHandle>;
 }
 
-export default function PdfPane({ url, onNumPages, onDocument, onPageChange, ref }: Props) {
+export default function PdfPane({ url, onNumPages, onDocument, onPageChange, initialPage, ref }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [numPages, setNumPages] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -151,6 +154,14 @@ export default function PdfPane({ url, onNumPages, onDocument, onPageChange, ref
     pendingPage.current = current;
     setZoomIndex(Math.min(Math.max(0, index), ZOOMS.length - 1));
   };
+  // Open at initialPage: once, when the page count is first known
+  const openedAt = useRef(false);
+  useLayoutEffect(() => {
+    if (openedAt.current || !numPages) return;
+    openedAt.current = true;
+    if (initialPage && initialPage > 1) pendingPage.current = Math.min(initialPage, numPages);
+  }, [numPages, initialPage]);
+
   useLayoutEffect(() => {
     const page = pendingPage.current;
     const el = scrollRef.current;
@@ -232,7 +243,7 @@ export default function PdfPane({ url, onNumPages, onDocument, onPageChange, ref
         </div>
       </div>
 
-      <div ref={scrollRef} onScroll={onScroll} className="relative min-h-0 flex-1 overflow-auto">
+      <div ref={scrollRef} onScroll={onScroll} className="relative min-h-0 flex-1 overflow-auto overscroll-contain">
         {loadError ? (
           <p className="p-8 text-center text-sm text-error">{loadError}</p>
         ) : (

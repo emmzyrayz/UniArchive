@@ -4,12 +4,12 @@
 // textbooks). Public; reading the PDF and contributing need a sign-in.
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { UploaderByline } from "@/components/unilibrary/UploaderByline";
 import { OUTLINE_LABELS } from "@/lib/outline";
-import { useParams, usePathname } from "next/navigation";
-import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
+import { FiArrowLeft, FiArrowRight, FiEdit3 } from "react-icons/fi";
 import { useUser } from "@/context/userContext";
 import { NOTE_CATEGORIES, QUESTION_CATEGORIES } from "@/lib/constants/layer2";
 import { formatFileSize } from "@/assets/data/libraryData";
@@ -18,17 +18,22 @@ import { BADGE_CLASS, categoryBadge, levelLabel } from "@/components/unilibrary/
 import { PastQuestionViewer } from "@/components/layer2/PastQuestionViewer";
 import { ContentViewer } from "@/components/layer2/ContentViewer";
 import type { MaterialDetail } from "@/types/layer2";
+import { hasHigherOrEqualRole } from "@/types/roles";
 
 type Tab = "pdf" | "questions" | "notes";
 
 type State = { id: string; material: MaterialDetail } | { id: string; notFound: true } | { id: string; error: true };
 
-export default function MaterialPage() {
+const TABS: Tab[] = ["pdf", "questions", "notes"];
+
+function MaterialPageContent() {
   const { id } = useParams<{ id: string }>();
   const pathname = usePathname();
-  const { hasActiveSession } = useUser();
+  // ?tab= opens a tab (the conversion workspace links back to the one it filled)
+  const requestedTab = useSearchParams().get("tab");
+  const { hasActiveSession, userProfile } = useUser();
   const [state, setState] = useState<State | null>(null);
-  const [tab, setTab] = useState<Tab>("pdf");
+  const [tab, setTab] = useState<Tab>(TABS.includes(requestedTab as Tab) ? (requestedTab as Tab) : "pdf");
   // Counts change as people add typed content on this page
   const [counts, setCounts] = useState<{ questions?: number; notes?: number }>({});
 
@@ -149,6 +154,23 @@ export default function MaterialPage() {
             ))}
         </div>
 
+        {hasActiveSession && ((tab === "questions" && QUESTION_CATEGORIES.includes(m.category)) ||
+          (tab === "notes" && NOTE_CATEGORIES.includes(m.category) && !!userProfile && hasHigherOrEqualRole(userProfile.role, "collaborator"))) && (
+          <Link
+            href={`/contribute/${m._id}`}
+            className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm hover:bg-primary/10"
+          >
+            <FiEdit3 aria-hidden className="shrink-0 text-primary" />
+            <span className="min-w-0 flex-1 text-text-primary">
+              <span className="font-semibold">{tab === "questions" ? "Type out these questions" : "Write typed notes"}</span>
+              <span className="block text-xs text-text-secondary">
+                The PDF beside the editor. Your work saves as you go, even offline.
+              </span>
+            </span>
+            <FiArrowRight aria-hidden className="shrink-0 text-primary" />
+          </Link>
+        )}
+
         <div role="tabpanel">
           {tab === "pdf" && (
             <div className="rounded-xl border border-border bg-surface-raised p-6 text-center">
@@ -219,5 +241,13 @@ export default function MaterialPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MaterialPage() {
+  return (
+    <Suspense fallback={null}>
+      <MaterialPageContent />
+    </Suspense>
   );
 }

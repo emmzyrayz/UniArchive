@@ -13,6 +13,9 @@ export const shouldHideNavigation = (path: string): boolean => {
   return hiddenPaths.some(hiddenPath => path.startsWith(hiddenPath));
 };
 
+// Full-screen tools that keep the navbar but have no page footer
+const hideFooter = (path: string) => path.startsWith('/contribute/');
+
 export function NavigationWrapper({children}: {children: React.ReactNode}) {
    const pathname = usePathname();
    const { hasActiveSession } = useUser();
@@ -29,7 +32,7 @@ export function NavigationWrapper({children}: {children: React.ReactNode}) {
       <main className={`${hasActiveSession ? "pb-16" : ""} md:pb-0`}>
         {children}
       </main>
-      <Footer />
+      {!hideFooter(pathname) && <Footer />}
     </>
   );
 }

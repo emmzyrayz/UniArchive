@@ -254,6 +254,7 @@ export const PRIVATE_ROUTES = [
   "/upload",
   "/read/",
   "/submit",
+  "/contribute",
   "/admin",
   "/mod$",
   "/mod/",

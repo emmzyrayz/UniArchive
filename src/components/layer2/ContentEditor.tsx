@@ -48,7 +48,7 @@ function countText(blocks: ContentBlock[]): { words: number; chars: number } {
 }
 
 /** Search the UniLibrary's textbooks to link as the source. */
-function SourceTextbookPicker({
+export function SourceTextbookPicker({
   value,
   onChange,
   excludeId,
