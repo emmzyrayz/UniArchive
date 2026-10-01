@@ -176,8 +176,42 @@ vars are documented in `.env.example`.
   `requestChecksumCalculation: "WHEN_REQUIRED"` (streamed aws-chunked
   uploads with trailing checksums aren't decoded by every S3-compatible
   store). The root tsconfig excludes `services/`.
-- Remaining plan (typed conversion workspace and contributor dashboard):
-  `~/.claude/plans/pasted-content-id-9064-tested-the-linked-hopper.md`.
+
+## Conversion workspace (typing out materials)
+
+- `/contribute/[materialId]` (`?doc=<id>` edits a typed note): the PDF
+  (`components/pdf/PdfPane`, or page images on devices that can't run
+  pdf.js) beside an editor. Computer: side by side with a resizable divider;
+  phone: a PDF | Type switcher. Same rules as typed content: past questions
+  on EXAMS by anyone signed in; notes on LEARNING_AIDS/BOOKS by
+  collaborator+; editing a note by its author or auditor+
+  (`lib/conversionDrafts.ts`, `canWriteNotes`/`canEditNote` in
+  `lib/layer2.ts`). Entry points: the material page's Typed Questions /
+  Typed Notes tabs and "Edit beside the PDF" on a note.
+- Drafts: `ConversionDraft` (one active per user, material, kind and
+  target; 20 active max; deleted 180 days after last touched) via
+  `/api/conversions/drafts` (+ `[id]`, `[id]/finish`). Every save sends the
+  revision it builds on; a stale one gets 409 with the server copy.
+- Autosave (`lib/draftSync.ts`, `useDraftSession`): IndexedDB first
+  (~500ms), then the server every ~10s, when the page is hidden, on
+  reconnect and on "Sync now". Conflicts merge question items by
+  `clientItemId` (deletions remembered); for a note this device wins and
+  the other version is offered. One tab edits at a time (Web Locks), others
+  are read-only via BroadcastChannel. A 401 keeps work on the device until
+  the user signs back in. Signing out (navbar, or "sign out all devices")
+  syncs, warns about drafts that still can't sync, then clears that
+  user's drafts from the device (`useDraftSafeSignOut`).
+- Submits: each question on its own, notes on publish, with an
+  `Idempotency-Key` (stored as `submissionKey`, sparse unique) so retries
+  never duplicate. Note edits send `baseUpdatedAt`; a changed note gets 409
+  with the latest version. `wordCount` is stored on questions and notes;
+  older records need `pnpm db:word-counts --apply` (dry run without
+  `--apply`; **not yet run on production**).
+- Dashboard Conversions tab (`/dashboard?tab=conversions`): drafts in
+  progress plus stats from published work (`GET /api/conversions/stats`,
+  `lib/conversionStats.ts`), cached 5 min in Upstash per user, dropped on
+  submit/edit/delete, failing open with short timeouts. "Materials that
+  need typing" is a TODO there.
 
 ## Gotchas
 
@@ -190,13 +224,17 @@ vars are documented in `.env.example`.
 - `pnpm dev` (Turbopack) fails on every page with "The PNG is not in RGBA
   format" from `src/app/favicon.ico`; `pnpm build`/`start` (webpack) work.
   Test against a production build until the icon is regenerated.
+- next-pwa's `reloadOnOnline` is **off** on purpose: it reloaded every page
+  on reconnect, wiping in-progress work. The `/offline` fallback page
+  reloads itself when the connection returns instead.
 
 ## Features in place
 
 UniLibrary (public browsing, trending sort, reactions, threaded comments,
 reports), PDF reader with highlights, bookmarks and reading progress, uploads
 and submissions with admin review, typed content (past-question Q&A, lecture
-note editor, `/materials/[id]`), role progression and applications, badges,
+note editor, `/materials/[id]`, the conversion workspace and the dashboard
+Conversions tab), role progression and applications, badges,
 public profiles (`/profile/[upid]`), full admin panel (`/admin`), SEO
 (metadata, sitemap, robots, OG images, JSON-LD), privacy and terms pages.
 
@@ -209,5 +247,8 @@ public profiles (`/profile/[upid]`), full admin panel (`/admin`), SEO
   database, run it against a throwaway `mongodb-memory-server` installed in
   a scratch folder (not a project dependency), never the `.env.local` DB.
   For Backblaze, run `s3rver` with a self-signed cert (the storage client
-  always uses https) and `NODE_TLS_REJECT_UNAUTHORIZED=0` for Node; Chrome
-  can't reach it, so browser uploads/PDF loads against it can't be tested.
+  always uses https) and `NODE_TLS_REJECT_UNAUTHORIZED=0` for Node. Chrome
+  rejects its certificate; to load PDFs in the browser, run a plain-HTTP
+  relay to it on another port and, in the page, rewrite the signed URL's
+  origin to the relay in `fetch`/`XMLHttpRequest` before the PDF loads
+  (pdf.js fetches on the main thread). Browser uploads to it are untested.
