@@ -11,6 +11,7 @@
 //   "<draft>:<item>"): a retry with the same key returns the question it
 //   already created (200, replayed: true) instead of a duplicate or a 409.
 import { NextResponse, type NextRequest } from "next/server";
+import { invalidateConversionStats } from "@/lib/conversionStats";
 import { Types } from "mongoose";
 import { getCurrentSessionUser, requireAuth } from "@/lib/auth/session";
 import { getClientIp, handleRouteError, readJson } from "@/lib/api";
@@ -121,6 +122,7 @@ export async function POST(request: NextRequest, context: Context) {
         ...(submissionKey ? { submissionKey } : {}),
       });
       await refreshTypedContentFlag(material._id);
+      await invalidateConversionStats(session.userId);
       return NextResponse.json(
         { question: toQuestionDto(created.toObject(), { answeredByMe: false }) },
         { status: 201 },

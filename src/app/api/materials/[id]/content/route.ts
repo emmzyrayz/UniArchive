@@ -8,6 +8,7 @@
 //   Optional Idempotency-Key header: a retry with the same key returns the
 //   document it already created (200, replayed: true).
 import { NextResponse, type NextRequest } from "next/server";
+import { invalidateConversionStats } from "@/lib/conversionStats";
 import { requireAuth } from "@/lib/auth/session";
 import { getClientIp, handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest, context: Context) {
       throw error;
     }
     await refreshTypedContentFlag(material._id);
+    await invalidateConversionStats(session.userId);
 
     const sources = await loadSourceTextbooks([created.sourceTextbookId]);
     return NextResponse.json(

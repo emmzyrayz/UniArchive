@@ -7,6 +7,7 @@
 //   The person who typed it, or com_admin+. Only with no answers (409
 //   otherwise), for the same reason.
 import { NextResponse, type NextRequest } from "next/server";
+import { invalidateConversionStats } from "@/lib/conversionStats";
 import { isValidObjectId } from "mongoose";
 import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
@@ -79,6 +80,7 @@ export async function DELETE(request: NextRequest, context: Context) {
     const deleted = await Question.findOneAndDelete({ _id: question._id, answerCount: 0 }).lean();
     if (!deleted) return fail(409, "Cannot delete a question with existing answers.");
     await refreshTypedContentFlag(question.materialId);
+    await invalidateConversionStats(String(question.submittedBy));
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleRouteError(error, "DELETE /api/materials/[id]/questions/[questionId]");

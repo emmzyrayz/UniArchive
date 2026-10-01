@@ -1,9 +1,9 @@
 // src/app/dashboard/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { useUser } from "@/context/userContext";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -12,15 +12,17 @@ import { BookmarksList } from "@/components/dashboard/BookmarksList";
 import { HighlightsList } from "@/components/dashboard/HighlightsList";
 import { RoleProgression } from "@/components/dashboard/RoleProgression";
 import { ReadingStatsCard } from "@/components/dashboard/ReadingStatsCard";
+import { ConversionsTab } from "@/components/dashboard/ConversionsTab";
 import { Button } from "@/components/UI/Buttons";
 import { formatBytes } from "@/assets/data/dashboardData";
 import type { Book } from "@/types/library";
 import type { SavedBookmark, SavedHighlight } from "@/types/dashboard";
 
-type Tab = "overview" | "bookmarks" | "highlights" | "storage";
+type Tab = "overview" | "conversions" | "bookmarks" | "highlights" | "storage";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "conversions", label: "Conversions" },
   { id: "bookmarks", label: "Bookmarks" },
   { id: "highlights", label: "Highlights" },
   { id: "storage", label: "Storage" },
@@ -147,10 +149,14 @@ function SavedAnnotations({ kind }: { kind: "bookmarks" | "highlights" }) {
   );
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
   const { hasActiveSession, isLoading } = useUser();
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  // ?tab= opens a tab (e.g. the conversion workspace links to Conversions)
+  const requestedTab = useSearchParams().get("tab");
+  const [activeTab, setActiveTab] = useState<Tab>(
+    TABS.some((t) => t.id === requestedTab) ? (requestedTab as Tab) : "overview",
+  );
   const [statsState, setStatsState] = useState<StatsState>({ status: "loading" });
   // Bumped by the retry button to re-run the fetch without a full page reload
   const [reloadKey, setReloadKey] = useState(0);
@@ -221,12 +227,12 @@ export default function DashboardPage() {
         >
           <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
           <p className="text-sm text-text-secondary mt-1">
-            Your reading activity and saved content
+            Your reading, conversions and saved content
           </p>
         </motion.div>
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-border mb-8 overflow-x-none">
+        <div className="flex gap-1 border-b border-border mb-8 overflow-x-auto">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -295,6 +301,13 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Conversions tab */}
+        {activeTab === "conversions" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+            <ConversionsTab />
+          </motion.div>
+        )}
+
         {/* Bookmarks tab */}
         {activeTab === "bookmarks" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
@@ -323,5 +336,13 @@ export default function DashboardPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardContent />
+    </Suspense>
   );
 }

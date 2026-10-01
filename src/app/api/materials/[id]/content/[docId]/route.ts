@@ -7,6 +7,7 @@
 // DELETE /api/materials/[id]/content/[docId] - soft delete (isActive false)
 //   The author, or com_admin+.
 import { NextResponse, type NextRequest } from "next/server";
+import { invalidateConversionStats } from "@/lib/conversionStats";
 import { isValidObjectId } from "mongoose";
 import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
@@ -90,6 +91,8 @@ export async function PATCH(request: NextRequest, context: Context) {
       );
     }
 
+    // Its word count may have changed
+    await invalidateConversionStats(String(updated.createdBy));
     const sources = await loadSourceTextbooks([updated.sourceTextbookId]);
     return NextResponse.json({
       document: toContentDocumentDto(
@@ -118,6 +121,7 @@ export async function DELETE(request: NextRequest, context: Context) {
       { $set: { isActive: false, lastEditedBy: session.userId, lastEditedAt: new Date() } },
     );
     await refreshTypedContentFlag(doc.materialId);
+    await invalidateConversionStats(String(doc.createdBy));
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleRouteError(error, "DELETE /api/materials/[id]/content/[docId]");
