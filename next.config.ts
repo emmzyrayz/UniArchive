@@ -5,7 +5,9 @@ const withPWA = withPWAInit({
   dest: "public",
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
-  reloadOnOnline: true,
+  // Off: reloading every page on reconnect threw away in-progress work (the
+  // conversion workspace). The offline fallback page reloads itself instead.
+  reloadOnOnline: false,
   disable: process.env.NODE_ENV === "development",
   fallbacks: {
     document: "/offline",

@@ -87,11 +87,11 @@ function UnsyncedDraftsDialog({
           <FiAlertTriangle aria-hidden className="text-warning" /> Unsaved work on this device
         </h2>
         <p className="mt-3 text-sm text-text-secondary">
-          {items} you&apos;re typing out haven&apos;t been saved to your account yet, probably because
-          you&apos;re offline. Signing out now deletes {count === 1 ? "it" : "them"} from this device.
+          {items} you&apos;re typing out {count === 1 ? "hasn't" : "haven't"} been saved to your account yet,
+          probably because you&apos;re offline. Signing out now deletes {count === 1 ? "it" : "them"} from this device.
         </p>
         <p className="mt-2 text-sm text-text-secondary">
-          Stay signed in and reconnect, and {count === 1 ? "it" : "they"} will sync on their own.
+          Stay signed in and reconnect, and {count === 1 ? "it syncs on its own" : "they sync on their own"}.
         </p>
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button

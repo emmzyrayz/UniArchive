@@ -1,7 +1,7 @@
 // src/app/offline/page.tsx
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "motion/react";
 import Link from "next/link";
@@ -22,6 +22,17 @@ function getRequestedBookId(): string | null {
 
 export default function OfflinePage() {
   const bookId = useSyncExternalStore(noopSubscribe, getRequestedBookId, () => null);
+
+  // This is only ever a stand-in for the page that was asked for: load the
+  // real one as soon as the connection is back. (Done here, not app-wide via
+  // next-pwa's reloadOnOnline, so a reconnect never reloads a page someone
+  // is working in, like the conversion workspace.)
+  useEffect(() => {
+    const onOnline = () => window.location.reload();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, []);
+
   if (bookId) return <OfflineReader bookId={decodeURIComponent(bookId)} />;
 
   return (
