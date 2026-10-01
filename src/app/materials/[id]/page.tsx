@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { UploaderByline } from "@/components/unilibrary/UploaderByline";
 import { useParams, usePathname } from "next/navigation";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { useUser } from "@/context/userContext";
@@ -112,9 +113,7 @@ export default function MaterialPage() {
           {m.description && <p className="text-sm text-text-secondary">{m.description}</p>}
           <p className="text-xs text-text-muted">
             Uploaded by{" "}
-            <Link href={`/profile/${encodeURIComponent(m.submittedByUpid)}`} className="text-primary hover:underline">
-              @{m.submittedByUpid}
-            </Link>
+            <UploaderByline upid={m.submittedByUpid} isPlatform={m.isPlatform} />
             {m.uploaderTopBadge && <span title={m.uploaderTopBadge.name}> {m.uploaderTopBadge.emoji}</span>} ·{" "}
             {timeAgo(m.createdAt)} · {m.viewCount.toLocaleString()} views
             {!!m.pageCount && ` · ${m.pageCount} pages`} · {formatFileSize(m.fileSize)}

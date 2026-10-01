@@ -21,6 +21,7 @@ import {
 import type { MaterialSummary } from "@/types/unilibrary";
 import { BADGE_CLASS, categoryBadge, levelLabel } from "./materialLabels";
 import { CommentSection } from "./CommentSection";
+import { UploaderByline } from "./UploaderByline";
 
 interface MaterialCardProps {
   material: MaterialSummary;
@@ -313,12 +314,7 @@ export function MaterialCard({ material, isAuthenticated, onRead, userReaction }
       </div>
       <p className="mt-1 text-xs text-neutral-400">
         Uploaded by{" "}
-        <Link
-          href={`/profile/${encodeURIComponent(material.submittedByUpid)}`}
-          className="text-primary hover:underline"
-        >
-          @{material.submittedByUpid}
-        </Link>
+        <UploaderByline upid={material.submittedByUpid} isPlatform={material.isPlatform} />
         {material.uploaderTopBadge && (
           <span
             className="ml-1"

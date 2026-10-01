@@ -33,7 +33,10 @@ export interface MaterialSummary {
   hasTypedContent: boolean;
   viewCount: number;
   downloadCount: number;
+  /** Empty for platform materials, which are credited to UniArchive. */
   submittedByUpid: string;
+  /** Uploaded by staff or gifted: shown as UniArchive, no uploader link. */
+  isPlatform?: boolean;
   createdAt: string;
   pageCount?: number;
   fileSize: number;

@@ -1,7 +1,7 @@
 // GET  /api/books  - the signed-in user's library (paginated)
 // POST /api/books  - record a book after the file has been uploaded to storage
 import { NextResponse, type NextRequest } from "next/server";
-import { getBookModel } from "@/lib/models/bookModel";
+import { LIBRARY_BOOKS, getBookModel } from "@/lib/models/bookModel";
 import { requireAuth, requirePermission } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
 import { storageClient } from "@/lib/storage";
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     );
 
     const Book = await getBookModel();
-    const filter = { uploaderId: session.userId };
+    const filter = { uploaderId: session.userId, ...LIBRARY_BOOKS };
     const [docs, total] = await Promise.all([
       Book.find(filter)
         .sort({ createdAt: -1 })

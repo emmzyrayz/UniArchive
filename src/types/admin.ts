@@ -14,6 +14,10 @@ export interface AdminCounts {
   newUsersThisWeek: number;
   totalInstitutions: number;
   reportedComments: number;
+  /** Platform files waiting in the viewer's queue (all staff uploads for admins). */
+  pendingPlatformUploads: number;
+  /** Gifted PDFs waiting; null when the viewer can't review gifts. */
+  pendingGifts: number | null;
 }
 
 // --- Reported comments ------------------------------------------------------

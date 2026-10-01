@@ -54,7 +54,7 @@ export interface ContentDocumentDto {
   title: string;
   chapterNumber?: number;
   chapterTitle?: string;
-  sourceTextbook?: { id: string; title: string; submittedByUpid: string };
+  sourceTextbook?: { id: string; title: string; submittedByUpid: string; isPlatform?: boolean };
   contentBlocks: ContentBlock[];
   createdByUpid: string;
   lastEditedAt?: string;

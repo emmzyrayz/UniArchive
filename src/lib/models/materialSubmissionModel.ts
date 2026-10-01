@@ -39,6 +39,8 @@ export interface IMaterialSubmission {
   bookId: Types.ObjectId;
   submittedBy: Types.ObjectId;
   submittedByUpid: string;
+  // "platform": created already verified by staff publishing a platform file
+  source: "community" | "platform";
 
   // Platform metadata (from the submission form)
   title: string;
@@ -106,6 +108,7 @@ const MaterialSubmissionSchema = new Schema<IMaterialSubmission, IMaterialSubmis
     bookId: { type: Schema.Types.ObjectId, ref: "Book", required: true },
     submittedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     submittedByUpid: { type: String, required: true },
+    source: { type: String, enum: ["community", "platform"], default: "community" },
 
     title: { type: String, required: true, trim: true, maxlength: 200 },
     description: { type: String, required: true, trim: true, maxlength: 2000 },

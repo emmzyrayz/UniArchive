@@ -45,6 +45,7 @@ const rolesThatCan = (action: Parameters<typeof can>[1]) =>
   (Object.keys(PERMISSIONS) as UserRole[]).filter((role) => can(role, action));
 const USER_ADMIN_ROLES = rolesThatCan("manage_users");
 const INSTITUTION_ADMIN_ROLES = rolesThatCan("manage_institution");
+const INGEST_ROLES = rolesThatCan("material.ingest");
 
 type StaffBase = "/admin" | "/mod";
 
@@ -64,6 +65,8 @@ const staffItems = (base: StaffBase): NavItem[] => [
   { name: "Submissions", path: `${base}/submissions`, requiresAuth: true, roles: REVIEWER_ROLES },
   { name: "Role Applications", path: `${base}/role-applications`, requiresAuth: true, roles: REVIEWER_ROLES },
   { name: "School Suggestions", path: `${base}/suggestions`, requiresAuth: true, roles: INSTITUTION_ADMIN_ROLES },
+  { name: "Upload Materials", path: `${base}/materials/upload`, requiresAuth: true, roles: INGEST_ROLES },
+  { name: "Upload Queue", path: `${base}/materials/queue`, requiresAuth: true, roles: INGEST_ROLES },
   { name: "Materials", path: `${base}/materials`, requiresAuth: true, roles: REVIEWER_ROLES },
   { name: "Comments", path: `${base}/comments`, requiresAuth: true, roles: REVIEWER_ROLES },
   ...(base === "/admin"

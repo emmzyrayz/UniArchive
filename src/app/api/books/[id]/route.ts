@@ -7,7 +7,7 @@
 //                            submission under review or published.
 import { NextResponse, after, type NextRequest } from "next/server";
 import { isValidObjectId } from "mongoose";
-import { getBookModel } from "@/lib/models/bookModel";
+import { LIBRARY_BOOKS, getBookModel } from "@/lib/models/bookModel";
 import { getMaterialModel } from "@/lib/models/materialModel";
 import { redis } from "@/lib/redis";
 import { requireAuth } from "@/lib/auth/session";
@@ -41,7 +41,9 @@ async function findOwnedBook(request: NextRequest, context: Context) {
   if (!isValidObjectId(id)) return null;
 
   const Book = await getBookModel();
-  const book = await Book.findOne({ _id: id, uploaderId: session.userId }).lean<BookDoc>();
+  // Platform files belong to UniArchive: their uploader can't edit or delete
+  // them as if they were a library book
+  const book = await Book.findOne({ _id: id, uploaderId: session.userId, ...LIBRARY_BOOKS }).lean<BookDoc>();
   return book ? { Book, book } : null;
 }
 

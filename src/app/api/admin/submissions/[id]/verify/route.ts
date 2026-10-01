@@ -18,11 +18,7 @@ import {
   getMaterialSubmissionModel,
   type IMaterialSubmission,
 } from "@/lib/models/materialSubmissionModel";
-import {
-  getMaterialModel,
-  type MaterialCategory,
-  type MaterialSubcategory,
-} from "@/lib/models/materialModel";
+import { getMaterialModel } from "@/lib/models/materialModel";
 import {
   DECIDABLE_STATUSES,
   adminSubmissionResponse,
@@ -33,6 +29,7 @@ import {
 } from "@/lib/adminSubmissions";
 import { sendSubmissionVerifiedEmail } from "@/utils/email";
 import { awardBadgesAfter } from "@/lib/badges";
+import { createMaterialRecord } from "@/lib/materialPublish";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -104,46 +101,12 @@ async function verifyTier1(
   ).lean();
   if (!verified) return fail(409, "This submission changed status. Reload and try again.");
 
-  const Material = await getMaterialModel();
-  const isCloudinary = book.storageProvider === "cloudinary" && !!book.cloudinaryPublicId;
   let material;
   try {
-    const created = await Material.create({
-      submissionId: verified._id,
-      bookId: verified.bookId,
-      submittedBy: verified.submittedBy,
-      submittedByUpid: verified.submittedByUpid,
-
-      title: verified.title,
-      description: verified.description,
-      category: verified.category as MaterialCategory,
-      subcategory: verified.subcategory as MaterialSubcategory | undefined,
-      tags: verified.tags,
-      language: verified.language,
-
-      universityId: verified.universityId,
-      universityName: verified.universityName,
-      universityAbbr: verified.universityAbbr,
-      facultyId: verified.facultyId,
-      facultyName: verified.facultyName,
-      departmentId: verified.departmentId,
-      departmentName: verified.departmentName,
-      courseCode: verified.courseCode,
-      courseName: verified.courseName,
-      level: verified.level,
-      semester: verified.semester,
-      academicYear: verified.academicYear,
-
-      storageProvider: isCloudinary ? "cloudinary" : "backblaze",
-      storageKey: isCloudinary ? book.cloudinaryPublicId! : book.storageKey,
-      fileSize: book.fileSize,
-      pageCount: book.pageCount,
-
-      verificationTier: "tier1",
-      tier1VerifiedBy: session.userId,
-      tier1VerifiedByUpid: session.upid,
-      tier1VerifiedAt: now,
-      tier1Note: note,
+    const created = await createMaterialRecord(verified, book, session, {
+      source: "community",
+      note,
+      verifiedAt: now,
     });
     material = created.toObject();
   } catch (error) {

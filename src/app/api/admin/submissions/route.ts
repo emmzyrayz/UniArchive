@@ -49,7 +49,8 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(positiveInt(params.get("limit"), 20), MAX_LIMIT);
 
     // Filters shared by the list and the tab counts
-    const base: Record<string, unknown> = {};
+    // Platform files are published from their own queue, never reviewed here
+    const base: Record<string, unknown> = { source: { $ne: "platform" } };
     if (category) base.category = category;
     if (universityId) base.universityId = new Types.ObjectId(universityId);
 

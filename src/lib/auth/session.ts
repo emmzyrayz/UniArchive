@@ -145,6 +145,8 @@ export async function requirePermission(
     | "submission.verify_tier1"
     | "submission.verify_tier2"
     | "submission.reject"
+    | "material.ingest"
+    | "material.review_gifts"
   >,
 ): Promise<SessionUser> {
   const user = await requireAuth(request);

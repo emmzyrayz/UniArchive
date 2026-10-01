@@ -19,6 +19,17 @@ import {
 export type { MaterialCategory, MaterialSubcategory };
 export type VerificationTier = "tier1" | "tier2";
 
+/**
+ * community: a user's submission, credited to them. platform: uploaded by
+ * staff (or gifted by a student) and credited to UniArchive, so it never
+ * counts toward the uploader's badges, stats or profile.
+ */
+export const MATERIAL_SOURCES = ["community", "platform"] as const;
+export type MaterialSource = (typeof MATERIAL_SOURCES)[number];
+
+/** Filter for materials that credit their submitter (older ones have no source). */
+export const COMMUNITY_MATERIALS = { source: { $ne: "platform" } } as const;
+
 export interface IMaterial {
   _id: Types.ObjectId;
 
@@ -27,6 +38,7 @@ export interface IMaterial {
   bookId: Types.ObjectId; // ref: Book (original upload)
   submittedBy: Types.ObjectId; // ref: User
   submittedByUpid: string;
+  source: MaterialSource;
 
   // Content metadata (same taxonomy as the submission form)
   title: string;
@@ -114,6 +126,7 @@ const MaterialSchema = new Schema<IMaterial, IMaterialModel>(
     bookId: { type: Schema.Types.ObjectId, ref: "Book", required: true },
     submittedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     submittedByUpid: { type: String, required: true },
+    source: { type: String, enum: MATERIAL_SOURCES, default: "community" },
 
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },

@@ -1,7 +1,7 @@
 // GET /api/user/stats - document count, storage used, and recently opened
 //                       books for the signed-in user's dashboard
 import { NextResponse, type NextRequest } from "next/server";
-import { getBookModel } from "@/lib/models/bookModel";
+import { LIBRARY_BOOKS, getBookModel } from "@/lib/models/bookModel";
 import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError } from "@/lib/api";
 import { toBookDto, type BookDoc } from "@/lib/dto/book";
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const session = await requireAuth(request);
 
     const Book = await getBookModel();
-    const filter = { uploaderId: session.userId };
+    const filter = { uploaderId: session.userId, ...LIBRARY_BOOKS };
     const [sizes, recent] = await Promise.all([
       Book.find(filter).select("fileSize").lean<Pick<BookDoc, "fileSize">[]>(),
       Book.find({ ...filter, lastOpenedAt: { $exists: true, $ne: null } })

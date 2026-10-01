@@ -9,7 +9,7 @@ import { getUserModel } from "@/lib/models/userModel";
 import { getUniversityModel } from "@/lib/models/university/universityModel";
 import { getFacultyModel } from "@/lib/models/university/facultyModel";
 import { getDepartmentModel } from "@/lib/models/university/departmentModel";
-import { getBookModel, type IBook } from "@/lib/models/bookModel";
+import { LIBRARY_BOOKS, getBookModel, type IBook } from "@/lib/models/bookModel";
 import {
   EDITABLE_SUBMISSION_STATUSES,
   IN_PIPELINE_SUBMISSION_STATUSES,
@@ -264,7 +264,10 @@ type BookForSubmission = Pick<IBook, "title" | "description" | "uploaderId"> & {
 export async function loadOwnedBook(bookId: string, userId: string): Promise<BookForSubmission> {
   if (!bookId || !isValidObjectId(bookId)) fail(400, "A valid bookId is required.");
   const Book = await getBookModel();
-  const book = await Book.findById(bookId).select("title description uploaderId").lean();
+  // Platform files go through the staff queue, not the community pipeline
+  const book = await Book.findOne({ _id: bookId, ...LIBRARY_BOOKS })
+    .select("title description uploaderId")
+    .lean();
   if (!book) fail(404, "Document not found.");
   if (book.uploaderId.toString() !== userId) {
     fail(403, "You can only submit documents from your own library.");

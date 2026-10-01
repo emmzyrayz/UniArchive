@@ -162,7 +162,10 @@ export function ContentViewer({
                   <Link href={`/materials/${current.sourceTextbook.id}`} className="font-medium text-primary hover:underline">
                     {current.sourceTextbook.title}
                   </Link>{" "}
-                  by @{current.sourceTextbook.submittedByUpid}
+                  by{" "}
+                  {current.sourceTextbook.isPlatform
+                    ? "UniArchive"
+                    : `@${current.sourceTextbook.submittedByUpid}`}
                 </p>
               )}
               {(mayEdit || mayDelete) && (

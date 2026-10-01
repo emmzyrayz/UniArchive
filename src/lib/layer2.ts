@@ -76,10 +76,17 @@ export async function loadSourceTextbooks(
   if (!wanted.length) return map;
   const Material = await getMaterialModel();
   const books = await Material.find({ _id: { $in: wanted }, isActive: true })
-    .select("title submittedByUpid")
-    .lean<{ _id: Types.ObjectId; title: string; submittedByUpid: string }[]>();
+    .select("title submittedByUpid source")
+    .lean<{ _id: Types.ObjectId; title: string; submittedByUpid: string; source?: string }[]>();
   for (const b of books) {
-    map.set(String(b._id), { id: String(b._id), title: b.title, submittedByUpid: b.submittedByUpid });
+    const isPlatform = b.source === "platform";
+    map.set(String(b._id), {
+      id: String(b._id),
+      title: b.title,
+      // Platform materials are credited to UniArchive, not their uploader
+      submittedByUpid: isPlatform ? "" : b.submittedByUpid,
+      ...(isPlatform ? { isPlatform: true } : {}),
+    });
   }
   return map;
 }

@@ -110,10 +110,39 @@ vars are documented in `.env.example`.
   (`components/admin/staffArea.tsx`, set by each layout) and build links with
   `useStaffArea().base`; never hard-code `/admin` in them.
 - APIs stay under `/api/admin/*` and check fine-grained permissions.
-- Platform materials (in progress): `material.ingest` (all staff) uploads and
-  publishes PDFs credited to UniArchive; `material.review_gifts` (admins)
-  publishes PDFs students gift. Plan:
+
+## Platform materials (staff uploads, credited to UniArchive)
+
+- A platform file is a `Book` with a `platform` sub-document (status
+  pending/published/discarded, uploader, claim lease, saved draft). Every
+  query for a user's own books must add `LIBRARY_BOOKS` (bookModel.ts), and
+  every per-user material count must add `COMMUNITY_MATERIALS`
+  (materialModel.ts), so platform items never show in a library, badge,
+  stat or profile.
+- Flow: `/mod|admin/materials/upload` (BulkUploader: a Web Worker in
+  `src/workers/pdfPrep.worker.ts` hashes the original, losslessly compresses
+  and counts pages; files go straight to Backblaze under `platform/<uid>/`)
+  -> `/materials/queue` -> `/materials/verify/[id]` (VerifyWorkspace:
+  computer + fullscreen only via `useDesktopFullscreen`, PDF right via
+  `PdfPane`, form left via the shared `components/submit/materialFields`).
+- APIs: `/api/mod/uploads` (+ `presign`, `[id]`, `[id]/claim`, `[id]/draft`,
+  `[id]/publish`). Publishing creates a verified `MaterialSubmission` and its
+  `Material` with `source: "platform"` through `lib/materialPublish.ts`
+  (shared with tier-1 verification) and gives no contributor credit. The
+  uploader may publish their own file; community submissions still can't be
+  self-verified. Permissions: `material.ingest` (all staff),
+  `material.review_gifts` (admins, for student gifts: Phase 4).
+- Remaining plan (TOC/course outlines, PDF gifting, Render PDF worker):
   `~/.claude/plans/pasted-content-id-9064-tested-the-linked-hopper.md`.
+
+## Gotchas
+
+- react-pdf 11 defaults to Suspense mode: a load error also throws to the
+  nearest error boundary and takes the whole page down. Pass
+  `suspense={false}` (see `PdfPane`) and handle `onLoadError`.
+- `pnpm dev` (Turbopack) fails on every page with "The PNG is not in RGBA
+  format" from `src/app/favicon.ico`; `pnpm build`/`start` (webpack) work.
+  Test against a production build until the icon is regenerated.
 
 ## Features in place
 
@@ -132,3 +161,6 @@ public profiles (`/profile/[upid]`), full admin panel (`/admin`), SEO
   manual endpoint checks (see Workflow rules). For logic that touches the
   database, run it against a throwaway `mongodb-memory-server` installed in
   a scratch folder (not a project dependency), never the `.env.local` DB.
+  For Backblaze, run `s3rver` with a self-signed cert (the storage client
+  always uses https) and `NODE_TLS_REJECT_UNAUTHORIZED=0` for Node; Chrome
+  can't reach it, so browser uploads/PDF loads against it can't be tested.

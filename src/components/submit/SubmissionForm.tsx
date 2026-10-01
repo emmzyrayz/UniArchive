@@ -6,44 +6,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FiAlertTriangle, FiCheck, FiFileText } from "react-icons/fi";
-import AuthInput from "@/app/auth/components/UI/AuthInput";
 import { StepProgress } from "@/app/auth/components/UI/StepProgress";
-import { TagInput } from "@/components/UI/TagInput";
-import UniversityCombobox, {
-  FIELD_CLASS,
-  type UniversityOption,
-} from "@/components/profile/UniversityCombobox";
-import { useInstitutionOptions } from "@/components/profile/useInstitutionOptions";
 import { useUser } from "@/context/userContext";
 import { CATEGORIES } from "@/lib/constants/materialCategories";
 import { SUBMISSION_AUTOSAVE_MS, SUBMISSION_SUCCESS_KEY } from "@/lib/constants/submissions";
 import type { Book } from "@/types/library";
+import {
+  AcademicFields,
+  BasicsFields,
+  LEVELS,
+  MAX_TAGS,
+  SEMESTERS,
+  materialBody,
+  validateAcademic,
+  validateBasics,
+  type MaterialFormErrors,
+  type MaterialFormState,
+  type Ref,
+} from "./materialFields";
 
 const STEPS = ["Basic info", "Academic context", "Review & submit"] as const;
-const LEVELS = ["100L", "200L", "300L", "400L", "500L", "PG"] as const;
-const SEMESTERS = ["First", "Second"] as const;
-const MAX_TAGS = 10;
 
-interface Ref {
-  id: string;
-  name: string;
-}
-
-export interface SubmissionFormState {
-  title: string;
-  description: string;
-  category: string;
-  subcategory: string;
-  tags: string[];
-  university: Ref | null;
-  faculty: Ref | null;
-  department: Ref | null;
-  courseCode: string;
-  courseName: string;
-  level: string; // profile style, "300L"
-  semester: string;
-  academicYear: string;
-}
+export type SubmissionFormState = MaterialFormState;
 
 /** An existing submission as returned by the API (ids as strings). */
 export interface SubmissionRecord {
@@ -127,66 +111,17 @@ export function initialFormState(
   };
 }
 
-type Errors = Partial<Record<keyof SubmissionFormState, string>>;
+type Errors = MaterialFormErrors;
 
 function validateStep(step: number, form: SubmissionFormState): Errors {
-  const errors: Errors = {};
-  if (step === 0) {
-    if (!form.title.trim()) errors.title = "Give the material a title.";
-    else if (form.title.length > 200) errors.title = "Keep the title under 200 characters.";
-    if (!form.description.trim()) errors.description = "A description is required.";
-    else if (form.description.length > 2000) errors.description = "Keep it under 2000 characters.";
-    if (!form.category) errors.category = "Choose a category.";
-  }
-  if (step === 1) {
-    if (!form.university) errors.university = "Choose the university this material is for.";
-    const code = form.courseCode.replace(/\s+/g, "").toUpperCase();
-    if (code && !/^[A-Z]{2,5}\d{3}[A-Z]?$/.test(code)) {
-      errors.courseCode = "Course code should look like CSC301.";
-    }
-    if (form.academicYear) {
-      const m = /^(\d{4})\/(\d{4})$/.exec(form.academicYear.trim());
-      if (!m || Number(m[2]) !== Number(m[1]) + 1) {
-        errors.academicYear = "Use the format 2023/2024.";
-      }
-    }
-  }
-  return errors;
+  if (step === 0) return validateBasics(form);
+  if (step === 1) return validateAcademic(form);
+  return {};
 }
 
 /** The API body for this form state. */
 function toBody(bookId: string, form: SubmissionFormState, action: "save_draft" | "submit") {
-  return {
-    bookId,
-    action,
-    title: form.title.trim(),
-    description: form.description.trim(),
-    category: form.category,
-    subcategory: form.subcategory || undefined,
-    tags: form.tags,
-    universityId: form.university?.id,
-    facultyId: form.university ? form.faculty?.id : undefined,
-    departmentId: form.faculty ? form.department?.id : undefined,
-    courseCode: form.courseCode.replace(/\s+/g, "").toUpperCase() || undefined,
-    courseName: form.courseName.trim() || undefined,
-    level: form.level || undefined,
-    semester: form.semester || undefined,
-    academicYear: form.academicYear.trim() || undefined,
-  };
-}
-
-const selectClass = `${FIELD_CLASS} border-neutral-200 dark:border-neutral-600`;
-
-function Label({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
-  return (
-    <label htmlFor={htmlFor} className="block text-sm font-medium text-text-secondary">
-      {children}
-    </label>
-  );
-}
-
-function FieldError({ message }: { message?: string }) {
-  return message ? <p className="text-sm text-error mt-1">{message}</p> : null;
+  return { bookId, action, ...materialBody(form) };
 }
 
 interface Props {
@@ -214,16 +149,6 @@ export default function SubmissionForm({ book, initial, existing }: Props) {
   // A draft needs the fields the model requires
   const canSaveDraft = !!(form.title.trim() && form.description.trim() && form.category);
 
-  const facultyOptions = useInstitutionOptions(
-    form.university ? `/api/institutions/faculties?universityId=${form.university.id}` : null,
-    "faculties",
-  );
-  const departmentOptions = useInstitutionOptions(
-    form.university && form.faculty
-      ? `/api/institutions/departments?facultyId=${form.faculty.id}&universityId=${form.university.id}`
-      : null,
-    "departments",
-  );
   const subcategories = CATEGORIES.find((c) => c.id === form.category)?.subcategories ?? [];
 
   const update = <K extends keyof SubmissionFormState>(key: K, value: SubmissionFormState[K]) => {
@@ -309,13 +234,6 @@ export default function SubmissionForm({ book, initial, existing }: Props) {
     if (Object.keys(stepErrors).length === 0) setStep((s) => Math.min(s + 1, STEPS.length - 1));
   };
 
-  const selectUniversity = (u: UniversityOption) =>
-    setForm((f) =>
-      f.university?.id === u._id
-        ? f
-        : { ...f, university: { id: u._id, name: u.name }, faculty: null, department: null },
-    );
-
   const categoryLabel = CATEGORIES.find((c) => c.id === form.category)?.label;
   const subcategoryLabel = subcategories.find((s) => s.id === form.subcategory)?.label;
 
@@ -341,222 +259,22 @@ export default function SubmissionForm({ book, initial, existing }: Props) {
 
       <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow p-6 space-y-5">
         {step === 0 && (
-          <>
-            <AuthInput
-              id="sub-title"
-              label="Title"
-              value={form.title}
-              maxLength={200}
-              onChange={(e) => update("title", e.target.value)}
-              error={errors.title}
-            />
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="sub-description">Description</Label>
-                <span className="text-xs text-text-muted">{form.description.length}/2000</span>
-              </div>
-              <textarea
-                id="sub-description"
-                rows={5}
-                value={form.description}
-                onChange={(e) => update("description", e.target.value)}
-                placeholder="What does this document cover? Topics, which exam, what's included…"
-                className={`${FIELD_CLASS} resize-y ${errors.description ? "border-error" : "border-neutral-200 dark:border-neutral-600"}`}
-              />
-              {!book.description && !errors.description && (
+          <BasicsFields
+            form={form}
+            errors={errors}
+            update={update}
+            descriptionHint={
+              !book.description && (
                 <p className="text-xs text-text-muted">
                   A description helps reviewers understand what this document covers.
                 </p>
-              )}
-              <FieldError message={errors.description} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="sub-category">Category</Label>
-                <select
-                  id="sub-category"
-                  value={form.category}
-                  onChange={(e) => {
-                    update("category", e.target.value);
-                    update("subcategory", "");
-                  }}
-                  className={`${FIELD_CLASS} ${errors.category ? "border-error" : "border-neutral-200 dark:border-neutral-600"}`}
-                >
-                  <option value="">Choose a category</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-                <FieldError message={errors.category} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="sub-subcategory">
-                  Type <span className="text-text-muted font-normal">(optional)</span>
-                </Label>
-                <select
-                  id="sub-subcategory"
-                  value={form.subcategory}
-                  disabled={!form.category}
-                  onChange={(e) => update("subcategory", e.target.value)}
-                  className={selectClass}
-                >
-                  <option value="">{form.category ? "Any" : "Choose a category first"}</option>
-                  {subcategories.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <p className="block text-sm font-medium text-text-secondary">
-                Tags <span className="text-text-muted font-normal">(up to {MAX_TAGS})</span>
-              </p>
-              <TagInput tags={form.tags} onChange={(tags) => update("tags", tags)} maxTags={MAX_TAGS} />
-            </div>
-          </>
+              )
+            }
+          />
         )}
 
         {step === 1 && (
-          <>
-            <UniversityCombobox
-              value={form.university}
-              onChange={selectUniversity}
-              error={errors.university}
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="sub-faculty">Faculty</Label>
-                <select
-                  id="sub-faculty"
-                  value={form.faculty?.id ?? ""}
-                  disabled={!form.university || facultyOptions.loading}
-                  onChange={(e) => {
-                    const match = facultyOptions.items.find((o) => o._id === e.target.value);
-                    setForm((f) => ({
-                      ...f,
-                      faculty: match ? { id: match._id, name: match.name } : null,
-                      department: null,
-                    }));
-                  }}
-                  className={selectClass}
-                >
-                  <option value="">
-                    {!form.university
-                      ? "Select a university first"
-                      : facultyOptions.loading
-                        ? "Loading faculties…"
-                        : "Select a faculty"}
-                  </option>
-                  {form.faculty && !facultyOptions.items.some((o) => o._id === form.faculty?.id) && (
-                    <option value={form.faculty.id}>{form.faculty.name}</option>
-                  )}
-                  {facultyOptions.items.map((o) => (
-                    <option key={o._id} value={o._id}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="sub-department">Department</Label>
-                <select
-                  id="sub-department"
-                  value={form.department?.id ?? ""}
-                  disabled={!form.faculty || departmentOptions.loading}
-                  onChange={(e) => {
-                    const match = departmentOptions.items.find((o) => o._id === e.target.value);
-                    update("department", match ? { id: match._id, name: match.name } : null);
-                  }}
-                  className={selectClass}
-                >
-                  <option value="">
-                    {!form.faculty
-                      ? "Select a faculty first"
-                      : departmentOptions.loading
-                        ? "Loading departments…"
-                        : "Select a department"}
-                  </option>
-                  {form.department &&
-                    !departmentOptions.items.some((o) => o._id === form.department?.id) && (
-                      <option value={form.department.id}>{form.department.name}</option>
-                    )}
-                  {departmentOptions.items.map((o) => (
-                    <option key={o._id} value={o._id}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <AuthInput
-                id="sub-course-code"
-                label="Course code"
-                placeholder="e.g. CSC301"
-                value={form.courseCode}
-                maxLength={12}
-                onChange={(e) => update("courseCode", e.target.value.toUpperCase())}
-                error={errors.courseCode}
-              />
-              <AuthInput
-                id="sub-course-name"
-                label="Course name"
-                placeholder="e.g. Data Structures"
-                value={form.courseName}
-                maxLength={150}
-                onChange={(e) => update("courseName", e.target.value)}
-              />
-              <div className="space-y-1.5">
-                <Label htmlFor="sub-level">Level</Label>
-                <select
-                  id="sub-level"
-                  value={form.level}
-                  onChange={(e) => update("level", e.target.value)}
-                  className={selectClass}
-                >
-                  <option value="">Not specified</option>
-                  {form.level && !(LEVELS as readonly string[]).includes(form.level) && (
-                    <option value={form.level}>{form.level}</option>
-                  )}
-                  {LEVELS.map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="sub-semester">Semester</Label>
-                <select
-                  id="sub-semester"
-                  value={form.semester}
-                  onChange={(e) => update("semester", e.target.value)}
-                  className={selectClass}
-                >
-                  <option value="">Not specified</option>
-                  {form.semester && !(SEMESTERS as readonly string[]).includes(form.semester) && (
-                    <option value={form.semester}>{form.semester}</option>
-                  )}
-                  {SEMESTERS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <AuthInput
-                id="sub-academic-year"
-                label="Academic year (optional)"
-                placeholder="e.g. 2023/2024"
-                value={form.academicYear}
-                maxLength={9}
-                onChange={(e) => update("academicYear", e.target.value)}
-                error={errors.academicYear}
-              />
-            </div>
-          </>
+          <AcademicFields form={form} errors={errors} update={update} setForm={setForm} />
         )}
 
         {step === 2 && (

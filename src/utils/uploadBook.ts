@@ -49,7 +49,8 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 }
 
 // fetch() can't report upload progress, so the PUT to storage uses XHR.
-function putFileWithProgress(
+// Also used by the staff bulk uploader (components/mod/BulkUploader.tsx).
+export function putFileWithProgress(
   url: string,
   file: File,
   onProgress: (percent: number) => void,

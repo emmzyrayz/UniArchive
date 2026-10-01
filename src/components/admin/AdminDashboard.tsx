@@ -15,6 +15,8 @@ const REFRESH_MS = 60_000;
 export interface AdminViewer {
   canManageUsers: boolean;
   canManageInstitutions: boolean;
+  /** "material.ingest": upload and publish platform PDFs */
+  canIngest: boolean;
 }
 
 function StatCard({ label, value, href }: { label: string; value?: number; href?: string }) {
@@ -77,6 +79,13 @@ export function AdminDashboard({ viewer }: { viewer: AdminViewer }) {
       show: viewer.canManageInstitutions,
     },
     { label: "Users", href: `${base}/users`, show: viewer.canManageUsers },
+    { label: "Upload materials", href: `${base}/materials/upload`, show: viewer.canIngest },
+    {
+      label: "Upload queue",
+      href: `${base}/materials/queue`,
+      count: (counts?.pendingPlatformUploads ?? 0) + (counts?.pendingGifts ?? 0) || undefined,
+      show: viewer.canIngest,
+    },
     { label: "Materials", href: `${base}/materials`, show: true },
     { label: "Reported comments", href: `${base}/comments`, count: counts?.reportedComments, show: true },
     { label: "Institutions", href: `${base}/institutions`, show: viewer.canManageInstitutions },

@@ -10,8 +10,8 @@
 import { after } from "next/server";
 import { Types } from "mongoose";
 import { getUserModel } from "@/lib/models/userModel";
-import { getBookModel } from "@/lib/models/bookModel";
-import { getMaterialModel } from "@/lib/models/materialModel";
+import { LIBRARY_BOOKS, getBookModel } from "@/lib/models/bookModel";
+import { COMMUNITY_MATERIALS, getMaterialModel } from "@/lib/models/materialModel";
 import { getCommentModel } from "@/lib/models/commentModel";
 import { getUserBadgeModel, type IUserBadge } from "@/lib/models/userBadgeModel";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
@@ -82,7 +82,7 @@ async function qualifies(badgeId: BadgeId, user: BadgeUser): Promise<boolean> {
   const verified = user.verifiedMaterialCount ?? 0;
   switch (badgeId) {
     case "first_upload":
-      return !!(await (await getBookModel()).exists({ uploaderId: userId }));
+      return !!(await (await getBookModel()).exists({ uploaderId: userId, ...LIBRARY_BOOKS }));
     case "first_verified":
       return verified >= 1;
     case "five_verified":
@@ -92,13 +92,13 @@ async function qualifies(badgeId: BadgeId, user: BadgeUser): Promise<boolean> {
     case "fifty_verified":
       return verified >= 50;
     case "endorsed":
-      return !!(await (await getMaterialModel()).exists({ submittedBy: userId, verificationTier: "tier2" }));
+      return !!(await (await getMaterialModel()).exists({ submittedBy: userId, verificationTier: "tier2", ...COMMUNITY_MATERIALS }));
     case "popular_material":
-      return !!(await (await getMaterialModel()).exists({ submittedBy: userId, viewCount: { $gte: 100 } }));
+      return !!(await (await getMaterialModel()).exists({ submittedBy: userId, viewCount: { $gte: 100 }, ...COMMUNITY_MATERIALS }));
     case "first_reaction":
-      return !!(await (await getMaterialModel()).exists({ submittedBy: userId, reactionCount: { $gte: 1 } }));
+      return !!(await (await getMaterialModel()).exists({ submittedBy: userId, reactionCount: { $gte: 1 }, ...COMMUNITY_MATERIALS }));
     case "well_received":
-      return !!(await (await getMaterialModel()).exists({ submittedBy: userId, reactionCount: { $gte: 10 } }));
+      return !!(await (await getMaterialModel()).exists({ submittedBy: userId, reactionCount: { $gte: 10 }, ...COMMUNITY_MATERIALS }));
     case "helpful_commenter": {
       // aggregate() doesn't cast: userId must already be an ObjectId
       const [row] = await (await getCommentModel()).aggregate<{ total: number }>([
@@ -117,7 +117,7 @@ async function qualifies(badgeId: BadgeId, user: BadgeUser): Promise<boolean> {
       // The first material ever verified from the user's university is theirs
       if (!user.universityId || verified < 1) return false;
       const first = await (await getMaterialModel())
-        .findOne({ universityId: user.universityId })
+        .findOne({ universityId: user.universityId, ...COMMUNITY_MATERIALS })
         .sort({ tier1VerifiedAt: 1, _id: 1 })
         .select("submittedBy")
         .lean();
@@ -126,7 +126,7 @@ async function qualifies(badgeId: BadgeId, user: BadgeUser): Promise<boolean> {
     case "top_contributor": {
       if (!user.universityId || verified < TOP_CONTRIBUTOR_MIN_MATERIALS) return false;
       const top = await (await getMaterialModel()).aggregate<{ _id: Types.ObjectId; count: number }>([
-        { $match: { universityId: user.universityId, isActive: true } },
+        { $match: { universityId: user.universityId, isActive: true, ...COMMUNITY_MATERIALS } },
         { $group: { _id: "$submittedBy", count: { $sum: 1 } } },
         { $sort: { count: -1, _id: 1 } },
         { $limit: TOP_CONTRIBUTOR_RANK },

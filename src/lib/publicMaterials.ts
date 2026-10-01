@@ -10,6 +10,8 @@ import { topBadgesFor } from "@/lib/badges";
 // Storage fields stay server-side: the file is only reachable through the
 // signed URL the reader gets from /api/books/[id]. submittedBy is queried
 // to look up the uploader's badge but never sent (toMaterialSummary drops it).
+// Platform materials are credited to UniArchive: their uploader's upid and
+// badge are never sent.
 export const PUBLIC_MATERIAL_FIELDS = [
   "submittedBy",
   "bookId",
@@ -39,6 +41,7 @@ export const PUBLIC_MATERIAL_FIELDS = [
   "reactions",
   "reactionCount",
   "commentCount",
+  "source",
 ].join(" ");
 
 export type PublicMaterialDoc = Pick<
@@ -72,6 +75,7 @@ export type PublicMaterialDoc = Pick<
   | "reactions"
   | "reactionCount"
   | "commentCount"
+  | "source"
 >;
 
 export function toMaterialSummary(doc: PublicMaterialDoc): MaterialSummary {
@@ -97,7 +101,8 @@ export function toMaterialSummary(doc: PublicMaterialDoc): MaterialSummary {
     hasTypedContent: !!doc.hasTypedContent,
     viewCount: doc.viewCount ?? 0,
     downloadCount: doc.downloadCount ?? 0,
-    submittedByUpid: doc.submittedByUpid,
+    submittedByUpid: doc.source === "platform" ? "" : doc.submittedByUpid,
+    ...(doc.source === "platform" ? { isPlatform: true } : {}),
     createdAt: new Date(doc.createdAt).toISOString(),
     pageCount: doc.pageCount,
     fileSize: doc.fileSize,
@@ -113,13 +118,14 @@ export function toMaterialSummary(doc: PublicMaterialDoc): MaterialSummary {
  * legendary) badge, looked up in one query.
  */
 export async function toMaterialSummaries(docs: PublicMaterialDoc[]): Promise<MaterialSummary[]> {
-  const badges = await topBadgesFor(docs.map((d) => d.submittedBy)).catch((error) => {
+  const community = docs.filter((d) => d.source !== "platform");
+  const badges = await topBadgesFor(community.map((d) => d.submittedBy)).catch((error) => {
     // A badge lookup must never take the feed down
     console.error("uploader badge lookup failed:", error);
     return new Map<string, BadgeDefinition>();
   });
   return docs.map((doc) => {
-    const badge = badges.get(String(doc.submittedBy));
+    const badge = doc.source === "platform" ? undefined : badges.get(String(doc.submittedBy));
     return {
       ...toMaterialSummary(doc),
       ...(badge

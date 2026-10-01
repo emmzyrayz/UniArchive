@@ -14,6 +14,7 @@ export async function OverviewPage({ area }: { area: StaffArea }) {
         // User management only exists in /admin
         canManageUsers: area === "admin" && can(session.role, "manage_users"),
         canManageInstitutions: can(session.role, "manage_institution"),
+        canIngest: can(session.role, "material.ingest"),
       }}
     />
   );

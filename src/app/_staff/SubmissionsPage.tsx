@@ -19,7 +19,7 @@ export async function SubmissionsPage({ area }: { area: StaffArea }) {
   const Submission = await getMaterialSubmissionModel();
   const [grouped, universities] = await Promise.all([
     Submission.aggregate<{ _id: ReviewerVisibleStatus; count: number }>([
-      { $match: { status: { $in: REVIEWER_VISIBLE_STATUSES } } },
+      { $match: { status: { $in: REVIEWER_VISIBLE_STATUSES }, source: { $ne: "platform" } } },
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
     // Only universities that actually have submissions, for the filter
@@ -27,6 +27,7 @@ export async function SubmissionsPage({ area }: { area: StaffArea }) {
       {
         $match: {
           status: { $in: REVIEWER_VISIBLE_STATUSES },
+          source: { $ne: "platform" },
           universityId: { $exists: true },
         },
       },

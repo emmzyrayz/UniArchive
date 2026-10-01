@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getClientIp, handleRouteError } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail, pagination, totalPages } from "@/lib/adminApi";
-import { getMaterialModel } from "@/lib/models/materialModel";
+import { COMMUNITY_MATERIALS, getMaterialModel } from "@/lib/models/materialModel";
 import { isMaterialCategory } from "@/lib/constants/materialCategories";
 import {
   PUBLIC_MATERIAL_FIELDS,
@@ -35,6 +35,8 @@ export async function GET(request: NextRequest, context: Context) {
     const filter = {
       submittedBy: user._id,
       isActive: true,
+      // Platform materials are credited to UniArchive, not their uploader
+      ...COMMUNITY_MATERIALS,
       ...(category ? { category } : {}),
     };
     const Material = await getMaterialModel();
