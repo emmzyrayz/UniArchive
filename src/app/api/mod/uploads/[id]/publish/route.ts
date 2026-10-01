@@ -3,7 +3,8 @@
 // universityId, facultyId, departmentId, courseCode, courseName, level,
 // semester, academicYear, tags, language), plus an optional pageCount from
 // the workspace's PDF viewer, used only when the upload had none (files over
-// 50 MB skip the browser's page count).
+// 50 MB skip the browser's page count), and an optional outline
+// ({ entries: [...] }, see lib/outline.ts) for textbooks and lecture notes.
 //
 // Publishes a pending platform file to the UniLibrary in one step: a
 // MaterialSubmission created already verified (source "platform") and its
@@ -27,6 +28,7 @@ import {
 import { reviewNote } from "@/lib/adminSubmissions";
 import { parseSubmissionBody, resolveAcademicRefs, type SubmissionBody } from "@/lib/submissions";
 import { createMaterialRecord } from "@/lib/materialPublish";
+import { parseOutline } from "@/lib/outline";
 import {
   claimedByOther,
   loadPlatformFile,
@@ -51,7 +53,7 @@ export async function POST(request: NextRequest, context: Context) {
       return fail(409, `@${book.platform.claimedByUpid} is working on this file right now.`);
     }
 
-    const body = await readJson<SubmissionBody & { pageCount: number }>(request);
+    const body = await readJson<SubmissionBody & { pageCount: number; outline: unknown }>(request);
     const viewerPageCount =
       typeof body?.pageCount === "number" && Number.isInteger(body.pageCount) && body.pageCount > 0
         ? Math.min(body.pageCount, 100_000)
@@ -62,6 +64,8 @@ export async function POST(request: NextRequest, context: Context) {
       return fail(400, "Choose the university this material is for.");
     }
     const refs = await resolveAcademicRefs(input.institution);
+    const outline = parseOutline(body?.outline, input.subcategory, pageCount);
+    if (!outline.ok) return fail(400, outline.message);
 
     // Claim the publish first, so a concurrent publish or discard can't also win
     const now = new Date();
@@ -123,6 +127,7 @@ export async function POST(request: NextRequest, context: Context) {
       const material = await createMaterialRecord(submission.toObject(), { ...book, pageCount }, session, {
         source: "platform",
         verifiedAt: now,
+        outline: outline.value ?? undefined,
       });
 
       await Book.updateOne(

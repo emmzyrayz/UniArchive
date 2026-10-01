@@ -132,7 +132,20 @@ vars are documented in `.env.example`.
   uploader may publish their own file; community submissions still can't be
   self-verified. Permissions: `material.ingest` (all staff),
   `material.review_gifts` (admins, for student gifts: Phase 4).
-- Remaining plan (TOC/course outlines, PDF gifting, Render PDF worker):
+- Outlines (`lib/outline.ts`): `Material.outline` is a flat list of entries
+  (title, level 1-3, page, printed pageLabel). Its kind comes from the
+  subcategory, never the client: textbooks / e-books / course materials get
+  a table of contents (every entry needs a page); lecture notes / syllabi /
+  tutorials get a course outline (pages optional). `parseOutline` is the
+  one validator (API and editor). Edited in the verify workspace and at
+  `/materials/[id]/outline` (OutlineEditor, which can import the PDF's own
+  bookmarks via `lib/pdfOutline.ts`); shown in the reader's Contents tab
+  (returned by GET /api/books/[id]) and on `/materials/[id]` (deep links
+  `/read/<book>?page=N`). Outline titles are searchable through the
+  `material_text_v2` index: on an existing database run
+  `pnpm db:text-index --apply` once (it drops the old `material_text`;
+  MongoDB allows one text index per collection).
+- Remaining plan (PDF gifting, Render PDF worker):
   `~/.claude/plans/pasted-content-id-9064-tested-the-linked-hopper.md`.
 
 ## Gotchas
@@ -140,6 +153,9 @@ vars are documented in `.env.example`.
 - react-pdf 11 defaults to Suspense mode: a load error also throws to the
   nearest error boundary and takes the whole page down. Pass
   `suspense={false}` (see `PdfPane`) and handle `onLoadError`.
+- `NEXT_PUBLIC_APP_URL` is inlined at build time, and the reader's layout
+  fetches its own API through it: a local production server must run on
+  that port (3000 with the current `.env.local`) or `/read` fails.
 - `pnpm dev` (Turbopack) fails on every page with "The PNG is not in RGBA
   format" from `src/app/favicon.ico`; `pnpm build`/`start` (webpack) work.
   Test against a production build until the icon is regenerated.

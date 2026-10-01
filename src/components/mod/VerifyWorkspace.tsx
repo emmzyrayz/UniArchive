@@ -28,7 +28,10 @@ import {
   type MaterialFormErrors,
   type MaterialFormState,
 } from "@/components/submit/materialFields";
-import type { PdfPaneHandle } from "./PdfPane";
+import type { PdfDocument, PdfPaneHandle } from "./PdfPane";
+import { OutlineEditor } from "./OutlineEditor";
+import { outlineKindFor, parseOutline, type OutlineEntry } from "@/lib/outline";
+import { extractPdfOutline, type OutlineSource } from "@/lib/pdfOutline";
 
 // pdf.js only runs in the browser
 const PdfPane = dynamic(() => import("./PdfPane"), {
@@ -71,6 +74,24 @@ function formFromDraft(draft: Record<string, unknown> | null, file: PlatformFile
   return out;
 }
 
+/** Outline entries from a saved draft, dropping anything malformed. */
+function outlineFromDraft(draft: Record<string, unknown> | null): OutlineEntry[] {
+  const raw = (draft?.outline as unknown[]) ?? [];
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((e) => {
+    const entry = e as Partial<OutlineEntry>;
+    if (!entry || typeof entry.title !== "string" || ![1, 2, 3].includes(entry.level as number)) return [];
+    return [
+      {
+        title: entry.title,
+        level: entry.level as OutlineEntry["level"],
+        ...(Number.isInteger(entry.page) ? { page: entry.page } : {}),
+        ...(typeof entry.pageLabel === "string" ? { pageLabel: entry.pageLabel } : {}),
+      },
+    ];
+  });
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; data: T & { message?: string } }> {
   const res = await fetch(url, {
     credentials: "same-origin",
@@ -92,6 +113,9 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
   const [fileId, setFileId] = useState(initialId);
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [form, setForm] = useState<MaterialFormState>(EMPTY_MATERIAL_FORM);
+  const [outline, setOutline] = useState<OutlineEntry[]>([]);
+  const [outlineError, setOutlineError] = useState<string | null>(null);
+  const pdfDocRef = useRef<PdfDocument | null>(null);
   const [savedSnapshot, setSavedSnapshot] = useState("");
   const [errors, setErrors] = useState<MaterialFormErrors>({});
   const [busy, setBusy] = useState<null | "publish" | "draft" | "discard" | "skip">(null);
@@ -101,7 +125,7 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
   const [currentPage, setCurrentPage] = useState(1);
   const [publishedCount, setPublishedCount] = useState(0);
 
-  const snapshot = JSON.stringify(form);
+  const snapshot = JSON.stringify({ form, outline });
   const dirty = phase.kind === "ready" && snapshot !== savedSnapshot;
   const detail = phase.kind === "ready" ? phase.detail : null;
 
@@ -123,8 +147,12 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
         return;
       }
       const initial = formFromDraft(res.data.draft, res.data.file);
+      const initialOutline = outlineFromDraft(res.data.draft);
       setForm(initial);
-      setSavedSnapshot(JSON.stringify(initial));
+      setOutline(initialOutline);
+      setOutlineError(null);
+      pdfDocRef.current = null;
+      setSavedSnapshot(JSON.stringify({ form: initial, outline: initialOutline }));
       setErrors({});
       setNumPages(0);
       setCurrentPage(1);
@@ -159,10 +187,10 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
 
   const saveDraft = useCallback(
     async (silent = false) => {
-      const sent = JSON.stringify(form);
+      const sent = JSON.stringify({ form, outline });
       const res = await request<{ savedAt: string }>(`/api/mod/uploads/${fileId}/draft`, {
         method: "PUT",
-        body: JSON.stringify({ draft: form }),
+        body: JSON.stringify({ draft: { ...form, outline } }),
       });
       if (res.ok) {
         setSavedSnapshot(sent);
@@ -172,7 +200,7 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
       }
       return res.ok;
     },
-    [fileId, form],
+    [fileId, form, outline],
   );
 
   // Auto-save every minute while there are unsaved changes
@@ -209,10 +237,17 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
     }
   };
 
+  const outlineKind = outlineKindFor(form.subcategory);
+
   const publish = async () => {
     const found = { ...validateBasics(form), ...validateAcademic(form) };
     setErrors(found);
-    if (Object.keys(found).length) {
+    // Same rules the server applies; only types with an outline send one
+    const checkedOutline = outlineKind
+      ? parseOutline({ entries: outline }, form.subcategory, numPages || detail?.file.pageCount)
+      : ({ ok: true, value: null } as const);
+    setOutlineError(checkedOutline.ok ? null : checkedOutline.message);
+    if (Object.keys(found).length || !checkedOutline.ok) {
       setMessage({ text: "Fill in the highlighted fields first.", ok: false });
       return;
     }
@@ -220,7 +255,11 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
     setMessage(null);
     const res = await request<{ materialId: string; nextId: string | null }>(`/api/mod/uploads/${fileId}/publish`, {
       method: "POST",
-      body: JSON.stringify({ ...materialBody(form), ...(numPages ? { pageCount: numPages } : {}) }),
+      body: JSON.stringify({
+        ...materialBody(form),
+        ...(numPages ? { pageCount: numPages } : {}),
+        ...(checkedOutline.value ? { outline: { entries: checkedOutline.value.entries } } : {}),
+      }),
     });
     setBusy(null);
     if (!res.ok) {
@@ -371,6 +410,33 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
                 <>
                   <BasicsFields form={form} errors={errors} update={update} idPrefix="verify" />
                   <AcademicFields form={form} errors={errors} update={update} setForm={setForm} idPrefix="verify" />
+                  {outlineKind ? (
+                    <OutlineEditor
+                      kind={outlineKind}
+                      entries={outline}
+                      onChange={(next) => {
+                        setOutline(next);
+                        setOutlineError(null);
+                      }}
+                      currentPage={numPages ? currentPage : undefined}
+                      pageCount={numPages || detail?.file.pageCount}
+                      onImport={
+                        numPages
+                          ? () =>
+                              pdfDocRef.current
+                                ? extractPdfOutline(pdfDocRef.current as unknown as OutlineSource)
+                                : Promise.resolve([])
+                          : undefined
+                      }
+                      onJump={(page) => pdfRef.current?.goToPage(page)}
+                      error={outlineError}
+                    />
+                  ) : (
+                    <p className="text-xs text-text-muted">
+                      Set the type to E-book / Textbook, E-books or Course Materials to add a table of
+                      contents, or to Lecture Notes, Syllabus or Tutorial to add a course outline.
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -451,6 +517,9 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
                 ref={pdfRef}
                 url={detail.fileUrl}
                 onNumPages={setNumPages}
+                onDocument={(pdf) => {
+                  pdfDocRef.current = pdf;
+                }}
                 onPageChange={setCurrentPage}
               />
             ) : (

@@ -1,6 +1,7 @@
 // GET /api/materials/[id]
 // One UniLibrary material for its detail page (/materials/[id]): the same
-// public fields as the feed, plus how much typed content it has. No sign-in
+// public fields as the feed, plus how much typed content it has and its
+// outline (table of contents / course outline). No sign-in
 // needed. The PDF itself is opened through /read/[bookId], which checks
 // access and signs the file URL; this route never hands out file URLs.
 import { NextResponse, type NextRequest } from "next/server";
@@ -8,7 +9,7 @@ import { isValidObjectId } from "mongoose";
 import { getClientIp, handleRouteError } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail } from "@/lib/adminApi";
-import { getMaterialModel } from "@/lib/models/materialModel";
+import { getMaterialModel, type IMaterial } from "@/lib/models/materialModel";
 import { getTypedQuestionModel } from "@/lib/models/typedQuestionModel";
 import { getContentDocumentModel } from "@/lib/models/contentDocumentModel";
 import {
@@ -28,8 +29,8 @@ export async function GET(request: NextRequest, context: Context) {
 
     const Material = await getMaterialModel();
     const doc = await Material.findOne({ _id: id, isActive: true })
-      .select(PUBLIC_MATERIAL_FIELDS)
-      .lean<PublicMaterialDoc>();
+      .select(`${PUBLIC_MATERIAL_FIELDS} outline`)
+      .lean<PublicMaterialDoc & Pick<IMaterial, "outline">>();
     if (!doc) return fail(404, "Material not found.");
 
     const [Question, Doc] = await Promise.all([getTypedQuestionModel(), getContentDocumentModel()]);
@@ -39,7 +40,12 @@ export async function GET(request: NextRequest, context: Context) {
       Doc.countDocuments({ materialId: doc._id, isActive: true }),
     ]);
 
-    const body: MaterialDetail = { ...summary, typedQuestionCount, typedNoteCount };
+    const body: MaterialDetail = {
+      ...summary,
+      typedQuestionCount,
+      typedNoteCount,
+      outline: doc.outline ?? null,
+    };
     return NextResponse.json(body, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return handleRouteError(error, "GET /api/materials/[id]");

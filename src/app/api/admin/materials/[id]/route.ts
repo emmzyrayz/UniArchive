@@ -1,10 +1,15 @@
+// GET /api/admin/materials/[id]
+// What the outline editor needs: title, type, page count, book and the
+// current outline (also for deactivated materials).
+//
 // PATCH /api/admin/materials/[id]
 // Deactivate / reactivate a material, or correct its metadata.
-// Permission: "admin.view_submissions".
+// Permission: "admin.view_submissions" for both.
 //
 // Body (all optional): isActive, title, courseCode, level, semester,
-// academicYear, tags. An empty string clears courseCode / level / semester /
-// academicYear. Everything else (submitter, book, storage, verification
+// academicYear, tags, outline ({ entries: [...] }, or null / no entries to
+// remove it; see lib/outline.ts). An empty string clears courseCode / level /
+// semester / academicYear. Everything else (submitter, book, storage, verification
 // tiers and their reviewers) is an audit field and can't be changed here.
 import { NextResponse, type NextRequest } from "next/server";
 import { isValidObjectId } from "mongoose";
@@ -13,6 +18,7 @@ import { handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail, optionalString } from "@/lib/adminApi";
 import { getMaterialModel } from "@/lib/models/materialModel";
+import { parseOutline } from "@/lib/outline";
 import {
   SUBMISSION_LEVELS,
   SUBMISSION_SEMESTERS,
@@ -68,6 +74,37 @@ const CLEARABLE: {
   },
 ];
 
+export async function GET(request: NextRequest, context: Context) {
+  try {
+    await requirePermission(request, "admin.view_submissions");
+    const { id } = await context.params;
+    if (!isValidObjectId(id)) return fail(404, "Material not found.");
+    const Material = await getMaterialModel();
+    const m = await Material.findById(id)
+      .select("title subcategory category pageCount bookId outline isActive source")
+      .lean();
+    if (!m) return fail(404, "Material not found.");
+    return NextResponse.json(
+      {
+        material: {
+          id: String(m._id),
+          title: m.title,
+          category: m.category,
+          subcategory: m.subcategory,
+          pageCount: m.pageCount,
+          bookId: String(m.bookId),
+          isActive: m.isActive,
+          isPlatform: m.source === "platform",
+          outline: m.outline ?? null,
+        },
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (error) {
+    return handleRouteError(error, "GET /api/admin/materials/[id]");
+  }
+}
+
 export async function PATCH(request: NextRequest, context: Context) {
   try {
     const session = await requirePermission(request, "admin.view_submissions");
@@ -118,10 +155,20 @@ export async function PATCH(request: NextRequest, context: Context) {
       set.tags = tags;
     }
 
+    const Material = await getMaterialModel();
+    if (body.outline !== undefined) {
+      // The outline's kind and page range come from the material itself
+      const current = await Material.findById(id).select("subcategory pageCount").lean();
+      if (!current) return fail(404, "Material not found.");
+      const parsed = parseOutline(body.outline, current.subcategory, current.pageCount);
+      if (!parsed.ok) return fail(400, parsed.message);
+      if (parsed.value) set.outline = parsed.value;
+      else unset.outline = "";
+    }
+
     const changed = [...Object.keys(set), ...Object.keys(unset)];
     if (changed.length === 0) return fail(400, "Nothing to update.");
 
-    const Material = await getMaterialModel();
     const updated = await Material.findByIdAndUpdate(
       id,
       {

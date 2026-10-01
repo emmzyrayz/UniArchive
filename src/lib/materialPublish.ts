@@ -7,6 +7,7 @@
 import type { HydratedDocument } from "mongoose";
 import type { SessionUser } from "@/lib/auth/session";
 import type { IBook } from "@/lib/models/bookModel";
+import type { MaterialOutline } from "@/lib/outline";
 import type { IMaterialSubmission } from "@/lib/models/materialSubmissionModel";
 import {
   getMaterialModel,
@@ -26,7 +27,7 @@ export async function createMaterialRecord(
   submission: IMaterialSubmission,
   book: PublishableBook,
   verifier: Pick<SessionUser, "userId" | "upid">,
-  options: { source: MaterialSource; note?: string; verifiedAt: Date },
+  options: { source: MaterialSource; note?: string; verifiedAt: Date; outline?: MaterialOutline },
 ): Promise<HydratedDocument<IMaterial>> {
   const Material = await getMaterialModel();
   const isCloudinary = book.storageProvider === "cloudinary" && !!book.cloudinaryPublicId;
@@ -67,5 +68,6 @@ export async function createMaterialRecord(
     tier1VerifiedByUpid: verifier.upid,
     tier1VerifiedAt: options.verifiedAt,
     tier1Note: options.note,
+    ...(options.outline ? { outline: options.outline } : {}),
   });
 }

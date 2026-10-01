@@ -135,8 +135,15 @@ export async function GET(request: NextRequest, context: Context) {
       });
     }
 
+    // The published material's outline, for the reader's Contents tab
+    const material = await (await getMaterialModel())
+      .findOne({ bookId: found.book._id, isActive: true })
+      .select("outline")
+      .lean()
+      .catch(() => null);
+
     return NextResponse.json(
-      { book: { ...toBookDto(found.book), fileUrl } },
+      { book: { ...toBookDto(found.book), fileUrl, outline: material?.outline ?? null } },
       // Signed URLs expire; never let a cache serve a stale one
       { headers: { "Cache-Control": "private, no-store" } },
     );

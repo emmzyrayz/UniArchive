@@ -3,6 +3,7 @@
 import type { ContentBlock } from "@/types/content";
 import type { ContentDocumentType, QuestionType } from "@/lib/constants/layer2";
 import type { MaterialSummary } from "@/types/unilibrary";
+import type { MaterialOutline } from "@/lib/outline";
 
 export interface QuestionOptionDto {
   label: string;
@@ -67,4 +68,6 @@ export interface ContentDocumentDto {
 export interface MaterialDetail extends MaterialSummary {
   typedQuestionCount: number;
   typedNoteCount: number;
+  /** Table of contents or course outline, when one has been added */
+  outline: MaterialOutline | null;
 }

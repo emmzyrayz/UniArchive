@@ -19,7 +19,7 @@ import {
   useState,
   type Ref,
 } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { Document, Page, pdfjs, type DocumentProps } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import { FiChevronLeft, FiChevronRight, FiMaximize2, FiZoomIn, FiZoomOut } from "react-icons/fi";
 
@@ -35,14 +35,19 @@ export interface PdfPaneHandle {
   goToPage: (page: number) => void;
 }
 
+/** The loaded pdf.js document (react-pdf's onLoadSuccess argument). */
+export type PdfDocument = Parameters<NonNullable<DocumentProps["onLoadSuccess"]>>[0];
+
 interface Props {
   url: string;
   onNumPages?: (n: number) => void;
+  /** The loaded document, e.g. to read its bookmarks (lib/pdfOutline.ts). */
+  onDocument?: (pdf: PdfDocument) => void;
   onPageChange?: (page: number) => void;
   ref?: Ref<PdfPaneHandle>;
 }
 
-export default function PdfPane({ url, onNumPages, onPageChange, ref }: Props) {
+export default function PdfPane({ url, onNumPages, onDocument, onPageChange, ref }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [numPages, setNumPages] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -237,9 +242,10 @@ export default function PdfPane({ url, onNumPages, onPageChange, ref }: Props) {
             // nearest error boundary, which would take the whole workspace
             // down when a signed URL expires; handle them here instead
             suspense={false}
-            onLoadSuccess={({ numPages: n }) => {
-              setNumPages(n);
-              onNumPages?.(n);
+            onLoadSuccess={(pdf) => {
+              setNumPages(pdf.numPages);
+              onNumPages?.(pdf.numPages);
+              onDocument?.(pdf);
             }}
             onLoadError={(error) => setLoadError(`Couldn't open this PDF: ${error.message}`)}
             loading={<p className="p-8 text-center text-sm text-text-muted">Loading PDF…</p>}

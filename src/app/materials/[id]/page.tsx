@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { UploaderByline } from "@/components/unilibrary/UploaderByline";
+import { OUTLINE_LABELS } from "@/lib/outline";
 import { useParams, usePathname } from "next/navigation";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { useUser } from "@/context/userContext";
@@ -180,6 +181,34 @@ export default function MaterialPage() {
                 </p>
               )}
             </div>
+          )}
+          {tab === "pdf" && m.outline && m.outline.entries.length > 0 && (
+            <section className="mt-6 rounded-xl border border-border bg-surface-raised p-6" aria-labelledby="outline-title">
+              <h2 id="outline-title" className="mb-3 font-semibold text-text-primary">
+                {OUTLINE_LABELS[m.outline.kind].title}
+              </h2>
+              <ol className="space-y-1 text-sm">
+                {m.outline.entries.map((entry, i) => {
+                  const label = entry.pageLabel ?? entry.page;
+                  return (
+                    <li
+                      key={i}
+                      style={{ paddingLeft: (entry.level - 1) * 18 }}
+                      className={`flex items-baseline gap-3 ${entry.level === 1 ? "font-medium text-text-primary" : "text-text-secondary"}`}
+                    >
+                      {hasActiveSession && entry.page ? (
+                        <Link href={`/read/${m.bookId}?page=${entry.page}`} className="min-w-0 flex-1 hover:text-primary hover:underline">
+                          {entry.title}
+                        </Link>
+                      ) : (
+                        <span className="min-w-0 flex-1">{entry.title}</span>
+                      )}
+                      {label && <span className="shrink-0 tabular-nums text-xs text-text-muted">{label}</span>}
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
           )}
           {tab === "questions" && (
             <PastQuestionViewer materialId={m._id} onCountChange={(n) => setCounts((c) => ({ ...c, questions: n }))} />

@@ -15,6 +15,7 @@ import {
   type MaterialCategory,
   type MaterialSubcategory,
 } from "@/lib/constants/materialCategories";
+import type { MaterialOutline } from "@/lib/outline";
 
 export type { MaterialCategory, MaterialSubcategory };
 export type VerificationTier = "tier1" | "tier2";
@@ -83,6 +84,10 @@ export interface IMaterial {
   tier2VerifiedByUpid?: string;
   tier2VerifiedAt?: Date;
   tier2Note?: string;
+
+  // Table of contents (textbooks) or course outline (lecture notes); see
+  // lib/outline.ts. Absent when nobody has added one.
+  outline?: MaterialOutline;
 
   // Layer 2 typed content (TypedQuestion for past questions,
   // ContentDocument for notes/textbooks) exists for this material
@@ -170,6 +175,27 @@ const MaterialSchema = new Schema<IMaterial, IMaterialModel>(
     tier2VerifiedAt: { type: Date },
     tier2Note: { type: String, maxlength: 1000 },
 
+    outline: {
+      type: new Schema(
+        {
+          kind: { type: String, enum: ["toc", "course_outline"], required: true },
+          entries: [
+            new Schema(
+              {
+                title: { type: String, required: true, maxlength: 200 },
+                level: { type: Number, enum: [1, 2, 3], required: true },
+                page: { type: Number, min: 1 },
+                pageLabel: { type: String, maxlength: 20 },
+              },
+              { _id: false },
+            ),
+          ],
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
+
     hasTypedContent: { type: Boolean, default: false },
 
     viewCount: { type: Number, default: 0 },
@@ -198,9 +224,17 @@ MaterialSchema.index({ verificationTier: 1, isActive: 1 });
 MaterialSchema.index({ category: 1, isActive: 1, createdAt: -1 });
 // "popular" sort and the trending candidate set
 MaterialSchema.index({ isActive: 1, viewCount: -1, createdAt: -1 });
+// Outline titles are searchable too. Changing this index needs a one-off
+// rebuild of the existing one: scripts/rebuildMaterialTextIndex.ts
 MaterialSchema.index(
-  { title: "text", description: "text", tags: "text", courseCode: "text" },
-  { name: "material_text" },
+  {
+    title: "text",
+    description: "text",
+    tags: "text",
+    courseCode: "text",
+    "outline.entries.title": "text",
+  },
+  { name: "material_text_v2" },
 );
 
 MaterialSchema.statics.findByDepartment = async function (

@@ -1,4 +1,6 @@
 // types/library.ts
+import type { MaterialOutline } from "@/lib/outline";
+
 export interface Book {
   id: string;
   title: string;
@@ -27,4 +29,9 @@ export interface Book {
   submissionId?: string;
   /** Pipeline status of the submission; present when hasSubmission. */
   submissionStatus?: "draft" | "submitted" | "in_review" | "verified" | "rejected";
+  /**
+   * The published material's table of contents or course outline, sent with
+   * the reader's GET /api/books/[id] when the book backs a material.
+   */
+  outline?: MaterialOutline | null;
 }

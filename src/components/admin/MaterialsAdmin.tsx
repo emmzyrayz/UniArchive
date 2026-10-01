@@ -10,6 +10,8 @@ import { SUBMISSION_LEVELS, SUBMISSION_SEMESTERS } from "@/lib/constants/submiss
 import { levelLabel } from "@/components/unilibrary/materialLabels";
 import type { AdminMaterialDto, AdminMaterialsResponse } from "@/types/admin";
 import { categoryLabel, timeAgo } from "./reviewShared";
+import { useStaffArea } from "./staffArea";
+import { outlineKindFor } from "@/lib/outline";
 import {
   ActionError,
   AdminPageShell,
@@ -147,7 +149,9 @@ function MaterialRow({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { base } = useStaffArea();
   const m = material;
+  const outlineKind = outlineKindFor(m.subcategory);
 
   const setActive = async (isActive: boolean) => {
     setBusy(true);
@@ -239,6 +243,11 @@ function MaterialRow({
           <Link href={`/read/${m.bookId}`} className={secondaryButton}>
             Open
           </Link>
+          {outlineKind && (
+            <Link href={`${base}/materials/${m.id}/outline`} className={secondaryButton}>
+              {outlineKind === "toc" ? "Contents" : "Course outline"}
+            </Link>
+          )}
           <button type="button" onClick={() => setEditing(true)} className={secondaryButton}>
             Edit
           </button>
