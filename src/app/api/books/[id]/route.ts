@@ -13,6 +13,7 @@ import { redis } from "@/lib/redis";
 import { requireAuth } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
 import { storageClient } from "@/lib/storage";
+import { pageImagePrefix } from "@/lib/pdfJobs";
 import { deleteCloudinaryPdf, getCloudinaryPdfUrl } from "@/lib/cloudinary";
 import { toBookDto, type BookDoc } from "@/lib/dto/book";
 import { findReadableBook } from "@/lib/bookAccess";
@@ -217,6 +218,13 @@ export async function DELETE(request: NextRequest, context: Context) {
         { message: "Could not delete the file. Please try again." },
         { status: 502 },
       );
+    }
+
+    // Page images the PDF worker made, if any (best effort: the book is gone)
+    if (book.pageImages) {
+      await storageClient
+        .deleteFilesByPrefix(pageImagePrefix(String(book._id)))
+        .catch((error) => console.error("DELETE /api/books/[id]: page image cleanup failed:", error));
     }
 
     await Book.deleteOne({ _id: book._id });

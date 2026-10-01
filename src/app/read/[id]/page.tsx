@@ -67,22 +67,24 @@ export default function ReadPage() {
 
   const watermarkLabel =
     userProfile?.upid ?? userProfile?.fullName ?? "UniArchive";
-  const onCloudinary = book.storageProvider === "cloudinary";
+  // Page images: Cloudinary renders them; the PDF worker makes them for
+  // Backblaze books (book.hasPageImages)
+  const hasImages = book.storageProvider === "cloudinary" || !!book.hasPageImages;
   const online = useOnlineStatus();
-  // Offline, a saved Cloudinary book reads from its encrypted page images.
+  // Offline, a saved book with page images reads from its encrypted copies.
   // Otherwise pdf.js tries the PDF the service worker may have cached.
-  const savedOffline = useSavedOffline(book.id, !online && onCloudinary);
+  const savedOffline = useSavedOffline(book.id, !online && hasImages);
 
-  // Old browser + B2 book: nothing to read, and the page-turn overlay
+  // Old browser + no page images: nothing to read, and the page-turn overlay
   // would swallow clicks on the card's buttons
-  const unsupported = modernPdf === false && !onCloudinary;
+  const unsupported = modernPdf === false && !hasImages;
 
   let reader;
   if (modernPdf === null) reader = pageSkeleton();
-  else if (!online && onCloudinary && savedOffline === null) reader = pageSkeleton();
+  else if (!online && hasImages && savedOffline === null) reader = pageSkeleton();
   else if (savedOffline) reader = <ImageReader book={book} cacheOnly />;
   else if (modernPdf) reader = <PdfCanvas book={book} />;
-  else if (onCloudinary) reader = <ImageReader book={book} />;
+  else if (hasImages) reader = <ImageReader book={book} />;
   else reader = <PdfUnsupported book={book} />;
 
   return (
@@ -99,7 +101,7 @@ export default function ReadPage() {
           </>
         )}
       </div>
-      {onCloudinary && <OfflineSaveButton book={book} numPages={numPages} />}
+      {hasImages && <OfflineSaveButton book={book} numPages={numPages} />}
     </div>
   );
 }

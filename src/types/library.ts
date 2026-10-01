@@ -32,6 +32,11 @@ export interface Book {
   /** When the owner gifted a copy to UniArchive (no submission after that). */
   giftedAt?: string;
   /**
+   * Readable as page images on devices that can't run pdf.js: always for
+   * Cloudinary books, and for Backblaze books once the PDF worker made them.
+   */
+  hasPageImages?: boolean;
+  /**
    * The published material's table of contents or course outline, sent with
    * the reader's GET /api/books/[id] when the book backs a material.
    */

@@ -154,7 +154,20 @@ vars are documented in `.env.example`.
   again (one gift per book: unique `platform.sourceBookId`). Gifts show in
   the admin queue's Gifts tab (`material.review_gifts`) and pre-fill the
   verify form. No credit to the student. Rate limit: 10 gifts/day.
-- Remaining plan (Render PDF worker, then the typed-conversion discussion):
+- PDF worker (`services/pdf-worker`, its own npm project, Node 24 running
+  TypeScript directly; deployed as a Render background worker from
+  `render.yaml`, Docker with Ghostscript + poppler). Every Backblaze PDF gets
+  `Book.pdfJob` on creation; the worker pulls jobs from
+  `/api/internal/pdf-jobs/claim` (HMAC with `PDF_WORKER_SECRET`, 30 min
+  lease, 3 attempts), writes WebP page images to `pages/<bookId>/<n>.webp`
+  and compresses platform files only, then reports to `.../[id]/complete`.
+  `Book.pageImages` makes the reader's image mode (`hasPageImages`) and
+  offline save work for Backblaze books. Deleting a book or discarding a
+  platform file removes its page images. The worker's S3 client uses
+  `requestChecksumCalculation: "WHEN_REQUIRED"` (streamed aws-chunked
+  uploads with trailing checksums aren't decoded by every S3-compatible
+  store). The root tsconfig excludes `services/`.
+- Remaining plan (typed conversion workspace and contributor dashboard):
   `~/.claude/plans/pasted-content-id-9064-tested-the-linked-hopper.md`.
 
 ## Gotchas

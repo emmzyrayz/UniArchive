@@ -14,6 +14,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { storageClient } from "@/lib/storage";
+import { newPdfJob } from "@/lib/pdfJobs";
 import { getBookModel, PLATFORM_STATUSES, type PlatformStatus } from "@/lib/models/bookModel";
 import {
   PLATFORM_MAX_FILE_SIZE,
@@ -101,6 +102,8 @@ export async function POST(request: NextRequest) {
       ownerUpid: session.upid,
       status: "pending",
       visibility: "private",
+      // Compression and page images by the PDF worker
+      pdfJob: newPdfJob(true),
       platform: {
         source: "mod_upload",
         status: "pending",

@@ -25,6 +25,31 @@ export type PlatformSource = (typeof PLATFORM_SOURCES)[number];
 export const PLATFORM_STATUSES = ["pending", "published", "discarded"] as const;
 export type PlatformStatus = (typeof PLATFORM_STATUSES)[number];
 
+/**
+ * Background processing by the PDF worker (services/pdf-worker): page images
+ * for every Backblaze PDF, so devices that can't run pdf.js can still read
+ * it, plus lossy compression for platform files only. See lib/pdfJobs.ts.
+ */
+export interface IPdfJob {
+  status: "queued" | "processing" | "done" | "failed";
+  compress: boolean;
+  attempts: number;
+  queuedAt: Date;
+  leaseUntil?: Date;
+  finishedAt?: Date;
+  error?: string;
+  // Set when compression replaced the file
+  originalSize?: number;
+  compressedSize?: number;
+}
+
+/** Page images in B2 at pages/<bookId>/<n>.webp, written by the worker. */
+export interface IPageImages {
+  count: number;
+  width: number;
+  createdAt: Date;
+}
+
 /** What a student said about a PDF they gifted, and where they study. */
 export interface IGiftDetails {
   note: string;
@@ -113,11 +138,39 @@ export interface IBook {
   // then be submitted for credit or gifted again)
   giftedAt?: Date;
 
+  // Backblaze PDFs only
+  pdfJob?: IPdfJob;
+  pageImages?: IPageImages;
+
   createdAt: Date;
   updatedAt: Date;
 }
 
 export type BookModel = Model<IBook>;
+
+const PdfJobSchema = new Schema<IPdfJob>(
+  {
+    status: { type: String, enum: ["queued", "processing", "done", "failed"], required: true },
+    compress: { type: Boolean, default: false },
+    attempts: { type: Number, default: 0 },
+    queuedAt: { type: Date, required: true },
+    leaseUntil: { type: Date },
+    finishedAt: { type: Date },
+    error: { type: String, maxlength: 500 },
+    originalSize: { type: Number },
+    compressedSize: { type: Number },
+  },
+  { _id: false },
+);
+
+const PageImagesSchema = new Schema<IPageImages>(
+  {
+    count: { type: Number, required: true, min: 1 },
+    width: { type: Number, required: true },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: false },
+);
 
 const GiftDetailsSchema = new Schema<IGiftDetails>(
   {
@@ -228,6 +281,8 @@ const BookSchema = new Schema<IBook, BookModel>(
 
     platform: { type: BookPlatformSchema, default: undefined },
     giftedAt: { type: Date },
+    pdfJob: { type: PdfJobSchema, default: undefined },
+    pageImages: { type: PageImagesSchema, default: undefined },
   },
   { timestamps: true, collection: "books" },
 );
@@ -237,6 +292,11 @@ BookSchema.index({ uploaderId: 1, createdAt: -1 });
 BookSchema.index(
   { "platform.status": 1, "platform.source": 1, createdAt: 1 },
   { partialFilterExpression: { platform: { $exists: true } } },
+);
+// The worker's job queue (oldest first)
+BookSchema.index(
+  { "pdfJob.status": 1, "pdfJob.queuedAt": 1 },
+  { partialFilterExpression: { pdfJob: { $exists: true } } },
 );
 // One gift per library book
 BookSchema.index(

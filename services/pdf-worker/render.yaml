@@ -1,0 +1,31 @@
+# Render Blueprint for the PDF worker. In Render: New > Blueprint, pick this
+# repo and point it at services/pdf-worker/render.yaml (or create a
+# Background Worker by hand with the same settings). Secrets are entered in
+# the dashboard (sync: false), never committed.
+services:
+  - type: worker
+    name: uniarchive-pdf-worker
+    runtime: docker
+    rootDir: services/pdf-worker
+    dockerfilePath: ./Dockerfile
+    # 512 MB is enough: PDFs stream to disk and pages render in small batches
+    plan: starter
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - services/pdf-worker/**
+    envVars:
+      - key: APP_URL
+        value: https://www.uniarchive.com.ng
+      - key: PDF_WORKER_SECRET
+        sync: false
+      - key: BACKBLAZE_KEY_ID
+        sync: false
+      - key: BACKBLAZE_APPLICATION_KEY
+        sync: false
+      - key: BACKBLAZE_BUCKET_NAME
+        sync: false
+      - key: BACKBLAZE_ENDPOINT
+        sync: false
+      - key: BACKBLAZE_REGION
+        sync: false

@@ -15,6 +15,7 @@ import { requireAuth } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { storageClient } from "@/lib/storage";
+import { newPdfJob } from "@/lib/pdfJobs";
 import { getCloudinaryPdfUrl } from "@/lib/cloudinary";
 import { CLOUDINARY_MAX_SIZE } from "@/lib/storageRouter";
 import { LIBRARY_BOOKS, getBookModel, type BookStorageProvider } from "@/lib/models/bookModel";
@@ -126,6 +127,7 @@ export async function POST(request: NextRequest, context: Context) {
         ownerUpid: session.upid,
         status: "pending",
         visibility: "private",
+        pdfJob: newPdfJob(true),
         platform: {
           source: "gift",
           status: "pending",

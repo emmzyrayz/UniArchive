@@ -41,6 +41,7 @@ export function toBookDto(
     submissionId: doc.submissionId?.toString(),
     submissionStatus: doc.hasSubmission ? submissionStatus : undefined,
     giftedAt: doc.giftedAt?.toISOString(),
+    hasPageImages: !!doc.pageImages,
     storageKey: doc.storageKey,
     mimeType: doc.mimeType,
     visibility: doc.visibility,

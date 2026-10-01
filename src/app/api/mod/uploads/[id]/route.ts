@@ -11,6 +11,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { handleRouteError } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { storageClient } from "@/lib/storage";
+import { pageImagePrefix } from "@/lib/pdfJobs";
 import { getBookModel } from "@/lib/models/bookModel";
 import {
   PLATFORM_READ_URL_SECONDS,
@@ -96,6 +97,11 @@ export async function DELETE(request: NextRequest, context: Context) {
       return NextResponse.json({ message: "This file changed. Reload and try again." }, { status: 409 });
     }
 
+    // Stop any pending worker job, and remove its page images
+    await Book.updateOne({ _id: book._id, "pdfJob.status": "queued" }, { $set: { "pdfJob.status": "failed", "pdfJob.error": "Discarded" } });
+    if (book.pageImages) {
+      await storageClient.deleteFilesByPrefix(pageImagePrefix(String(book._id))).catch(() => undefined);
+    }
     const removed = await storageClient.deleteFile(book.storageKey);
     if (!removed.success) {
       // The record says discarded either way; the orphaned object is logged

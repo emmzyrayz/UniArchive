@@ -59,9 +59,11 @@ export function ReaderToolbar({ book }: { book: Book }) {
   const { capability, ready } = useDeviceCapability();
   // null on the server; the same check read/[id]/page.tsx routes on
   const modernPdf = useSyncExternalStore(noopSubscribe, canRunModernPdf, () => null);
-  // Old browsers read Cloudinary page images instead of running pdf.js
-  // (Backblaze books show an "unsupported" message instead, not images)
-  const imageMode = modernPdf === false && book.storageProvider === "cloudinary";
+  // Old browsers read page images instead of running pdf.js: Cloudinary
+  // renders them, the PDF worker makes them for Backblaze books (without
+  // them, those books show an "unsupported" message)
+  const imageMode =
+    modernPdf === false && (book.storageProvider === "cloudinary" || !!book.hasPageImages);
   const bookmarked = isPageBookmarked(currentPage);
 
   // Only hide scroll mode once capability is assessed — avoids layout shift

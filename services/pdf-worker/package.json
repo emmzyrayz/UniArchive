@@ -1,0 +1,22 @@
+{
+  "name": "uniarchive-pdf-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Background worker: page images and compression for UniArchive PDFs on Backblaze.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1137.0",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
