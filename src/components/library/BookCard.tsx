@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { FiUpload } from "react-icons/fi";
+import { FiGift, FiUpload } from "react-icons/fi";
 import type { Book } from "@/types/library";
 import { formatFileSize } from "@/assets/data/libraryData";
 
@@ -15,6 +15,8 @@ interface BookCardProps {
   showSubmitButton?: boolean;
   /** Opens the submission form (also used to view/continue an existing one). */
   onSubmitToLibrary?: (bookId: string) => void;
+  /** Opens the "Gift to UniArchive" dialog (shown under the submit button). */
+  onGift?: (bookId: string) => void;
 }
 
 const SUBMISSION_BADGES: Record<
@@ -51,6 +53,7 @@ export function BookCard({
   showDeleteButton = false,
   showSubmitButton = false,
   onSubmitToLibrary,
+  onGift,
 }: BookCardProps) {
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -147,7 +150,14 @@ export function BookCard({
       {/* Outside the link: buttons can't be nested in an <a> */}
       {showSubmitButton && (
         <div className="px-4 pb-4 -mt-1">
-          {book.hasSubmission ? (
+          {book.giftedAt ? (
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full border bg-primary/10 text-primary border-primary/30"
+              title="You gave a copy of this to UniArchive"
+            >
+              <FiGift size={11} aria-hidden /> Gifted to UniArchive
+            </span>
+          ) : book.hasSubmission ? (
             <button
               type="button"
               onClick={() => onSubmitToLibrary?.(book.id)}
@@ -166,6 +176,15 @@ export function BookCard({
             >
               <FiUpload size={12} />
               Submit to UniLibrary
+            </button>
+          )}
+          {!book.giftedAt && !book.hasSubmission && onGift && (
+            <button
+              type="button"
+              onClick={() => onGift(book.id)}
+              className="mt-1.5 flex items-center gap-1 text-xs text-text-secondary hover:text-primary"
+            >
+              <FiGift size={11} aria-hidden /> or gift it to UniArchive
             </button>
           )}
         </div>

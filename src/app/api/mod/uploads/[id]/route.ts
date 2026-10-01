@@ -1,8 +1,8 @@
 // /api/mod/uploads/:id — one platform file. Permission: "material.ingest",
 // and the viewer must be allowed to work on this file (canWorkOn).
 //
-// GET     the file, a signed read URL for the verify workspace and its saved
-//         draft form state.
+// GET     the file, a signed read URL for the verify workspace, its saved
+//         draft form state and, for gifts, the student's note and details.
 // DELETE  discards a pending file: deletes the PDF from Backblaze and keeps
 //         the record (status "discarded") as a trail. Refused while someone
 //         else holds the claim.
@@ -16,6 +16,7 @@ import {
   PLATFORM_READ_URL_SECONDS,
   claimedByOther,
   loadPlatformFile,
+  toGiftDetailsDto,
   toPlatformFileDto,
 } from "@/lib/platformUploads";
 
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest, context: Context) {
         file: toPlatformFileDto(book, session.userId),
         fileUrl,
         draft: book.platform.draft ?? null,
+        gift: toGiftDetailsDto(book),
       },
       { headers: { "Cache-Control": "no-store" } },
     );

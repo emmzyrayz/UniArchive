@@ -162,6 +162,33 @@ export interface PlatformFileDto {
   draftSavedAt?: string;
   materialId?: string;
   publishedAt?: string;
+  /** Gifts: what the student said the PDF is. */
+  giftNote?: string;
+}
+
+/** A gift's prefill for the verify form (ids as strings). */
+export interface GiftDetailsDto {
+  note: string;
+  university?: { id: string; name: string };
+  faculty?: { id: string; name: string };
+  department?: { id: string; name: string };
+  level?: string;
+  semester?: string;
+}
+
+export function toGiftDetailsDto(book: PlatformBookDoc): GiftDetailsDto | null {
+  const g = book.platform.gift;
+  if (!g) return null;
+  const ref = (id: unknown, name?: string) => (id && name ? { id: String(id), name } : undefined);
+  return {
+    note: g.note,
+    university: ref(g.universityId, g.universityName),
+    // A faculty only makes sense under its university, a department under its faculty
+    faculty: g.universityId ? ref(g.facultyId, g.facultyName) : undefined,
+    department: g.facultyId ? ref(g.departmentId, g.departmentName) : undefined,
+    level: g.level,
+    semester: g.semester,
+  };
 }
 
 export function toPlatformFileDto(book: PlatformBookDoc, viewerId: string, now = new Date()): PlatformFileDto {
@@ -188,5 +215,6 @@ export function toPlatformFileDto(book: PlatformBookDoc, viewerId: string, now =
     ...(p.draftSavedAt ? { draftSavedAt: new Date(p.draftSavedAt).toISOString() } : {}),
     ...(p.materialId ? { materialId: String(p.materialId) } : {}),
     ...(p.publishedAt ? { publishedAt: new Date(p.publishedAt).toISOString() } : {}),
+    ...(p.gift ? { giftNote: p.gift.note } : {}),
   };
 }

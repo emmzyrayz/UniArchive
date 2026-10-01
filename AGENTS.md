@@ -145,7 +145,16 @@ vars are documented in `.env.example`.
   `material_text_v2` index: on an existing database run
   `pnpm db:text-index --apply` once (it drops the old `material_text`;
   MongoDB allows one text index per collection).
-- Remaining plan (PDF gifting, Render PDF worker):
+- PDF gifting (`POST /api/books/[id]/gift`, `GiftDialog` on the library
+  book card): a student gives a copy of a library book to UniArchive with a
+  short note; their profile's school and level are snapshotted. The file is
+  copied to `platform/gifts/<owner>/` (B2 copy in-bucket; Cloudinary files
+  are downloaded and written to B2), so deleting the original never breaks
+  it. The library book gets `giftedAt` and can't then be submitted or gifted
+  again (one gift per book: unique `platform.sourceBookId`). Gifts show in
+  the admin queue's Gifts tab (`material.review_gifts`) and pre-fill the
+  verify form. No credit to the student. Rate limit: 10 gifts/day.
+- Remaining plan (Render PDF worker, then the typed-conversion discussion):
   `~/.claude/plans/pasted-content-id-9064-tested-the-linked-hopper.md`.
 
 ## Gotchas

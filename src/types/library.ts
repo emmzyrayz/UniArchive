@@ -29,6 +29,8 @@ export interface Book {
   submissionId?: string;
   /** Pipeline status of the submission; present when hasSubmission. */
   submissionStatus?: "draft" | "submitted" | "in_review" | "verified" | "rejected";
+  /** When the owner gifted a copy to UniArchive (no submission after that). */
+  giftedAt?: string;
   /**
    * The published material's table of contents or course outline, sent with
    * the reader's GET /api/books/[id] when the book backs a material.

@@ -36,6 +36,8 @@ const limiters = {
   upload: make(20, "1 h", "rl:upload"),
   // Contact form — strict anti-spam
   contact: make(3, "1 h", "rl:contact"),
+  // Gifting PDFs to UniArchive: each one copies a file into platform storage
+  gift: make(10, "24 h", "rl:gift"),
   // Institution suggest — moderate
   suggest: make(3, "24 h", "rl:suggest"),
   // Admin routes — generous

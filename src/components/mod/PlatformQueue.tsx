@@ -132,6 +132,9 @@ export function PlatformQueue({ scopes }: { scopes: Scope[] }) {
                   {f.pageCount ? ` · ${f.pageCount} pages` : ""} · {f.source === "gift" ? "gifted" : "uploaded"} by @
                   {f.uploadedByUpid} {timeAgo(f.createdAt)}
                 </p>
+                {f.giftNote && (
+                  <p className="mt-1 line-clamp-2 text-xs text-text-secondary">&ldquo;{f.giftNote}&rdquo;</p>
+                )}
                 {f.claim && !f.claim.mine && (
                   <p className="mt-1 text-xs text-warning">@{f.claim.byUpid} is working on this</p>
                 )}

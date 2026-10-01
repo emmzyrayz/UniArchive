@@ -5,6 +5,7 @@
 // uploads straight to the bucket, so files never pass through a Next.js
 // function (Vercel caps request bodies at ~4.5 MB).
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
@@ -222,6 +223,26 @@ export class StorageClient {
       return { success: true, fileUrl: this.getPublicUrl(key), fileName: key };
     } catch (error) {
       return { success: false, error: errorMessage(error, "Upload failed") };
+    }
+  }
+
+  /** Server-side copy inside the bucket (the bytes never leave B2). */
+  async copyFile(sourceKey: string, destKey: string): Promise<UploadResult> {
+    try {
+      const { client, config } = this.s3;
+      await client.send(
+        new CopyObjectCommand({
+          Bucket: config.bucketName,
+          // CopySource is "<bucket>/<url-encoded key>"
+          CopySource: `${config.bucketName}/${sourceKey.split("/").map(encodeURIComponent).join("/")}`,
+          Key: destKey,
+          ContentType: "application/pdf",
+          MetadataDirective: "REPLACE",
+        }),
+      );
+      return { success: true, fileUrl: this.getPublicUrl(destKey), fileName: destKey };
+    } catch (error) {
+      return { success: false, error: errorMessage(error, "Copy failed") };
     }
   }
 

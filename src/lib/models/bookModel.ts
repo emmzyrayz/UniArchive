@@ -25,6 +25,20 @@ export type PlatformSource = (typeof PLATFORM_SOURCES)[number];
 export const PLATFORM_STATUSES = ["pending", "published", "discarded"] as const;
 export type PlatformStatus = (typeof PLATFORM_STATUSES)[number];
 
+/** What a student said about a PDF they gifted, and where they study. */
+export interface IGiftDetails {
+  note: string;
+  universityId?: Types.ObjectId;
+  universityName?: string;
+  universityAbbr?: string;
+  facultyId?: Types.ObjectId;
+  facultyName?: string;
+  departmentId?: Types.ObjectId;
+  departmentName?: string;
+  level?: string; // profile style, "300L"
+  semester?: string;
+}
+
 /** A platform file's place in the staff upload queue. */
 export interface IBookPlatform {
   source: PlatformSource;
@@ -46,6 +60,10 @@ export interface IBookPlatform {
   publishedAt?: Date;
   discardedBy?: Types.ObjectId;
   discardedAt?: Date;
+  // Gifts only: the student's note and academic details (prefill the verify
+  // form), and the library book it was copied from
+  gift?: IGiftDetails;
+  sourceBookId?: Types.ObjectId;
 }
 
 export interface IBook {
@@ -91,11 +109,31 @@ export interface IBook {
   // Set only on platform files
   platform?: IBookPlatform;
 
+  // Library books only: when the owner gifted a copy to UniArchive (it can't
+  // then be submitted for credit or gifted again)
+  giftedAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
 }
 
 export type BookModel = Model<IBook>;
+
+const GiftDetailsSchema = new Schema<IGiftDetails>(
+  {
+    note: { type: String, required: true, maxlength: 1000 },
+    universityId: { type: Schema.Types.ObjectId, ref: "University" },
+    universityName: { type: String },
+    universityAbbr: { type: String },
+    facultyId: { type: Schema.Types.ObjectId, ref: "Faculty" },
+    facultyName: { type: String },
+    departmentId: { type: Schema.Types.ObjectId, ref: "Department" },
+    departmentName: { type: String },
+    level: { type: String },
+    semester: { type: String },
+  },
+  { _id: false },
+);
 
 const BookPlatformSchema = new Schema<IBookPlatform>(
   {
@@ -115,6 +153,8 @@ const BookPlatformSchema = new Schema<IBookPlatform>(
     publishedAt: { type: Date },
     discardedBy: { type: Schema.Types.ObjectId, ref: "User" },
     discardedAt: { type: Date },
+    gift: { type: GiftDetailsSchema, default: undefined },
+    sourceBookId: { type: Schema.Types.ObjectId, ref: "Book" },
   },
   { _id: false },
 );
@@ -187,6 +227,7 @@ const BookSchema = new Schema<IBook, BookModel>(
     },
 
     platform: { type: BookPlatformSchema, default: undefined },
+    giftedAt: { type: Date },
   },
   { timestamps: true, collection: "books" },
 );
@@ -196,6 +237,11 @@ BookSchema.index({ uploaderId: 1, createdAt: -1 });
 BookSchema.index(
   { "platform.status": 1, "platform.source": 1, createdAt: 1 },
   { partialFilterExpression: { platform: { $exists: true } } },
+);
+// One gift per library book
+BookSchema.index(
+  { "platform.sourceBookId": 1 },
+  { unique: true, partialFilterExpression: { "platform.sourceBookId": { $exists: true } } },
 );
 // Duplicate platform uploads, by SHA-256 of the uploaded file
 BookSchema.index(

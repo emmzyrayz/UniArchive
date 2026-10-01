@@ -256,7 +256,7 @@ export async function requireCompleteProfile(userId: string): Promise<void> {
   }
 }
 
-type BookForSubmission = Pick<IBook, "title" | "description" | "uploaderId"> & {
+type BookForSubmission = Pick<IBook, "title" | "description" | "uploaderId" | "giftedAt"> & {
   _id: Types.ObjectId;
 };
 
@@ -266,7 +266,7 @@ export async function loadOwnedBook(bookId: string, userId: string): Promise<Boo
   const Book = await getBookModel();
   // Platform files go through the staff queue, not the community pipeline
   const book = await Book.findOne({ _id: bookId, ...LIBRARY_BOOKS })
-    .select("title description uploaderId")
+    .select("title description uploaderId giftedAt")
     .lean();
   if (!book) fail(404, "Document not found.");
   if (book.uploaderId.toString() !== userId) {
@@ -288,6 +288,9 @@ export async function saveSubmission(
   input: ParsedSubmission,
 ): Promise<IMaterialSubmission> {
   // --- Gates --------------------------------------------------------------
+  if (book.giftedAt) {
+    fail(403, "You gifted this document to UniArchive, so it can't also be submitted for credit.");
+  }
   await requireCompleteProfile(session.userId);
   if (!book.description?.trim()) {
     fail(403, "Add a description to this document before submitting it.");

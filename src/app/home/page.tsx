@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { useUser } from "@/context/userContext";
 import { BookCard } from "@/components/library/BookCard";
+import { GiftDialog } from "@/components/library/GiftDialog";
 import { EmptyLibrary } from "@/components/library/EmptyLibrary";
 import { Button } from "@/components/UI/Buttons";
 import type { Book } from "@/types/library";
@@ -67,6 +68,8 @@ export default function HomePage() {
   // Read once. The loading screen is what hydrates, so reading storage in
   // the initializer can't cause a hydration mismatch.
   const [showSubmittedBanner, setShowSubmittedBanner] = useState(readSubmissionSuccess);
+  // The library book whose "Gift to UniArchive" dialog is open
+  const [giftBookId, setGiftBookId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!showSubmittedBanner) return;
@@ -195,7 +198,15 @@ export default function HomePage() {
 
   const openSubmission = (bookId: string) => router.push(`/submit?bookId=${bookId}`);
 
+  const markGifted = (id: string, giftedAt: string) =>
+    setLibrary((prev) =>
+      prev.status === "ready"
+        ? { ...prev, books: prev.books.map((b) => (b.id === id ? { ...b, giftedAt } : b)) }
+        : prev,
+    );
+
   const myBooks = library.status === "ready" ? library.books : [];
+  const giftBook = giftBookId ? myBooks.find((b) => b.id === giftBookId) : undefined;
   const recentlyOpened = myBooks
     .filter((b) => b.lastOpenedAt)
     .sort(
@@ -340,6 +351,7 @@ export default function HomePage() {
                       onDelete={removeBook}
                       showSubmitButton
                       onSubmitToLibrary={openSubmission}
+                      onGift={setGiftBookId}
                     />
                   </motion.div>
                 ))}
@@ -348,6 +360,9 @@ export default function HomePage() {
           </>
         )}
       </div>
+      {giftBook && (
+        <GiftDialog book={giftBook} onClose={() => setGiftBookId(null)} onGifted={markGifted} />
+      )}
     </div>
   );
 }

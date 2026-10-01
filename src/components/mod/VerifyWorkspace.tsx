@@ -17,7 +17,7 @@ import { useStaffArea } from "@/components/admin/staffArea";
 import { formatFileSize } from "@/assets/data/libraryData";
 import { useDesktopFullscreen } from "@/hooks/useDesktopFullscreen";
 import { SUBMISSION_AUTOSAVE_MS } from "@/lib/constants/submissions";
-import type { PlatformFileDto } from "@/lib/platformUploads";
+import type { GiftDetailsDto, PlatformFileDto } from "@/lib/platformUploads";
 import {
   AcademicFields,
   BasicsFields,
@@ -45,6 +45,7 @@ interface FileDetail {
   file: PlatformFileDto;
   fileUrl: string | null;
   draft: Record<string, unknown> | null;
+  gift: GiftDetailsDto | null;
 }
 
 type Phase =
@@ -53,9 +54,30 @@ type Phase =
   | { kind: "blocked"; message: string } // claimed by someone else, published, gone
   | { kind: "empty" }; // nothing left in the queue
 
-/** A saved draft merged over the defaults, ignoring anything malformed. */
-function formFromDraft(draft: Record<string, unknown> | null, file: PlatformFileDto): MaterialFormState {
-  const base: MaterialFormState = { ...EMPTY_MATERIAL_FORM, title: file.title.slice(0, 200) };
+/**
+ * A saved draft merged over the defaults, ignoring anything malformed. For a
+ * gift, the defaults are what the student told us: their note as the
+ * description and their school and level.
+ */
+function formFromDraft(
+  draft: Record<string, unknown> | null,
+  file: PlatformFileDto,
+  gift: GiftDetailsDto | null,
+): MaterialFormState {
+  const base: MaterialFormState = {
+    ...EMPTY_MATERIAL_FORM,
+    title: file.title.slice(0, 200),
+    ...(gift
+      ? {
+          description: gift.note.slice(0, 2000),
+          university: gift.university ?? null,
+          faculty: gift.faculty ?? null,
+          department: gift.department ?? null,
+          level: gift.level ?? "",
+          semester: gift.semester ?? "",
+        }
+      : {}),
+  };
   if (!draft) return base;
   const out = { ...base };
   for (const key of Object.keys(base) as (keyof MaterialFormState)[]) {
@@ -146,7 +168,7 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
         setPhase({ kind: "blocked", message: res.data.message ?? "This file can't be opened right now." });
         return;
       }
-      const initial = formFromDraft(res.data.draft, res.data.file);
+      const initial = formFromDraft(res.data.draft, res.data.file, res.data.gift);
       const initialOutline = outlineFromDraft(res.data.draft);
       setForm(initial);
       setOutline(initialOutline);
@@ -374,6 +396,12 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
                     {` · uploaded by @${detail.file.uploadedByUpid}`}
                     {detail.file.source === "gift" && " · gifted"}
                   </p>
+                  {detail.gift && (
+                    <p className="mt-2 rounded-md border border-border bg-surface px-3 py-2 text-xs text-text-secondary">
+                      <span className="font-medium text-text-primary">Gifted with this note: </span>
+                      {detail.gift.note}
+                    </p>
+                  )}
                 </div>
               )}
             </header>
