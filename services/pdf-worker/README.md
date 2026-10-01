@@ -1,5 +1,13 @@
 # UniArchive PDF worker
 
+> **Status: intentionally disabled for now.** Running it needs a paid Render
+> background worker (~$7/month), which isn't available yet. Until then,
+> low-end devices that can't run the PDF reader get a friendly message for
+> Backblaze PDFs (open it on a PC or laptop; a download button only for
+> their own files) instead of page images. New uploads keep being queued
+> and are processed once the worker runs. To re-enable it, follow
+> [Deploying on Render](#deploying-on-render) below.
+
 A background worker that processes PDFs stored on Backblaze B2:
 
 - **Page images** for every Backblaze PDF: each page rendered to a

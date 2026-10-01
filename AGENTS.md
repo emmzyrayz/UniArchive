@@ -154,6 +154,15 @@ vars are documented in `.env.example`.
   again (one gift per book: unique `platform.sourceBookId`). Gifts show in
   the admin queue's Gifts tab (`material.review_gifts`) and pre-fill the
   verify form. No credit to the student. Rate limit: 10 gifts/day.
+- **PDF worker status: intentionally disabled for now.** It needs a paid
+  Render background worker (~$7/month), which isn't available yet, so it
+  isn't deployed and `PDF_WORKER_SECRET` isn't set (the internal routes
+  answer 503). Until then, a low-end device that opens a Backblaze PDF sees
+  a friendly fallback (`PdfUnsupported`: open it on a PC or laptop; a
+  download button only for the reader's own files) instead of page images.
+  New Backblaze uploads still get `pdfJob`s queued; they're harmless and get
+  processed once the worker is on. To re-enable, follow "Deploying on
+  Render" in `services/pdf-worker/README.md`.
 - PDF worker (`services/pdf-worker`, its own npm project, Node 24 running
   TypeScript directly; deployed as a Render background worker from
   `render.yaml`, Docker with Ghostscript + poppler). Every Backblaze PDF gets
