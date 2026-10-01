@@ -61,10 +61,12 @@ Unordered; pick by what matters most at the time.
 - **"Materials that need typing"** on the dashboard's Conversions tab: past
   questions and notes with no typed content yet, near the user's courses
   (TODO in `src/components/dashboard/ConversionsTab.tsx`).
-- **School email verification at signup**: the wizard's "School Email" step
-  is a placeholder. It sends no code, accepts any 6 digits, and the address
-  is never saved. Either wire it up (send a code, verify it server-side,
-  store a verified school email) or remove the step.
+- **School email verification at signup (decided: implement it; next up)**:
+  the wizard's "School Email" step is a placeholder. It sends no code,
+  accepts any 6 digits, and the address is never saved. Plan: send and
+  check a code server-side, store a verified school email on the user, keep
+  the step skippable. Implementation notes are in the `TODO(school-email)`
+  comment at the top of `src/app/auth/components/steps/stepSchoolEmail.tsx`.
 - **Settings that are UI only**: profile editing, notification toggles,
   "Download my data" and account deletion.
 - **Indexable material pages**: server-render `/materials/[id]`, drop its

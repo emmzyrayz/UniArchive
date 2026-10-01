@@ -1,4 +1,17 @@
 // components/auth/steps/StepSchoolEmail.tsx
+//
+// TODO(school-email): PLACEHOLDER, planned for a later session (see the
+// README roadmap). Today this step sends no code, accepts any 6 digits as
+// "verified", and SignUpWizard never sends the school email to the server,
+// so nothing is stored or trusted. To implement:
+//   - an API to send a 6-digit code to the school address and one to check
+//     it server-side, rate limited (model them on
+//     /api/auth/resend-verification + /api/auth/verify-email, or
+//     /api/auth/verify-device);
+//   - store the verified school email on the user (encrypted, with a hash
+//     for lookups, like the main email) plus when it was verified;
+//   - pass it through signup (SignUpWizard -> register) and decide what it
+//     unlocks (e.g. a "verified student" mark); keep the step skippable.
 "use client";
 
 import { useState } from "react";
