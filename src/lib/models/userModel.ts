@@ -44,6 +44,15 @@ export interface IUser extends Document {
   schoolEmail?: string;
   schoolEmailHash?: string;
   schoolEmailVerifiedAt?: Date;
+  // Bulk email (Brevo broadcasts); see lib/emailPrefs.ts. Absent = defaults
+  emailPrefs?: {
+    announcements?: boolean;
+    newsletter?: boolean;
+    updatedAt?: Date;
+    source?: "settings" | "link" | "brevo";
+    // Brevo blocks a contact everywhere once they unsubscribe or report spam
+    brevoBlocked?: boolean;
+  };
 
   // Normalized institution references. The plain-string school/faculty/
   // department fields above stay for existing records; new code should
@@ -159,6 +168,13 @@ const UserSchema = new Schema<IUser>(
     schoolEmail: { type: String },
     schoolEmailHash: { type: String },
     schoolEmailVerifiedAt: { type: Date },
+    emailPrefs: {
+      announcements: { type: Boolean },
+      newsletter: { type: Boolean },
+      updatedAt: { type: Date },
+      source: { type: String, enum: ["settings", "link", "brevo"] },
+      brevoBlocked: { type: Boolean },
+    },
 
     universityId: { type: Schema.Types.ObjectId, ref: "University" },
     facultyId: { type: Schema.Types.ObjectId, ref: "Faculty" },

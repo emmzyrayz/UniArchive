@@ -9,6 +9,7 @@ import {
   canEnterStaffArea,
   isPublicMaterialPath,
   isPublicProfilePath,
+  PUBLIC_PAGE_PATHS,
   staffAreaOf,
 } from "@/lib/routeAccess";
 import { IS_MOCK_MODE } from "@/lib/mockMode";
@@ -734,10 +735,9 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Check route access
 const canAccessRoute = useCallback(
   (path: string): boolean => {
-    const publicRoutes = ["/", "/about", "/contact", "/help", "/offline", "/unilibrary", "/privacy", "/terms"];
     const publicPrefixes = ["/auth"];
 
-    if (publicRoutes.includes(path)) return true;
+    if (PUBLIC_PAGE_PATHS.has(path)) return true;
     if (publicPrefixes.some((prefix) => path.startsWith(prefix))) return true;
     if (isPublicProfilePath(path) || isPublicMaterialPath(path)) return true;
     if (!hasActiveSession) return false;

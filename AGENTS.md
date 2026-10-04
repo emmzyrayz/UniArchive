@@ -73,6 +73,21 @@ vars are documented in `.env.example`.
   a retry never sends twice; a failed send is logged and needs a new key.
   Rate limit 30/hour per admin. `/admin/users` links each user to it
   (`?to=<upid>`).
+- Bulk-email consent (`lib/emailPrefs.ts`, `user.emailPrefs`):
+  `announcements` (on unless turned off) and `newsletter` (off until opted
+  in); absent = those defaults. Changed in Settings > Notifications
+  (`/api/user/email-preferences`) or, signed out, from the personal link
+  every broadcast must carry: `/email-preferences?u=<upid>&t=<token>`
+  (`emailPrefsUrl`; token = HMAC of the user id with a key derived from
+  `JWT_SECRET`; `POST /api/email-preferences`). Transactional mail ignores
+  these.
+- Brevo (`lib/brevo.ts`, `BREVO_API_KEY`, `BREVO_API_URL` to point tests at
+  a fake): `POST /api/webhooks/brevo?token=<BREVO_WEBHOOK_SECRET>` (or a
+  Bearer header) turns both kinds off on "unsubscribe"/"spam" and sets
+  `emailPrefs.brevoBlocked` (Brevo blocks the address for every campaign).
+  Opting back in lifts the block (`PUT /contacts/{email}`
+  `emailBlacklisted: false`). Contacts aren't kept in sync continuously:
+  the broadcast send imports the audience with fresh attributes.
 - Check settings with `pnpm email:test uniarchive.team@gmail.com`. To test
   sending code without real mail, point `SMTP_HOST` at a local fake SMTP
   server (`smtp-server` in a scratch folder) and run with
@@ -131,6 +146,9 @@ vars are documented in `.env.example`.
   the proxy and `userContext.canAccessRoute` read them through
   `src/lib/routeAccess.ts`. A moderator on an old /admin link is redirected
   to the /mod copy (`modPathFor`).
+- Pages open to signed-out visitors are listed once, in
+  `PUBLIC_PAGE_PATHS` (`lib/routeAccess.ts`), read by both the proxy and
+  the client gate; a page added to only one of them shows "Access Denied".
 - Pages that exist in both areas are written once in `src/app/_staff/` (a
   private folder) and mounted by one-line page files in `app/admin/*` and
   `app/mod/*`. Each still checks its own permission (`requireStaffPage`).
@@ -269,8 +287,8 @@ public profiles (`/profile/[upid]`), full admin panel (`/admin`), SEO
 
 ## Known gaps
 
-- `/settings`: profile editing, notification toggles, "Download my data"
-  and account deletion are UI only (not wired).
+- `/settings`: profile editing, "Download my data" and account deletion are
+  UI only (not wired). Email notification toggles are real.
 - No automated test suite yet; verification is typecheck, lint, build and
   manual endpoint checks (see Workflow rules). For logic that touches the
   database, run it against a throwaway `mongodb-memory-server` installed in

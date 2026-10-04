@@ -9,10 +9,13 @@ export const LEGAL_LAST_UPDATED = "September 30, 2026";
 export function LegalPage({
   title,
   intro,
+  updated = LEGAL_LAST_UPDATED,
   children,
 }: {
   title: string;
   intro?: ReactNode;
+  /** This page's own date when it changed on its own */
+  updated?: string;
   children: ReactNode;
 }) {
   return (
@@ -23,7 +26,7 @@ export function LegalPage({
             {title}
           </h1>
           <p className="mt-3 text-sm text-text-muted">
-            Last updated: {LEGAL_LAST_UPDATED}
+            Last updated: {updated}
           </p>
           {intro && (
             <div className="mt-6 text-base leading-7 text-text-secondary">{intro}</div>

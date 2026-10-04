@@ -13,7 +13,7 @@ export const metadata = pageMetadata.privacy;
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy">
+    <LegalPage title="Privacy Policy" updated="October 4, 2026">
       <LegalSection number={1} title="Introduction">
         <p>
           UniArchive (&ldquo;we&rdquo;, &ldquo;our&rdquo;, &ldquo;us&rdquo;) is an
@@ -72,6 +72,7 @@ export default function PrivacyPage() {
             "To personalise your experience, such as resuming where you stopped reading.",
             "To review and verify the materials you contribute.",
             "To send account emails, such as verification codes and password reset links, and to show in-app notifications.",
+            "To send you UniArchive announcements (new features, maintenance, important notices) unless you turn them off, and our newsletter (new materials, exam-season tips, calls for contributors) only if you turn it on. Every one of these emails has a link to change your choice, and so does Settings > Notifications.",
             "To keep the platform secure and prevent abuse.",
           ]}
         />
@@ -110,8 +111,17 @@ export default function PrivacyPage() {
               <Term>Vercel:</Term> hosts the website and runs our servers.
             </>,
             <>
-              <Term>Google:</Term> Google sign-in, and Gmail for sending
-              account emails.
+              <Term>Google:</Term> Google sign-in.
+            </>,
+            <>
+              <Term>ZeptoMail</Term> (Zoho): sends account emails, such as
+              sign-in codes and review results.
+            </>,
+            <>
+              <Term>Brevo:</Term> sends announcements and the newsletter. When
+              we send one, Brevo receives the email address, first and last
+              name, institution, level and role of each person it goes to,
+              and tells us who unsubscribed.
             </>,
           ]}
         />
@@ -131,6 +141,7 @@ export default function PrivacyPage() {
         <LegalList
           items={[
             "View and update your information on your profile and settings pages.",
+            "Choose which announcement and newsletter emails you get, at any time, in Settings > Notifications or from the link in those emails.",
             <>
               Request account deletion by contacting us at <LegalEmail />. We
               will process your request within 30 days.

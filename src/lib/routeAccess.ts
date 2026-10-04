@@ -4,6 +4,13 @@
 // free of server-only imports: the proxy imports it.
 import { isAdminRole, isStaffRole, type UserRole } from "@/types/roles";
 
+/** Pages anyone can open signed out (besides the prefixes and patterns below). */
+export const PUBLIC_PAGE_PATHS: ReadonlySet<string> = new Set([
+  "/", "/about", "/contact", "/help", "/offline", "/unilibrary", "/privacy", "/terms",
+  // The personal link in broadcasts works without signing in
+  "/email-preferences",
+]);
+
 /** "/profile/<upid>" is public; "/profile" and "/profile/edit" are the owner's. */
 export function isPublicProfilePath(pathname: string): boolean {
   const match = /^\/profile\/([^/]+)\/?$/.exec(pathname);

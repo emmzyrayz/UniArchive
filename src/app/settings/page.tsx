@@ -10,6 +10,7 @@ import AuthInput from "@/app/auth/components/UI/AuthInput";
 import { Button } from "@/components/UI/Buttons";
 import { ConnectedAccounts } from "./ConnectedAccounts";
 import { SessionsPanel } from "./SessionsPanel";
+import { EmailPrefsPanel } from "./EmailPrefsPanel";
 
 type Tab = "account" | "appearance" | "notifications" | "privacy";
 
@@ -41,11 +42,6 @@ export default function SettingsPage({
   const { hasActiveSession, isLoading, getUserDisplayName } = useUser();
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>(isTab(tab) ? tab : "account");
-  const [notifications, setNotifications] = useState({
-    newFeatures: true,
-    weeklyDigest: false,
-    studyReminders: true,
-  });
 
   useEffect(() => {
     if (!isLoading && !hasActiveSession) {
@@ -170,43 +166,7 @@ export default function SettingsPage({
           )}
 
           {/* Notifications tab */}
-          {activeTab === "notifications" && (
-            <div className="rounded-xl border border-border bg-surface-raised p-6">
-              <h2 className="font-semibold text-text-primary mb-5">Email notifications</h2>
-              <div className="space-y-4">
-                {(Object.entries(notifications) as [keyof typeof notifications, boolean][]).map(
-                  ([key, value]) => {
-                    const labels: Record<string, { label: string; desc: string }> = {
-                      newFeatures: { label: "New features", desc: "When we ship something new" },
-                      weeklyDigest: { label: "Weekly digest", desc: "A summary of your reading activity" },
-                      studyReminders: { label: "Study reminders", desc: "Daily nudges to keep your streak" },
-                    };
-                    return (
-                      <label
-                        key={key}
-                        className="flex items-center justify-between gap-4 cursor-pointer"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-text-primary">{labels[key].label}</p>
-                          <p className="text-xs text-text-muted">{labels[key].desc}</p>
-                        </div>
-                        <div
-                          onClick={() => setNotifications((prev) => ({ ...prev, [key]: !prev[key] }))}
-                          className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
-                            value ? "bg-accent" : "bg-neutral-300"
-                          }`}
-                        >
-                          <div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                            value ? "translate-x-6" : "translate-x-1"
-                          }`} />
-                        </div>
-                      </label>
-                    );
-                  }
-                )}
-              </div>
-            </div>
-          )}
+          {activeTab === "notifications" && <EmailPrefsPanel />}
 
           {/* Privacy tab */}
           {activeTab === "privacy" && (

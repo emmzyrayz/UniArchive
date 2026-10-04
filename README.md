@@ -66,13 +66,14 @@ Unordered; pick by what matters most at the time.
   (TODO in `src/components/dashboard/ConversionsTab.tsx`).
 - **Add a school email after signup**: from Settings, for Google sign-ups
   and existing accounts (signup is the only place today).
-- **Settings that are UI only**: profile editing, notification toggles,
-  "Download my data" and account deletion.
+- **Settings that are UI only**: profile editing, "Download my data" and
+  account deletion.
 - **Indexable material pages**: server-render `/materials/[id]`, drop its
   noindex and list materials in the sitemap (TODO in `src/app/sitemap.ts`).
-- **Mail system (in progress)**: the Gmail sender is gone and admins can
-  email one user from `/admin/mail` (ZeptoMail); next, broadcasts through
-  Brevo (announcements for everyone who hasn't unsubscribed, a newsletter
+- **Mail system (in progress)**: the Gmail sender is gone, admins can
+  email one user from `/admin/mail` (ZeptoMail), and users choose their
+  bulk email in Settings (Brevo unsubscribes flow back); next, broadcasts
+  through Brevo (announcements for everyone who hasn't unsubscribed, a newsletter
   for those who opted in, real email toggles in Settings).
 - **Regenerate `favicon.ico` as RGBA** so `pnpm dev` (Turbopack) works again;
   until then, test against production builds.
