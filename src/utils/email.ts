@@ -2,6 +2,7 @@ import nodemailer, { Transporter } from "nodemailer";
 import { absoluteUrl } from "@/lib/seo";
 import { SUPPORT_EMAIL } from "@/lib/site";
 import { resolveMailConfig, warnIfMailUnconfigured, type MailConfig } from "@/lib/mailConfig";
+import { emailFrame, escapeHtml } from "@/lib/emailLayout";
 
 interface EmailOptions {
   to: string;
@@ -13,8 +14,6 @@ interface EmailOptions {
   replyTo?: string;
 }
 
-const escapeHtml = (value: string) =>
-  value.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 
 // Outside production, print the email instead of failing silently, so codes
 // and links can be read from the server console without SMTP configured.
@@ -201,29 +200,8 @@ export const emailService = new EmailService();
 const appUrl = absoluteUrl;
 
 /** Shared frame for the review emails; `bodyHtml` must already be escaped. */
-function reviewEmailHtml(title: string, heading: string, bodyHtml: string): string {
-  return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>${escapeHtml(title)}</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">UniArchive</h1>
-          <p style="color: white; margin: 10px 0 0 0; opacity: 0.9;">${escapeHtml(heading)}</p>
-        </div>
-        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-          ${bodyHtml}
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
-            <p>This is an automated email. Please do not reply to this message.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-}
+const reviewEmailHtml = (title: string, heading: string, bodyHtml: string) =>
+  emailFrame(title, heading, bodyHtml);
 
 export async function sendSubmissionVerifiedEmail(params: {
   toEmail: string;
@@ -627,4 +605,39 @@ export async function sendSchoolEmailCode(params: {
     html,
     text,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Messages written by staff in /admin/mail
+// ---------------------------------------------------------------------------
+
+/**
+ * Sends a staff-written message (rendered by lib/emailLayout.ts). Unlike the
+ * automatic emails it reports what happened, so /admin/mail can log the
+ * provider's message id or the failure; nothing is printed instead outside
+ * production. Replies go to support@.
+ */
+export async function sendStaffMessageEmail(params: {
+  toEmail: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<{ ok: true; messageId: string } | { ok: false; error: string }> {
+  try {
+    const { transporter, config } = getMailTransport();
+    const info = await transporter.sendMail({
+      from: config.from,
+      replyTo: config.replyTo,
+      to: params.toEmail,
+      subject: params.subject,
+      html: params.html,
+      text: params.text,
+    });
+    return { ok: true, messageId: String(info.messageId ?? "") };
+  } catch (error) {
+    console.error("[email] staff message failed:", error);
+    // A short reason for the admin log (SMTP replies carry no secrets)
+    const reason = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: reason.slice(0, 200) };
+  }
 }

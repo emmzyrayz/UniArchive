@@ -62,6 +62,17 @@ vars are documented in `.env.example`.
   startup and email isn't delivered.
 - ZeptoMail is transactional only (its terms forbid bulk mail). Broadcasts
   and newsletters go through Brevo instead (`BREVO_API_KEY`).
+- Every email uses the frame in `lib/emailLayout.ts` (pure, so the admin
+  preview matches what's sent).
+- `/admin/mail` (permission `mail.send_user`: com_admin, webmaster, dev; no
+  /mod copy): an admin writes plain text to one user (`MailAdmin`; the
+  greeting, sign-off and reply footer are added by `renderStaffMessage`)
+  and `POST /api/admin/mail` sends it through ZeptoMail. Each attempt is a
+  `SentMail` (masked address, the message, status, provider message id or
+  error; deleted after a year). The client sends an `Idempotency-Key`, so
+  a retry never sends twice; a failed send is logged and needs a new key.
+  Rate limit 30/hour per admin. `/admin/users` links each user to it
+  (`?to=<upid>`).
 - Check settings with `pnpm email:test uniarchive.team@gmail.com`. To test
   sending code without real mail, point `SMTP_HOST` at a local fake SMTP
   server (`smtp-server` in a scratch folder) and run with

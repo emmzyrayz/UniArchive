@@ -15,6 +15,8 @@ export async function OverviewPage({ area }: { area: StaffArea }) {
         canManageUsers: area === "admin" && can(session.role, "manage_users"),
         canManageInstitutions: can(session.role, "manage_institution"),
         canIngest: can(session.role, "material.ingest"),
+        // Mail only exists in /admin
+        canMail: area === "admin" && can(session.role, "mail.send_user"),
       }}
     />
   );

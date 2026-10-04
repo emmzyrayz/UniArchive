@@ -202,3 +202,20 @@ export interface AdminSuggestionsResponse extends Paginated {
   suggestions: AdminSuggestionDto[];
   counts: Record<string, number>;
 }
+
+// --- Mail (/admin/mail) -----------------------------------------------------
+
+export interface AdminSentMailDto {
+  id: string;
+  to: { userId: string; upid: string; name: string; email: string };
+  sentBy: { upid: string; name: string };
+  subject: string;
+  body: string;
+  status: "sending" | "sent" | "failed";
+  error?: string;
+  createdAt: string;
+}
+
+export interface AdminSentMailResponse extends Paginated {
+  mails: AdminSentMailDto[];
+}

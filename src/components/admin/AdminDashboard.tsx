@@ -17,6 +17,8 @@ export interface AdminViewer {
   canManageInstitutions: boolean;
   /** "material.ingest": upload and publish platform PDFs */
   canIngest: boolean;
+  /** "mail.send_user": write to a user from /admin/mail */
+  canMail: boolean;
 }
 
 function StatCard({ label, value, href }: { label: string; value?: number; href?: string }) {
@@ -79,6 +81,7 @@ export function AdminDashboard({ viewer }: { viewer: AdminViewer }) {
       show: viewer.canManageInstitutions,
     },
     { label: "Users", href: `${base}/users`, show: viewer.canManageUsers },
+    { label: "Mail", href: `${base}/mail`, show: viewer.canMail },
     { label: "Upload materials", href: `${base}/materials/upload`, show: viewer.canIngest },
     {
       label: "Upload queue",

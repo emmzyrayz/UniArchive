@@ -35,6 +35,7 @@ export interface UsersViewer {
   userId: string;
   role: UserRole;
   canAssignRoles: boolean;
+  canMail: boolean;
 }
 
 function DecisionDialog({
@@ -280,6 +281,11 @@ export function UsersAdmin({ viewer }: { viewer: UsersViewer }) {
                   <Link href={`/profile/${encodeURIComponent(u.upid)}`} className={secondaryButton}>
                     View profile
                   </Link>
+                  {viewer.canMail && (
+                    <Link href={`/admin/mail?to=${encodeURIComponent(u.upid)}`} className={secondaryButton}>
+                      Email
+                    </Link>
+                  )}
                   {manageable && (
                     <>
                       <button type="button" onClick={() => setDialog({ kind: "violations", user: u })} className={secondaryButton}>

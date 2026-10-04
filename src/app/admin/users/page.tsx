@@ -20,6 +20,7 @@ export default async function AdminUsersPage() {
         userId: session.userId,
         role: session.role,
         canAssignRoles: can(session.role, "assign_role"),
+        canMail: can(session.role, "mail.send_user"),
       }}
     />
   );

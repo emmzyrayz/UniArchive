@@ -44,6 +44,8 @@ const limiters = {
   suggest: make(3, "24 h", "rl:suggest"),
   // Admin routes — generous
   admin: make(120, "1 m", "rl:admin"),
+  // Emails an admin writes to single users (/admin/mail)
+  staffMail: make(30, "1 h", "rl:staff-mail"),
   // Posting comments
   comment: make(10, "1 m", "rl:comment"),
   // Public read (materials, profiles) — generous

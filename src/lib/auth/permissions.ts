@@ -26,7 +26,9 @@ type Action =
   | "submission.reject" // reject with a reason
   // Platform materials (credited to UniArchive, not the uploader)
   | "material.ingest" // bulk-upload PDFs and publish them after filling in details
-  | "material.review_gifts"; // publish PDFs students gifted to UniArchive
+  | "material.review_gifts" // publish PDFs students gifted to UniArchive
+  // Email
+  | "mail.send_user"; // write to one user from /admin/mail (ZeptoMail)
 
 const PERMISSIONS: Record<UserRole, Action[]> = {
   student: ["download", "comment", "upload"],
@@ -99,6 +101,7 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "submission.reject",
     "material.ingest",
     "material.review_gifts",
+    "mail.send_user",
   ],
   webmaster: [
     "download",
@@ -122,6 +125,7 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "submission.reject",
     "material.ingest",
     "material.review_gifts",
+    "mail.send_user",
   ],
   dev: [
     "download",
@@ -145,6 +149,7 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "submission.reject",
     "material.ingest",
     "material.review_gifts",
+    "mail.send_user",
   ],
 };
 

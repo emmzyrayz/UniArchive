@@ -70,8 +70,8 @@ Unordered; pick by what matters most at the time.
   "Download my data" and account deletion.
 - **Indexable material pages**: server-render `/materials/[id]`, drop its
   noindex and list materials in the sitemap (TODO in `src/app/sitemap.ts`).
-- **Mail system (in progress)**: the Gmail sender is gone; next,
-  `/admin/mail` to email one user through ZeptoMail, then broadcasts through
+- **Mail system (in progress)**: the Gmail sender is gone and admins can
+  email one user from `/admin/mail` (ZeptoMail); next, broadcasts through
   Brevo (announcements for everyone who hasn't unsubscribed, a newsletter
   for those who opted in, real email toggles in Settings).
 - **Regenerate `favicon.ico` as RGBA** so `pnpm dev` (Turbopack) works again;
