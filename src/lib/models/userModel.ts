@@ -39,6 +39,11 @@ export interface IUser extends Document {
   department?: string;
   regNumber?: string;
   regNumberHash?: string;
+  // School email proved with a code at signup (encrypted + hash, like email).
+  // Earns the verified_student badge.
+  schoolEmail?: string;
+  schoolEmailHash?: string;
+  schoolEmailVerifiedAt?: Date;
 
   // Normalized institution references. The plain-string school/faculty/
   // department fields above stay for existing records; new code should
@@ -151,6 +156,9 @@ const UserSchema = new Schema<IUser>(
     department: { type: String },
     regNumber: { type: String },
     regNumberHash: { type: String },
+    schoolEmail: { type: String },
+    schoolEmailHash: { type: String },
+    schoolEmailVerifiedAt: { type: Date },
 
     universityId: { type: Schema.Types.ObjectId, ref: "University" },
     facultyId: { type: Schema.Types.ObjectId, ref: "Faculty" },
@@ -202,6 +210,8 @@ const UserSchema = new Schema<IUser>(
 // Optional-but-unique fields: sparse so documents without them don't collide.
 UserSchema.index({ username: 1 }, { unique: true, sparse: true });
 UserSchema.index({ regNumberHash: 1 }, { unique: true, sparse: true });
+// One account per school email
+UserSchema.index({ schoolEmailHash: 1 }, { unique: true, sparse: true });
 UserSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 UserSchema.index({ resetTokenHash: 1 }, { sparse: true });
 UserSchema.index({ resetSessionHash: 1 }, { sparse: true });

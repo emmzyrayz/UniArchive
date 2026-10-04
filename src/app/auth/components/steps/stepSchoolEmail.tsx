@@ -1,86 +1,110 @@
 // components/auth/steps/StepSchoolEmail.tsx
-//
-// TODO(school-email): PLACEHOLDER, planned for a later session (see the
-// README roadmap). Today this step sends no code, accepts any 6 digits as
-// "verified", and SignUpWizard never sends the school email to the server,
-// so nothing is stored or trusted. To implement:
-//   - an API to send a 6-digit code to the school address and one to check
-//     it server-side, rate limited (model them on
-//     /api/auth/resend-verification + /api/auth/verify-email, or
-//     /api/auth/verify-device);
-//   - store the verified school email on the user (encrypted, with a hash
-//     for lookups, like the main email) plus when it was verified;
-//   - pass it through signup (SignUpWizard -> register) and decide what it
-//     unlocks (e.g. a "verified student" mark); keep the step skippable.
+// Optional signup step: prove a school email with an emailed code. The
+// address must belong to the school picked on the Profile step
+// (lib/schoolEmail.ts, checked again on the server). The challenge token
+// from /api/auth/school-email/send lives in the wizard's state so it
+// survives moving between steps; register stores the verified address and
+// it earns the Verified Student badge.
 "use client";
 
 import { useState } from "react";
 import AuthInput from "../UI/AuthInput";
 import AuthButton from "../UI/AuthButton";
 import { OTPInput } from "../UI/AuthOTPInput";
+import { errorMessage, postJson } from "@/lib/authClient";
+import { checkSchoolEmail, schoolEmailError } from "@/lib/schoolEmail";
 
 interface StepSchoolEmailProps {
   value: string;
+  school: string;
   otp: string;
-  locked: boolean;
+  // Set once a code was sent; verified once the code was accepted
+  challengeToken: string;
+  verified: boolean;
   onChange: (value: string) => void;
   onOtpChange: (value: string) => void;
+  onCodeSent: (challengeToken: string) => void;
   onVerified: () => void;
+  // Forget the code / verification to use a different address
+  onReset: () => void;
   onSkip: () => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export function StepSchoolEmail({
   value,
+  school,
   otp,
-  locked,
+  challengeToken,
+  verified,
   onChange,
   onOtpChange,
+  onCodeSent,
   onVerified,
+  onReset,
   onSkip,
   onNext,
   onBack,
 }: StepSchoolEmailProps) {
   const [error, setError] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
+  const [info, setInfo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const codeSent = !!challengeToken && !verified;
 
-  const handleSendCode = async () => {
-    if (!EMAIL_REGEX.test(value)) {
-      setError("Please enter a valid school email address.");
+  const sendCode = async () => {
+    const check = checkSchoolEmail(value, school);
+    if (!check.ok) {
+      setError(schoolEmailError(check, school));
       return;
     }
     setError("");
+    setInfo("");
     setIsSubmitting(true);
     try {
-      // TODO: trigger real OTP send to school email
-      setOtpSent(true);
+      const result = await postJson<{ challengeToken?: string }>("/api/auth/school-email/send", {
+        schoolEmail: check.email,
+        school,
+      });
+      if (result.ok && result.data.challengeToken) {
+        onOtpChange("");
+        onCodeSent(result.data.challengeToken);
+        setInfo(`We sent a 6-digit code to ${check.email}. It can take a minute to arrive.`);
+      } else {
+        setError(errorMessage(result));
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleVerify = async () => {
+  const verifyCode = async () => {
     if (otp.length !== 6) {
       setError("Enter the 6-digit code.");
       return;
     }
+    setError("");
     setIsSubmitting(true);
     try {
-      // TODO: replace with real verification
-      const isValid = true; // stubbed
-      if (isValid) {
+      const result = await postJson("/api/auth/school-email/verify", {
+        challengeToken,
+        code: otp,
+      });
+      if (result.ok) {
         onVerified();
         onNext();
       } else {
-        setError("Invalid or expired code.");
+        setError(errorMessage(result));
       }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const useDifferentEmail = () => {
+    setError("");
+    setInfo("");
+    onReset();
   };
 
   return (
@@ -90,8 +114,9 @@ export function StepSchoolEmail({
           School email (optional)
         </h2>
         <p className="text-sm text-text-secondary">
-          Some institutions don&apos;t issue school emails — feel free to skip
-          this if yours doesn&apos;t.
+          Confirm an email from {school || "your school"} to get a Verified
+          Student badge on your profile. Some institutions don&apos;t issue
+          school emails, so feel free to skip this.
         </p>
       </div>
 
@@ -102,13 +127,43 @@ export function StepSchoolEmail({
         autoComplete="off"
         placeholder="student@university.edu.ng"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        error={error}
-        disabled={locked || otpSent}
+        onChange={(e) => {
+          setError("");
+          onChange(e.target.value);
+        }}
+        error={codeSent ? undefined : error}
+        disabled={verified || codeSent || isSubmitting}
       />
 
-      {otpSent && !locked && (
-        <OTPInput length={6} value={otp} onChange={onOtpChange} />
+      {verified && (
+        <p role="status" className="text-sm font-medium text-success">
+          ✓ School email verified.
+        </p>
+      )}
+
+      {codeSent && (
+        <div className="space-y-3">
+          {info && <p className="text-sm text-text-secondary">{info}</p>}
+          <OTPInput length={6} value={otp} onChange={onOtpChange} error={error} />
+          <div className="flex justify-between text-sm">
+            <button
+              type="button"
+              className="text-primary hover:underline disabled:opacity-50"
+              onClick={sendCode}
+              disabled={isSubmitting}
+            >
+              Resend code
+            </button>
+            <button
+              type="button"
+              className="text-text-secondary hover:underline disabled:opacity-50"
+              onClick={useDifferentEmail}
+              disabled={isSubmitting}
+            >
+              Change email
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="flex gap-3">
@@ -119,29 +174,51 @@ export function StepSchoolEmail({
           onClick={onBack}
         />
 
-        {!value ? (
+        {verified ? (
+          <AuthButton label="Continue" type="button" onClick={onNext} />
+        ) : codeSent ? (
+          <AuthButton
+            label={isSubmitting ? "Verifying..." : "Verify & Continue"}
+            type="button"
+            onClick={verifyCode}
+            disabled={isSubmitting || otp.length !== 6}
+          />
+        ) : value.trim() ? (
+          <AuthButton
+            label={isSubmitting ? "Sending..." : "Send code"}
+            type="button"
+            onClick={sendCode}
+            disabled={isSubmitting}
+          />
+        ) : (
           <AuthButton
             label="Skip for now"
             type="button"
             variant="secondary"
             onClick={onSkip}
           />
-        ) : !otpSent ? (
-          <AuthButton
-            label={isSubmitting ? "Sending..." : "Send code"}
-            type="button"
-            onClick={handleSendCode}
-            disabled={isSubmitting}
-          />
-        ) : (
-          <AuthButton
-            label={isSubmitting ? "Verifying..." : "Verify & Continue"}
-            type="button"
-            onClick={handleVerify}
-            disabled={isSubmitting || otp.length !== 6}
-          />
         )}
       </div>
+
+      {verified ? (
+        <button
+          type="button"
+          className="w-full text-center text-sm text-text-secondary hover:underline"
+          onClick={useDifferentEmail}
+        >
+          Use a different school email
+        </button>
+      ) : (
+        value.trim() && (
+          <button
+            type="button"
+            className="w-full text-center text-sm text-text-secondary hover:underline"
+            onClick={onSkip}
+          >
+            Skip this step
+          </button>
+        )
+      )}
     </div>
   );
 }

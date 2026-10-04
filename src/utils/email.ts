@@ -593,3 +593,38 @@ export async function sendDeviceVerificationEmail(params: {
     text,
   });
 }
+
+/** Code proving a student can read their school email (signup). */
+export async function sendSchoolEmailCode(params: {
+  toEmail: string;
+  school: string;
+  otp: string;
+}): Promise<boolean> {
+  const { toEmail, school, otp } = params;
+  const text = [
+    "Hi,",
+    "",
+    `Someone is signing up to UniArchive as a student of ${school} with this school email. If this was you, enter this code:`,
+    "",
+    `    ${otp}`,
+    "",
+    "This code expires in 10 minutes.",
+    "If you didn't request this, ignore this email. Nothing will be linked to your address.",
+  ].join("\n");
+  const html = reviewEmailHtml(
+    "Your UniArchive school email code",
+    "Verify Your School Email",
+    `
+          <h2 style="color: #333; margin-top: 0;">Hi,</h2>
+          <p>Someone is signing up to UniArchive as a student of <strong>${escapeHtml(school)}</strong> with this school email. If this was you, enter this code:</p>
+          ${codeBlockHtml("Your School Email Code", otp)}
+          <p>This code expires in 10 minutes.</p>
+          <p>If you didn't request this, ignore this email. Nothing will be linked to your address.</p>`,
+  );
+  return emailService.sendEmail({
+    to: toEmail,
+    subject: "Your UniArchive school email code",
+    html,
+    text,
+  });
+}

@@ -14,6 +14,7 @@ import {
   safeEqualHex,
 } from "@/lib/auth/tokens";
 import { trustDevice } from "@/lib/auth/deviceRecognition";
+import { awardBadgesAfter } from "@/lib/badges";
 
 const invalid = () =>
   NextResponse.json(
@@ -61,6 +62,9 @@ export async function POST(request: NextRequest) {
         $unset: { verificationCodeHash: 1, verificationCodeExpires: 1 },
       },
     );
+
+    // A school email proved at signup counts once the account is real
+    if (user.schoolEmailVerifiedAt) awardBadgesAfter(user._id, "school_email_verified");
 
     // This browser just proved it can read the account's email, so it's the
     // user's first trusted device: signing in here won't ask for a code

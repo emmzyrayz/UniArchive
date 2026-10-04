@@ -93,6 +93,21 @@ vars are documented in `.env.example`.
   devices). Settings > Privacy shows them.
 - Field encryption: emails and phones are AES-encrypted, looked up by
   `emailHash` / `phoneHash` (`src/lib/encryption.ts`).
+- School email (optional signup step): the address must belong to the
+  school picked on the Profile step. `lib/schoolEmail.ts` (shared by client
+  and server) gives each school "keys" from `schoolData` (abbreviation and
+  website domain) and accepts a domain where one part is a key followed by
+  `edu.ng` or the rest of the school's website domain, with anything before
+  it (`stu.unizik.edu.ng`, `student.oauife.edu.ng`). There is no fixed list of
+  patterns; fix a school that doesn't match by correcting its entry in
+  `schoolData`. `/api/auth/school-email/send` emails a code and returns a
+  challenge token (`SchoolEmailChallenge`: code and token hashed, address
+  encrypted, TTL), `/verify` checks it (5 attempts), and register
+  consumes a verified token (same school, within 1 hour, once) to store
+  `schoolEmail` (encrypted), `schoolEmailHash` (unique sparse: one account
+  per school email) and `schoolEmailVerifiedAt`. Verifying the main email then awards the
+  `verified_student` badge. Only offered at signup for now: Google sign-ups
+  and existing accounts can't add one yet.
 
 ## Staff areas (/mod and /admin)
 

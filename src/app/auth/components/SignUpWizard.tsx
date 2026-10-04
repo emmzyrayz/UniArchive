@@ -1,5 +1,6 @@
 // components/auth/SignUpWizard.tsx
 // Email -> Profile -> School email (optional) -> Password -> POST /api/auth/register.
+// A verified school email is sent to register as its challenge token.
 // Email verification happens afterwards on /auth?view=verify&mode=signup,
 // because the account (and its verification code) only exists once
 // registration succeeds.
@@ -23,6 +24,8 @@ export interface SignUpFormData {
   school: string;
   schoolEmail: string;
   schoolEmailOtp: string;
+  // From /api/auth/school-email/send; proves the address once verified
+  schoolEmailToken: string;
   password: string;
   confirmPassword: string;
 }
@@ -48,6 +51,7 @@ const initialFormData: SignUpFormData = {
   school: "",
   schoolEmail: "",
   schoolEmailOtp: "",
+  schoolEmailToken: "",
   password: "",
   confirmPassword: "",
 };
@@ -62,12 +66,27 @@ export default function SignUpWizard() {
 
   const currentStepKey = FLOW[stepIndex];
 
-  const updateField = (field: keyof SignUpFormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
   const markVerified = (field: string) => {
     setVerifiedFields((prev) => new Set(prev).add(field));
+  };
+
+  const unmarkVerified = (field: string) => {
+    setVerifiedFields((prev) => {
+      const next = new Set(prev);
+      next.delete(field);
+      return next;
+    });
+  };
+
+  // A code or verification is for one address at one school
+  const resetSchoolEmail = () => {
+    setFormData((prev) => ({ ...prev, schoolEmailOtp: "", schoolEmailToken: "" }));
+    unmarkVerified("schoolEmail");
+  };
+
+  const updateField = (field: keyof SignUpFormData, value: string) => {
+    if (field === "school" && value !== formData.school) resetSchoolEmail();
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const goNext = () => {
@@ -97,6 +116,7 @@ export default function SignUpWizard() {
       lastName: formData.lastName,
       username: formData.username,
       school: formData.school,
+      ...(verifiedFields.has("schoolEmail") && { schoolEmailToken: formData.schoolEmailToken }),
     });
 
     if (result.ok) {
@@ -118,6 +138,13 @@ export default function SignUpWizard() {
       setNotice(fieldErrors.email);
       setDirection(-1);
       setStepIndex(0);
+      return null;
+    }
+    if (fieldErrors.schoolEmail) {
+      resetSchoolEmail();
+      setNotice(fieldErrors.schoolEmail);
+      setDirection(-1);
+      setStepIndex(FLOW.indexOf("schoolEmail"));
       return null;
     }
     if (fieldErrors.password) return fieldErrors.password;
@@ -162,11 +189,15 @@ export default function SignUpWizard() {
         return (
           <StepSchoolEmail
             value={formData.schoolEmail}
+            school={formData.school}
             otp={formData.schoolEmailOtp}
-            locked={verifiedFields.has("schoolEmail")}
+            challengeToken={formData.schoolEmailToken}
+            verified={verifiedFields.has("schoolEmail")}
             onChange={(v) => updateField("schoolEmail", v)}
             onOtpChange={(v) => updateField("schoolEmailOtp", v)}
+            onCodeSent={(token) => updateField("schoolEmailToken", token)}
             onVerified={() => markVerified("schoolEmail")}
+            onReset={resetSchoolEmail}
             onSkip={goNext}
             onNext={goNext}
             onBack={goBack}

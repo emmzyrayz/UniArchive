@@ -38,6 +38,7 @@ export type BadgeTrigger =
   | "profile_completed"
   | "role_changed"
   | "view_milestone"
+  | "school_email_verified"
   // Every badge: catches up users who qualified before badges existed, or
   // whose check was missed (see catchUpBadgesAfter)
   | "catch_up";
@@ -60,13 +61,14 @@ const TRIGGER_BADGES: Record<BadgeTrigger, BadgeId[]> = {
   profile_completed: ["profile_complete"],
   role_changed: ["collaborator", "auditor", "verified_lecturer"],
   view_milestone: ["popular_material"],
+  school_email_verified: ["verified_student"],
   catch_up: BADGE_IDS,
 };
 
 // Everything the rules read about the user
 const USER_FIELDS =
   "upid role createdAt verifiedMaterialCount universityId isVerified phone profilePhoto " +
-  "fullName username bio dob facultyId departmentId level";
+  "fullName username bio dob facultyId departmentId level schoolEmailVerifiedAt";
 
 type BadgeUser = {
   _id: Types.ObjectId;
@@ -75,6 +77,7 @@ type BadgeUser = {
   createdAt: Date;
   verifiedMaterialCount?: number;
   universityId?: Types.ObjectId;
+  schoolEmailVerifiedAt?: Date;
 } & Parameters<typeof calculateProfileCompletion>[0];
 
 async function qualifies(badgeId: BadgeId, user: BadgeUser): Promise<boolean> {
@@ -133,6 +136,8 @@ async function qualifies(badgeId: BadgeId, user: BadgeUser): Promise<boolean> {
       ]);
       return top.some((t) => String(t._id) === String(userId) && t.count >= TOP_CONTRIBUTOR_MIN_MATERIALS);
     }
+    case "verified_student":
+      return !!user.schoolEmailVerifiedAt;
     case "collaborator":
       return user.role === "collaborator";
     case "auditor":

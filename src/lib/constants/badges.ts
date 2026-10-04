@@ -21,6 +21,7 @@ export type BadgeId =
   | "early_adopter"
   | "profile_complete"
   | "school_pioneer"
+  | "verified_student"
   // Role
   | "collaborator"
   | "auditor"
@@ -149,6 +150,14 @@ export const BADGE_DEFINITIONS: Record<BadgeId, BadgeDefinition> = {
     emoji: "🏫",
     category: "community",
     rarity: "legendary",
+  },
+  verified_student: {
+    id: "verified_student",
+    name: "Verified Student",
+    description: "Confirmed a school email from your university",
+    emoji: "🪪",
+    category: "community",
+    rarity: "common",
   },
   collaborator: {
     id: "collaborator",

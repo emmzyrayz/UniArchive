@@ -10,7 +10,7 @@ by contributors so they're searchable.
   architecture, conventions and how things work live in
   [AGENTS.md](AGENTS.md).
 
-Last updated: 2026-10-01.
+Last updated: 2026-10-04.
 
 ---
 
@@ -31,6 +31,9 @@ Last updated: 2026-10-01.
 - Email through ZeptoMail (`no-reply@`), support inbox via ImprovMX
   (`support@` → team Gmail).
 - SEO: metadata, sitemap, robots, OG images, JSON-LD.
+- School email verification at signup (October 2026): optional step, the
+  address must belong to the picked school, a code proves it, and it earns
+  a Verified Student badge.
 
 **Platform materials (September–October 2026)**
 1. Staff bulk upload (in-browser hashing, lossless compression, page counts)
@@ -61,12 +64,8 @@ Unordered; pick by what matters most at the time.
 - **"Materials that need typing"** on the dashboard's Conversions tab: past
   questions and notes with no typed content yet, near the user's courses
   (TODO in `src/components/dashboard/ConversionsTab.tsx`).
-- **School email verification at signup (decided: implement it; next up)**:
-  the wizard's "School Email" step is a placeholder. It sends no code,
-  accepts any 6 digits, and the address is never saved. Plan: send and
-  check a code server-side, store a verified school email on the user, keep
-  the step skippable. Implementation notes are in the `TODO(school-email)`
-  comment at the top of `src/app/auth/components/steps/stepSchoolEmail.tsx`.
+- **Add a school email after signup**: from Settings, for Google sign-ups
+  and existing accounts (signup is the only place today).
 - **Settings that are UI only**: profile editing, notification toggles,
   "Download my data" and account deletion.
 - **Indexable material pages**: server-render `/materials/[id]`, drop its

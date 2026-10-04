@@ -32,6 +32,8 @@ const limiters = {
   // Routes that create accounts or send email (register, reset request,
   // resend verification): tighter than auth, each one can send an email
   authEmail: make(5, "1 m", "rl:auth-email"),
+  // Codes sent to one school email address, whoever asks
+  schoolEmail: make(5, "1 h", "rl:school-email"),
   // Upload routes — very expensive
   upload: make(20, "1 h", "rl:upload"),
   // Contact form — strict anti-spam
