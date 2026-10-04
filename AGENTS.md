@@ -57,8 +57,11 @@ vars are documented in `.env.example`.
   publishes ZeptoMail's SPF) plus a DKIM TXT record whose selector comes
   from the ZeptoMail dashboard. There must only ever be one SPF TXT record
   on the root.
-- The legacy Gmail sender (`EMAIL_USER`/`EMAIL_PASS`) is only used while
-  `SMTP_*` is unset; delete it everywhere once ZeptoMail is live.
+- `SMTP_*` is required: there is no fallback sender (the old Gmail one,
+  `EMAIL_USER`/`EMAIL_PASS`, was removed). Without it the server warns at
+  startup and email isn't delivered.
+- ZeptoMail is transactional only (its terms forbid bulk mail). Broadcasts
+  and newsletters go through Brevo instead (`BREVO_API_KEY`).
 - Check settings with `pnpm email:test uniarchive.team@gmail.com`. To test
   sending code without real mail, point `SMTP_HOST` at a local fake SMTP
   server (`smtp-server` in a scratch folder) and run with

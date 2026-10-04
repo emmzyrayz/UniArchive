@@ -34,12 +34,7 @@ async function main(): Promise<void> {
   const { config } = resolved;
   const t = config.transport;
   console.log("Settings (password not shown):");
-  console.log(`  source:   ${config.source}`);
-  if ("host" in t) {
-    console.log(`  server:   ${t.host}:${t.port} (${t.secure ? "SSL/TLS" : "STARTTLS"})`);
-  } else {
-    console.log("  server:   Gmail");
-  }
+  console.log(`  server:   ${t.host}:${t.port} (${t.secure ? "SSL/TLS" : "STARTTLS"})`);
   console.log(`  user:     ${t.auth.user}`);
   console.log(`  from:     ${config.from}`);
   console.log(`  reply-to: ${config.replyTo}`);
@@ -54,8 +49,8 @@ async function main(): Promise<void> {
     replyTo: config.replyTo,
     to,
     subject: "UniArchive test email",
-    text: `This is a test email from UniArchive (${config.source}), sent ${sentAt}.\nReplies should go to ${config.replyTo}.`,
-    html: `<p>This is a test email from UniArchive (<strong>${config.source}</strong>), sent ${sentAt}.</p><p>Replies should go to ${config.replyTo}.</p>`,
+    text: `This is a test email from UniArchive (${t.host}), sent ${sentAt}.\nReplies should go to ${config.replyTo}.`,
+    html: `<p>This is a test email from UniArchive (<strong>${t.host}</strong>), sent ${sentAt}.</p><p>Replies should go to ${config.replyTo}.</p>`,
   });
   console.log(`✓ Sent to ${to} (message id ${info.messageId})`);
 }

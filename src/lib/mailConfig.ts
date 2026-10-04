@@ -8,9 +8,8 @@
 //   SMTP_PASS, MAIL_FROM (defaults to "UniArchive <no-reply@...>"),
 //   MAIL_REPLY_TO (defaults to SUPPORT_EMAIL)
 //
-// Until SMTP_* is set, the older Gmail settings (EMAIL_USER / EMAIL_PASS)
-// are used, so production keeps sending during the switch. Remove them from
-// the environment once ZeptoMail is live.
+// Bulk email (broadcasts) does not go through here: ZeptoMail only allows
+// transactional mail, so broadcasts are sent by Brevo.
 //
 // No nodemailer import here: src/instrumentation.ts checks this at startup.
 import { NO_REPLY_EMAIL, SUPPORT_EMAIL } from "@/lib/site";
@@ -18,10 +17,7 @@ import { NO_REPLY_EMAIL, SUPPORT_EMAIL } from "@/lib/site";
 export const DEFAULT_MAIL_FROM = `UniArchive <${NO_REPLY_EMAIL}>`;
 
 export interface MailConfig {
-  source: "smtp" | "gmail";
-  transport:
-    | { host: string; port: number; secure: boolean; auth: { user: string; pass: string } }
-    | { service: "gmail"; auth: { user: string; pass: string } };
+  transport: { host: string; port: number; secure: boolean; auth: { user: string; pass: string } };
   /** Sender for every email, e.g. "UniArchive <no-reply@uniarchive.com.ng>". */
   from: string;
   /** Where replies go unless a message sets its own (the contact form does). */
@@ -38,51 +34,29 @@ export function resolveMailConfig(): { config: MailConfig } | { problem: string 
   const host = env("SMTP_HOST");
   const user = env("SMTP_USER");
   const pass = env("SMTP_PASS");
-  if (host || user || pass) {
+  if (!host || !user || !pass) {
     const missing = [!host && "SMTP_HOST", !user && "SMTP_USER", !pass && "SMTP_PASS"].filter(
       Boolean,
     );
-    if (missing.length > 0) {
-      return { problem: `SMTP settings are incomplete: set ${missing.join(", ")}.` };
-    }
-    const secureSetting = env("SMTP_SECURE")?.toLowerCase();
-    const port = Number(env("SMTP_PORT") ?? (secureSetting === "true" ? 465 : 587));
-    if (!Number.isInteger(port) || port <= 0) {
-      return { problem: "SMTP_PORT must be a port number, e.g. 587 or 465." };
-    }
-    return {
-      config: {
-        source: "smtp",
-        // 465 is implicit TLS; 587 upgrades with STARTTLS (secure: false)
-        transport: {
-          host: host!,
-          port,
-          secure: secureSetting ? secureSetting === "true" : port === 465,
-          auth: { user: user!, pass: pass! },
-        },
-        from: mailFrom ?? DEFAULT_MAIL_FROM,
-        replyTo,
-      },
-    };
+    return { problem: `SMTP settings are missing: set ${missing.join(", ")}.` };
   }
-
-  // Legacy: Gmail with an app password
-  const gmailUser = env("EMAIL_USER");
-  const gmailPass = env("EMAIL_PASS");
-  if (gmailUser && gmailPass) {
-    return {
-      config: {
-        source: "gmail",
-        transport: { service: "gmail", auth: { user: gmailUser, pass: gmailPass } },
-        from: mailFrom ?? `"UniArchive" <${gmailUser}>`,
-        replyTo,
-      },
-    };
+  const secureSetting = env("SMTP_SECURE")?.toLowerCase();
+  const port = Number(env("SMTP_PORT") ?? (secureSetting === "true" ? 465 : 587));
+  if (!Number.isInteger(port) || port <= 0) {
+    return { problem: "SMTP_PORT must be a port number, e.g. 587 or 465." };
   }
-
   return {
-    problem:
-      "No email settings: set SMTP_HOST, SMTP_USER and SMTP_PASS (or the legacy EMAIL_USER and EMAIL_PASS).",
+    config: {
+      // 465 is implicit TLS; 587 upgrades with STARTTLS (secure: false)
+      transport: {
+        host,
+        port,
+        secure: secureSetting ? secureSetting === "true" : port === 465,
+        auth: { user, pass },
+      },
+      from: mailFrom ?? DEFAULT_MAIL_FROM,
+      replyTo,
+    },
   };
 }
 

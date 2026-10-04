@@ -70,8 +70,10 @@ Unordered; pick by what matters most at the time.
   "Download my data" and account deletion.
 - **Indexable material pages**: server-render `/materials/[id]`, drop its
   noindex and list materials in the sitemap (TODO in `src/app/sitemap.ts`).
-- **Remove the legacy Gmail sender** (`EMAIL_USER` / `EMAIL_PASS`) now that
-  ZeptoMail is live, from the code and the Vercel env.
+- **Mail system (in progress)**: the Gmail sender is gone; next,
+  `/admin/mail` to email one user through ZeptoMail, then broadcasts through
+  Brevo (announcements for everyone who hasn't unsubscribed, a newsletter
+  for those who opted in, real email toggles in Settings).
 - **Regenerate `favicon.ico` as RGBA** so `pnpm dev` (Turbopack) works again;
   until then, test against production builds.
 - **Automated tests**: there's no test suite yet; changes are checked with
