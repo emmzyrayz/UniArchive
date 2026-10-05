@@ -10,7 +10,7 @@ by contributors so they're searchable.
   architecture, conventions and how things work live in
   [AGENTS.md](AGENTS.md).
 
-Last updated: 2026-10-04.
+Last updated: 2026-10-05.
 
 ---
 
@@ -34,6 +34,13 @@ Last updated: 2026-10-04.
 - School email verification at signup (October 2026): optional step, the
   address must belong to the picked school, a code proves it, and it earns
   a Verified Student badge.
+- Mail system (October 2026): ZeptoMail for one-to-one mail (account
+  emails, and admins writing to a user at `/admin/mail`); Brevo for
+  broadcasts at `/admin/mail/broadcasts` (seven templates, stacking
+  audiences, live preview and count, test copy, send now or schedule,
+  cancel, stats). Users choose announcements (default on) and the
+  newsletter (opt-in) in Settings or from a link in every broadcast, and
+  Brevo unsubscribes flow back by webhook.
 
 **Platform materials (September–October 2026)**
 1. Staff bulk upload (in-browser hashing, lossless compression, page counts)
@@ -70,14 +77,10 @@ Unordered; pick by what matters most at the time.
   account deletion.
 - **Indexable material pages**: server-render `/materials/[id]`, drop its
   noindex and list materials in the sitemap (TODO in `src/app/sitemap.ts`).
-- **Mail system (in progress)**: the Gmail sender is gone, admins can
-  email one user from `/admin/mail` (ZeptoMail), and users choose their
-  bulk email in Settings (Brevo unsubscribes flow back), and admins compose
-  broadcasts from templates with a live preview, audience count and test
-  copy, then send or schedule them through Brevo and follow their stats,
-  at `/admin/mail/broadcasts`. Left: Monthly digest and Profile nudge
-  templates, adding a school email from Settings (announcements for everyone who hasn't unsubscribed, a newsletter
-  for those who opted in, real email toggles in Settings).
+- **More broadcast templates**: Monthly digest (with automatic stats) and
+  Profile nudge.
+- **Tidy Brevo lists**: each broadcast leaves a list in Brevo's "UniArchive
+  broadcasts" folder; delete old ones now and then (by hand or a script).
 - **Regenerate `favicon.ico` as RGBA** so `pnpm dev` (Turbopack) works again;
   until then, test against production builds.
 - **Automated tests**: there's no test suite yet; changes are checked with
