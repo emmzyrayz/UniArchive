@@ -1,5 +1,6 @@
 // app/privacy/page.tsx
 // Keep this in step with the code: what's collected, encrypted and stored where.
+import Link from "next/link";
 import {
   LegalEmail,
   LegalList,
@@ -60,6 +61,19 @@ export default function PrivacyPage() {
               Device&rdquo; or &ldquo;Chrome Browser&rdquo;) with that session.
               We also use IP addresses briefly to limit repeated requests and
               prevent abuse.
+            </>,
+            <>
+              <Term>Surveys:</Term> when you answer a survey at{" "}
+              <Link href="/surveys" className="text-primary hover:underline">/surveys</Link>{" "}
+              (signed in or not), we keep your answers and the details the
+              survey asks for, such as your school, level and, only if you give
+              them, your name and email (encrypted, used only to follow up on
+              your answers). The UniArchive team reads them to decide what to
+              improve; they are never shown publicly. A school, faculty or
+              department you type that we don&apos;t list is reviewed and added
+              to UniArchive for everyone. Answers you gave while signed in are
+              in &ldquo;Download my data&rdquo;; if you delete your account,
+              they stay in the results without your name, email or account.
             </>,
           ]}
         />
@@ -161,6 +175,7 @@ export default function PrivacyPage() {
         <LegalList
           items={[
             "We use httpOnly cookies for sign-in only: a session cookie that lasts up to 7 days, and a short-lived access cookie that is renewed about every 15 minutes. Google sign-in also sets a few temporary cookies that last only for the sign-in itself.",
+            "If you answer a survey while signed out, we set an httpOnly cookie with a random key (kept for a year) so you can come back and change your answers on the same device. It identifies nothing else.",
             "We do not use advertising, analytics or tracking cookies.",
             "Your browser also stores some things on your device: your theme preference, which prompts you have dismissed, unsaved drafts and pending uploads, and encrypted copies of books you save for offline reading. Clearing your site data removes them.",
           ]}

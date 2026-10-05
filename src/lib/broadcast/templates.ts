@@ -53,7 +53,8 @@ export type BroadcastTemplateId =
   | "custom_message"
   | "new_materials"
   | "exam_season"
-  | "contributor_call";
+  | "contributor_call"
+  | "survey_invite";
 
 export interface TemplateDef {
   id: BroadcastTemplateId;
@@ -220,6 +221,28 @@ export const BROADCAST_TEMPLATES: TemplateDef[] = [
         initial: "Upload past questions and lecture notes\nType out past questions so they're searchable\nGift a PDF to UniArchive from your library",
       },
       ...CTA("Start contributing", absoluteUrl("/upload")),
+      SUBJECT,
+    ],
+  },
+  {
+    id: "survey_invite",
+    label: "Survey invite",
+    emoji: "📝",
+    description: "Ask people to answer an open survey (/admin/surveys).",
+    kind: "announcements",
+    fields: [
+      { name: "headline", label: "Headline", type: "text", required: true, max: 120, initial: "Tell us what you think of UniArchive" },
+      {
+        name: "intro",
+        label: "Why you're asking",
+        type: "textarea",
+        required: true,
+        max: 2000,
+        initial: "We're building UniArchive for students like you, and we'd love to know what's working, what isn't and what you'd like next.",
+      },
+      { name: "duration", label: "How long it takes (optional)", type: "text", max: 40, placeholder: "about 3 minutes", initial: "about 3 minutes" },
+      { name: "closes", label: "Open until (optional)", type: "text", max: 80, placeholder: "Friday 31 October" },
+      ...CTA("Answer the survey", absoluteUrl("/surveys")),
       SUBJECT,
     ],
   },
@@ -510,6 +533,25 @@ function renderBody(template: TemplateDef, f: TemplateFields): Body {
           str(f, "intro"),
           str(f, "examPeriod") && `Exam period: ${str(f, "examPeriod")}`,
           tips.length ? `Tips:\n${textList(tips)}` : "",
+          textButton(f),
+        ],
+      };
+    }
+    case "survey_invite": {
+      const headline = str(f, "headline");
+      const facts: [string, string][] = [
+        ["Takes", str(f, "duration")],
+        ["Open until", str(f, "closes")],
+      ];
+      return {
+        subject: headline,
+        heading: "Survey",
+        html: `${heading(headline)}${plainTextToHtml(str(f, "intro"))}${detailRows(facts)}${button(f)}`,
+        text: [
+          headline,
+          "",
+          str(f, "intro"),
+          facts.filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join("\n"),
           textButton(f),
         ],
       };

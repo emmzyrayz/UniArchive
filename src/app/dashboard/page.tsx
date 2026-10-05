@@ -13,6 +13,7 @@ import { HighlightsList } from "@/components/dashboard/HighlightsList";
 import { RoleProgression } from "@/components/dashboard/RoleProgression";
 import { ReadingStatsCard } from "@/components/dashboard/ReadingStatsCard";
 import { ConversionsTab } from "@/components/dashboard/ConversionsTab";
+import { SurveyBanner } from "@/components/survey/SurveyBanner";
 import { Button } from "@/components/UI/Buttons";
 import { formatBytes } from "@/assets/data/dashboardData";
 import type { Book } from "@/types/library";
@@ -252,6 +253,7 @@ function DashboardContent() {
         {/* Overview tab */}
         {activeTab === "overview" && (
           <div className="space-y-8">
+            <SurveyBanner />
             {/* Loads on its own, so it shows even if the stats fail */}
             <RoleProgression />
 

@@ -328,6 +328,59 @@ vars are documented in `.env.example`.
   then popular; most-viewed first within each, with how many other people
   are typing each one.
 
+## Surveys
+
+- Run on the site instead of Google Forms, so answers are analysed in the
+  admin (charts, filters, export). Managed at `/admin/surveys` (permission
+  `survey.manage`: com_admin and dev; no /mod copy).
+- `lib/survey/questions.ts` (client-safe) is the one definition of question
+  types (short/long text, single/multi choice with an optional "Other"
+  box, dropdown, yes/no, rating 1-5, scale 0-10 with end labels, number),
+  of what a valid answer is (`cleanAnswers`, shared by the form and the
+  API) and of the "About you" fields (name, email, school, level, who:
+  each off/optional/required per survey). Choices are stored by option id,
+  so rewording an option keeps its results.
+- `Survey` (draft/open/closed, optional open/close window). The builder
+  (`SurveyBuilder`) edits beside a live preview that uses the public
+  question component (`components/survey/SurveyQuestions`). Once a survey
+  has answers, `lockedChanges` refuses removing questions or options,
+  changing a type or a scale, and new required questions (409); "Duplicate"
+  makes a new draft for bigger changes. Only drafts without responses can
+  be deleted.
+- Public: `/surveys` and `/surveys/[slug]` (anyone, signed in or not;
+  noindex; `isPublicSurveyPath` in `lib/routeAccess.ts`). One
+  `SurveyResponse` per person: signed-in by `userId`, signed out by a
+  random key in the httpOnly `ua_survey_key` cookie (only its hash is
+  stored); answering again edits it until the survey closes. Signed-in
+  people get "About you" prefilled from their profile. Email is encrypted
+  (+ hash) and only for follow-up. Spam: hidden `website` field, at least
+  3 s between showing the form and sending, `surveyResponse` limiter (20 an
+  hour per IP). `POST /api/surveys/[slug]/responses`.
+- School data: the form picks university, faculty and department from the
+  catalog, with "not listed" at each step. Typed parts go through
+  `classifySuggestion` (`lib/survey/respond.ts`): an exact catalog match
+  fills in the ids; otherwise a `SchoolSuggestion` with `source: "survey"`
+  (no submitter) is created, or an existing one for the same school +
+  faculty + department is reused with its priority raised. The response
+  points at it (`schoolSuggestionId`); approving it in `/suggestions`
+  fills the catalog records into those responses (`placeSurveyResponses`
+  in `lib/suggestionReview.ts`). A typed school or faculty needs the
+  parts below it.
+- Results (`/admin/surveys/[id]/results`, `lib/survey/analysis.ts`):
+  per-question summaries worked out in memory from the matching responses
+  (fine up to 50,000; past that the charts cover the newest), facets for
+  the filters (school or "not in our list", faculty, department, level,
+  who, signed in or out, Lagos dates, text search), responses per day, the
+  individual responses (delete one for spam) and CSV/JSON export
+  (streamed, Excel-ready BOM, formula cells defused; `surveyExport`
+  limiter). Charts are CSS bars: there's no chart library.
+- Reach: `GET /api/surveys/open` (open surveys and whether this visitor
+  answered) feeds the ribbon (`scrollribbon.tsx`) and the dashboard
+  banner (`SurveyBanner`, "Not now" remembered in localStorage). The
+  "Survey invite" broadcast template emails a link through Brevo.
+- Accounts: the data export includes signed-in responses; the purge keeps
+  them in the results without userId, name, email or IP hash.
+
 ## SEO
 
 - `/materials/[id]` is server-rendered (`page.tsx` loads it with
@@ -370,7 +423,8 @@ reports), PDF reader with highlights, bookmarks and reading progress, uploads
 and submissions with admin review, typed content (past-question Q&A, lecture
 note editor, `/materials/[id]`, the conversion workspace and the dashboard
 Conversions tab), role progression and applications, badges,
-public profiles (`/profile/[upid]`), full admin panel (`/admin`), SEO
+public profiles (`/profile/[upid]`), surveys (`/surveys`, results in the
+admin), full admin panel (`/admin`), SEO
 (metadata, sitemap, robots, OG images, JSON-LD), privacy and terms pages.
 
 ## Known gaps

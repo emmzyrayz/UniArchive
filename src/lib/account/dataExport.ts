@@ -29,6 +29,9 @@ import { getLoginEventModel } from "@/lib/models/loginEventModel";
 import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
 import { getTrustedDeviceModel } from "@/lib/models/trustedDeviceModel";
 import { getSentMailModel } from "@/lib/models/sentMailModel";
+import { getSurveyModel, type ISurvey } from "@/lib/models/surveyModel";
+import { getSurveyResponseModel, type ISurveyResponse } from "@/lib/models/surveyResponseModel";
+import { answerText } from "@/lib/survey/questions";
 import { decryptSensitiveData } from "@/lib/encryption";
 import { BADGE_DEFINITIONS, type BadgeId } from "@/lib/constants/badges";
 import { effectiveEmailPrefs } from "@/lib/emailPrefs";
@@ -64,6 +67,31 @@ function decrypt(value: unknown): string | undefined {
 }
 
 const iso = (d: unknown) => (d instanceof Date ? d.toISOString() : undefined);
+
+/** Survey answers given while signed in, as readable text. */
+async function exportSurveyResponses(userId: Types.ObjectId) {
+  const Response = await getSurveyResponseModel();
+  const responses = await Response.find({ userId }).sort({ createdAt: 1 }).lean<ISurveyResponse[]>();
+  if (responses.length === 0) return [];
+  const Survey = await getSurveyModel();
+  const surveys = await Survey.find({ _id: { $in: responses.map((r) => r.surveyId) } })
+    .select("title questions")
+    .lean<Pick<ISurvey, "_id" | "title" | "questions">[]>();
+  const byId = new Map(surveys.map((s) => [String(s._id), s]));
+  return responses.map((r) => {
+    const survey = byId.get(String(r.surveyId));
+    const about: Record<string, unknown> = { ...r.respondent };
+    delete about.email;
+    delete about.emailHash;
+    return {
+      survey: survey?.title ?? "(deleted survey)",
+      answeredAt: iso(r.createdAt),
+      lastChangedAt: iso(r.updatedAt),
+      aboutYou: { ...(scrub(about) as object), email: decrypt(r.respondent?.email) },
+      answers: (survey?.questions ?? []).map((q) => ({ question: q.label, answer: answerText(q, r.answers?.[q.id]) || null })),
+    };
+  });
+}
 
 export async function buildDataExport(userId: string): Promise<Record<string, unknown> | null> {
   const id = new Types.ObjectId(userId);
@@ -109,6 +137,8 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     TrustedDevice.find({ userId: id }).select("deviceName ipAddress createdAt lastUsedAt expiresAt").lean(),
     SentMail.find({ toUserId: id, status: "sent" }).select("subject body sentByName createdAt").lean(),
   ]);
+
+  const surveyResponses = await exportSurveyResponses(id);
 
   const account = {
     upid: user.upid,
@@ -161,6 +191,7 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     reactions: scrub(reactions),
     roleApplications: scrub(applications),
     schoolSuggestions: scrub(suggestions),
+    surveyResponses,
     contributionHistory: scrub(contributions),
     messagesFromTheUniArchiveTeam: scrub(messages),
     signInHistory: scrub(signIns),

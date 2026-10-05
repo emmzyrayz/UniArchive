@@ -85,3 +85,7 @@ export interface SurveyResponsesResponse {
   page: number;
   totalPages: number;
 }
+
+export interface OpenSurveysResponse {
+  surveys: { slug: string; title: string; closesAt?: string; answered: boolean }[];
+}

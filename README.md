@@ -49,6 +49,19 @@ Last updated: 2026-10-05.
   accounts can be deleted (emailed code, 7-day grace that a sign-in
   cancels, then a daily purge that keeps published work anonymously).
 
+- Surveys (October 2026): run on UniArchive instead of Google Forms.
+  Admins build them (nine question types, choose which "about you" details
+  to ask), anyone can answer at `/surveys` signed in or not, and results
+  are analysed in the admin: a chart per question, filters by school,
+  faculty, department, level and more, every response, and CSV/JSON
+  export. Schools, faculties and departments people type that we don't
+  list go to the school-suggestion review and get added to the catalog.
+  Open surveys show in the ribbon and on the dashboard, and the "Survey
+  invite" broadcast emails them.
+- "Materials that need typing" on the dashboard Conversions tab
+  (October 2026): untyped past questions and notes near the contributor
+  first (their department and level, then faculty, school, popular).
+
 **Platform materials (September–October 2026)**
 1. Staff bulk upload (in-browser hashing, lossless compression, page counts)
    and a review queue.
@@ -81,6 +94,10 @@ Unordered; pick by what matters most at the time.
   broadcasts" folder; delete old ones now and then (by hand or a script).
 - **Regenerate `favicon.ico` as RGBA** so `pnpm dev` (Turbopack) works again;
   until then, test against production builds.
+- **Signup from the catalog**: the signup school dropdown still reads the
+  static `schoolData.ts`, while approved school suggestions (including
+  ones from surveys) land in the university catalog. Moving signup to the
+  catalog also touches register validation and the school-email matcher.
 - **Automated tests**: there's no test suite yet; changes are checked with
   typecheck, lint, build, and manual and scripted runs against throwaway
   databases.

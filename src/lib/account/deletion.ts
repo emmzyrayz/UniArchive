@@ -38,6 +38,7 @@ import { getUserBadgeModel } from "@/lib/models/userBadgeModel";
 import { getLoginEventModel } from "@/lib/models/loginEventModel";
 import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
 import { getTrustedDeviceModel } from "@/lib/models/trustedDeviceModel";
+import { getSurveyResponseModel } from "@/lib/models/surveyResponseModel";
 import { getPendingLinkModel } from "@/lib/models/pendingLinkModel";
 import { getSentMailModel } from "@/lib/models/sentMailModel";
 import { decryptSensitiveData } from "@/lib/encryption";
@@ -244,6 +245,14 @@ export async function purgeAccount(userId: Types.ObjectId): Promise<PurgeSummary
     ),
   );
   await anonymise("reactions", () => Reaction.updateMany({ userId: id }, { $set: { userUpid: "" } }));
+  // Survey answers stay in the results; who gave them doesn't
+  const SurveyResponse = await getSurveyResponseModel();
+  await anonymise("surveyResponses", () =>
+    SurveyResponse.updateMany(
+      { userId: id },
+      { $unset: { userId: 1, "respondent.name": 1, "respondent.email": 1, "respondent.emailHash": 1, ipHash: 1 } },
+    ),
+  );
 
   // 3. Delete everything else of theirs
   const remove = async (label: string, run: () => Promise<{ deletedCount: number }>) => {

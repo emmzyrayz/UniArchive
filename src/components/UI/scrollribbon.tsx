@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useOpenSurveys } from "@/components/survey/useOpenSurveys";
 
 // Platform announcements shown in the strip above the navbar
-type RibbonItemType = "announcement" | "news" | "materials" | "updates";
+type RibbonItemType = "announcement" | "news" | "materials" | "updates" | "survey";
 
 interface RibbonItem {
   type: RibbonItemType;
   text: string;
+  href?: string;
 }
 
 const ITEMS: RibbonItem[] = [
@@ -75,6 +78,12 @@ function RibbonIcon({ type }: { type: RibbonItemType }) {
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
         </svg>
       );
+    case "survey": // speech bubble
+      return (
+        <svg {...common} className="shrink-0 text-amber-400">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+        </svg>
+      );
     case "updates": // chart
       return (
         <svg {...common} className="shrink-0 text-cyan-400">
@@ -100,8 +109,17 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
   const ribbonRef = useRef<HTMLDivElement>(null);
   const scrolledRef = useRef(false);
 
+  // Open surveys the visitor hasn't answered go first
+  const surveys = useOpenSurveys();
+  const items = useMemo<RibbonItem[]>(
+    () => [
+      ...surveys.slice(0, 2).map((s) => ({ type: "survey" as const, text: `Have your say: ${s.title}`, href: `/surveys/${s.slug}` })),
+      ...ITEMS,
+    ],
+    [surveys],
+  );
   const shown = !isScrolled || cycleVisible;
-  const current = ITEMS[activeIndex];
+  const current = items[activeIndex % items.length];
 
   // Scroll position -> fixed/relative mode. Only updates state when the
   // threshold is crossed, not on every scroll event.
@@ -123,21 +141,21 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
   useEffect(() => {
     if (isPaused) return;
     const id = setInterval(
-      () => setActiveIndex((i) => (i + 1) % ITEMS.length),
+      () => setActiveIndex((i) => (i + 1) % items.length),
       displayTime,
     );
     return () => clearInterval(id);
-  }, [isPaused, displayTime]);
+  }, [isPaused, displayTime, items.length]);
 
   // While scrolled: show for one full cycle, hide for delayBetweenCycles, repeat
   useEffect(() => {
     if (!isScrolled) return;
     const id = setTimeout(
       () => setCycleVisible((visible) => !visible),
-      cycleVisible ? ITEMS.length * displayTime : delayBetweenCycles,
+      cycleVisible ? items.length * displayTime : delayBetweenCycles,
     );
     return () => clearTimeout(id);
-  }, [isScrolled, cycleVisible, displayTime, delayBetweenCycles]);
+  }, [isScrolled, cycleVisible, displayTime, delayBetweenCycles, items.length]);
 
   // Report the ribbon's height to anything laid out beneath it. Observes the
   // ribbon element only, not the whole document.
@@ -185,13 +203,24 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
           style={{ animation: `ribbon-fade ${transitionTime}ms ease-in-out` }}
         >
           <RibbonIcon type={current.type} />
-          <span
-            className={`truncate text-white/90 transition-all duration-300 ${
-              isScrolled ? "text-[11px]" : "text-xs sm:text-[13px]"
-            }`}
-          >
-            {current.text}
-          </span>
+          {current.href ? (
+            <Link
+              href={current.href}
+              className={`truncate text-white underline decoration-white/40 underline-offset-2 transition-all duration-300 hover:decoration-white ${
+                isScrolled ? "text-[11px]" : "text-xs sm:text-[13px]"
+              }`}
+            >
+              {current.text} →
+            </Link>
+          ) : (
+            <span
+              className={`truncate text-white/90 transition-all duration-300 ${
+                isScrolled ? "text-[11px]" : "text-xs sm:text-[13px]"
+              }`}
+            >
+              {current.text}
+            </span>
+          )}
         </p>
       </div>
 
@@ -200,7 +229,7 @@ export const ScrollRibbon: React.FC<ScrollRibbonProps> = ({
         <div
           className="h-full bg-sky-400"
           style={{
-            width: `${((activeIndex + 1) / ITEMS.length) * 100}%`,
+            width: `${(((activeIndex % items.length) + 1) / items.length) * 100}%`,
             transition: "width 0.3s linear",
           }}
         />
