@@ -8,8 +8,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createMetadata, absoluteUrl, SITE_URL } from "@/lib/seo";
 import { getMaterialDetail, getTypedPreview } from "@/lib/materialDetail";
-import { levelLabel } from "@/components/unilibrary/materialLabels";
-import { CATEGORIES } from "@/lib/constants/materialCategories";
+import { levelLabel, materialKindLabel } from "@/components/unilibrary/materialLabels";
 import type { MaterialDetail } from "@/types/layer2";
 import { MaterialView } from "./MaterialView";
 
@@ -19,11 +18,7 @@ function displayName(m: MaterialDetail): string {
   return m.courseCode ? `${m.courseCode}: ${m.title}` : m.title;
 }
 
-/** The full kind ("Past Question", "Lecture Notes"), not the badge's short label. */
-function kindLabel(m: MaterialDetail): string {
-  const category = CATEGORIES.find((c) => c.id === m.category);
-  return category?.subcategories.find((s) => s.id === m.subcategory)?.label ?? category?.label ?? "Study material";
-}
+const kindLabel = (m: MaterialDetail) => materialKindLabel(m.category, m.subcategory);
 
 // Search snippets cut off around 160 characters: the facts people search
 // by come first, the uploader's description last

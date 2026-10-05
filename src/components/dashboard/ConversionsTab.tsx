@@ -12,6 +12,7 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { timeAgo } from "@/components/admin/reviewShared";
 import type { ConversionStats } from "@/lib/conversionStats";
 import type { ConversionKind } from "@/lib/conversions";
+import { NEEDS_TYPING_MAX, type NeedsTypingResult } from "@/types/needsTyping";
 
 interface DraftSummary {
   id: string;
@@ -176,10 +177,72 @@ function InProgress({ drafts, onChanged }: { drafts: DraftSummary[]; onChanged: 
   );
 }
 
+function NeedsTyping({ data, more, onMore }: { data: NeedsTypingResult; more: boolean; onMore: () => void }) {
+  if (data.items.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-text-muted">
+        Everything we have is typed out. Thank you! New uploads show up here.
+      </p>
+    );
+  }
+  return (
+    <>
+      {!data.personalised && (
+        <p className="mb-3 rounded-lg border border-border bg-surface-raised px-4 py-3 text-sm text-text-secondary">
+          Showing popular materials.{" "}
+          <Link href="/profile/edit" className="font-semibold text-primary hover:underline">
+            Set your school and department
+          </Link>{" "}
+          to see ones from your own courses first.
+        </p>
+      )}
+      <ul className="grid gap-3 sm:grid-cols-2">
+        {data.items.map((m) => (
+          <li key={m.id} className="flex flex-col rounded-xl border border-border bg-surface-raised p-4">
+            <p className="text-xs font-medium text-primary">{m.reason}</p>
+            <Link href={`/materials/${m.id}`} className="mt-1 font-semibold text-text-primary hover:underline">
+              {m.courseCode ? `${m.courseCode}: ${m.title}` : m.title}
+            </Link>
+            <p className="mt-0.5 text-xs text-text-muted">
+              {[m.kind, m.school, m.level, m.pageCount ? `${m.pageCount} pages` : "", `${m.viewCount.toLocaleString()} views`]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+            {m.othersTyping > 0 && (
+              <p className="mt-1 text-xs text-warning">
+                {m.othersTyping === 1 ? "1 person is" : `${m.othersTyping} people are`} typing this already
+              </p>
+            )}
+            <div className="mt-auto flex justify-end pt-3">
+              <Link
+                href={`/contribute/${m.id}`}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                {m.conversion === "questions" ? "Type out the questions" : "Write typed notes"}
+              </Link>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {more && (
+        <div className="mt-3 text-center">
+          <button type="button" onClick={onMore} className="text-sm font-semibold text-primary hover:underline">
+            Show more
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function ConversionsTab() {
   const [version, setVersion] = useState(0);
   const stats = useJson<{ stats: ConversionStats }>("/api/conversions/stats", version);
   const drafts = useJson<{ drafts: DraftSummary[] }>("/api/conversions/drafts", version);
+  const [needsLimit, setNeedsLimit] = useState(6);
+  const needs = useJson<NeedsTypingResult>(`/api/conversions/needs-typing?limit=${needsLimit}`, version);
+  // useJson keeps the last list on screen while "Show more" loads
+  const needsData = needs.status === "ready" ? needs.data : null;
   const reload = () => setVersion((v) => v + 1);
 
   const retry = (
@@ -202,7 +265,25 @@ export function ConversionsTab() {
         {drafts.status === "ready" ? <InProgress drafts={drafts.data.drafts} onChanged={reload} /> : drafts.status === "error" ? retry : loading}
       </section>
 
-      {/* TODO: "Materials that need typing" (past questions and notes with no typed content yet, near the user's courses) */}
+      <section aria-labelledby="conv-needs">
+        <h2 id="conv-needs" className="font-semibold text-text-primary">
+          Materials that need typing
+        </h2>
+        <p className="mb-4 mt-1 text-sm text-text-secondary">
+          No one has typed these out yet. Typing them makes them searchable and easy to study on a phone.
+        </p>
+        {needsData ? (
+          <NeedsTyping
+            data={needsData}
+            more={needsData.items.length >= needsLimit && needsLimit < NEEDS_TYPING_MAX}
+            onMore={() => setNeedsLimit(NEEDS_TYPING_MAX)}
+          />
+        ) : needs.status === "error" ? (
+          retry
+        ) : (
+          loading
+        )}
+      </section>
 
       <section aria-labelledby="conv-stats" className="space-y-6">
         <h2 id="conv-stats" className="font-semibold text-text-primary">

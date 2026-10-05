@@ -1,9 +1,10 @@
 // components/unilibrary/materialLabels.ts
 // Display labels for the UniLibrary feed: badge per category/subcategory,
 // the category tabs, and the filter options.
-import type {
-  MaterialCategory,
-  MaterialSubcategory,
+import {
+  CATEGORIES,
+  type MaterialCategory,
+  type MaterialSubcategory,
 } from "@/lib/constants/materialCategories";
 
 type Tone = "amber" | "blue" | "purple" | "teal" | "orange" | "grey";
@@ -75,3 +76,9 @@ export const TIER_OPTIONS = [
   { id: "1", label: "✓ Verified" },
   { id: "2", label: "⭐ Endorsed" },
 ] as const;
+
+/** The full kind ("Past Question", "Lecture Notes"), not the badge's short label. */
+export function materialKindLabel(category: MaterialCategory, subcategory?: MaterialSubcategory): string {
+  const c = CATEGORIES.find((x) => x.id === category);
+  return c?.subcategories.find((x) => x.id === subcategory)?.label ?? c?.label ?? "Study material";
+}

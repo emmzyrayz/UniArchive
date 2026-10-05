@@ -321,7 +321,12 @@ vars are documented in `.env.example`.
   progress plus stats from published work (`GET /api/conversions/stats`,
   `lib/conversionStats.ts`), cached 5 min in Upstash per user, dropped on
   submit/edit/delete, failing open with short timeouts. "Materials that
-  need typing" is a TODO there.
+  need typing" (`GET /api/conversions/needs-typing`, `lib/needsTyping.ts`)
+  lists active materials with no typed content the user may type (EXAMS for
+  everyone, notes for collaborator+), minus their own active drafts,
+  nearest first: same department + level, department, faculty, school,
+  then popular; most-viewed first within each, with how many other people
+  are typing each one.
 
 ## SEO
 

@@ -65,6 +65,8 @@ ConversionDraftSchema.index(
   { unique: true, partialFilterExpression: { status: "active" } },
 );
 ConversionDraftSchema.index({ userId: 1, status: 1, updatedAt: -1 });
+// "N people typing" on materials that need typing (lib/needsTyping.ts)
+ConversionDraftSchema.index({ materialId: 1, status: 1 });
 ConversionDraftSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export async function getConversionDraftModel(): Promise<IConversionDraftModel> {

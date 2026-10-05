@@ -75,9 +75,6 @@ Last updated: 2026-10-05.
 
 Unordered; pick by what matters most at the time.
 
-- **"Materials that need typing"** on the dashboard's Conversions tab: past
-  questions and notes with no typed content yet, near the user's courses
-  (TODO in `src/components/dashboard/ConversionsTab.tsx`).
 - **More broadcast templates**: Monthly digest (with automatic stats) and
   Profile nudge.
 - **Tidy Brevo lists**: each broadcast leaves a list in Brevo's "UniArchive
