@@ -72,8 +72,10 @@ Unordered; pick by what matters most at the time.
   noindex and list materials in the sitemap (TODO in `src/app/sitemap.ts`).
 - **Mail system (in progress)**: the Gmail sender is gone, admins can
   email one user from `/admin/mail` (ZeptoMail), and users choose their
-  bulk email in Settings (Brevo unsubscribes flow back); next, broadcasts
-  through Brevo (announcements for everyone who hasn't unsubscribed, a newsletter
+  bulk email in Settings (Brevo unsubscribes flow back), and admins compose
+  broadcasts from templates with a live preview, audience count and test
+  copy at `/admin/mail/broadcasts`; next, sending and scheduling them
+  through Brevo, with stats (announcements for everyone who hasn't unsubscribed, a newsletter
   for those who opted in, real email toggles in Settings).
 - **Regenerate `favicon.ico` as RGBA** so `pnpm dev` (Turbopack) works again;
   until then, test against production builds.

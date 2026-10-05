@@ -9,10 +9,17 @@ export const escapeHtml = (value: string) =>
 const AUTOMATED_FOOTER = "This is an automated email. Please do not reply to this message.";
 
 /**
- * The shared frame. `bodyHtml` must already be escaped; `footer` is plain
- * text (defaults to the "do not reply" line of automated emails).
+ * The shared frame. `bodyHtml` must already be escaped. `footer` is plain
+ * text (defaults to the "do not reply" line of automated emails) or
+ * { html } already escaped, for footers with links.
  */
-export function emailFrame(title: string, heading: string, bodyHtml: string, footer = AUTOMATED_FOOTER): string {
+export function emailFrame(
+  title: string,
+  heading: string,
+  bodyHtml: string,
+  footer: string | { html: string } = AUTOMATED_FOOTER,
+): string {
+  const footerHtml = typeof footer === "string" ? escapeHtml(footer) : footer.html;
   return `
       <!DOCTYPE html>
       <html>
@@ -28,7 +35,7 @@ export function emailFrame(title: string, heading: string, bodyHtml: string, foo
         <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
           ${bodyHtml}
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
-            <p>${escapeHtml(footer)}</p>
+            <p>${footerHtml}</p>
           </div>
         </div>
       </body>
@@ -43,7 +50,7 @@ export const STAFF_MESSAGE_LIMITS = { subject: 150, body: 5000 } as const;
 const URL_PATTERN = /\bhttps?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]]/g;
 
 /** Escapes text and turns http(s) links into anchors. */
-function linkify(text: string): string {
+export function linkify(text: string): string {
   let html = "";
   let last = 0;
   for (const match of text.matchAll(URL_PATTERN)) {

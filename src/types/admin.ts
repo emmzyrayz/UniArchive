@@ -219,3 +219,37 @@ export interface AdminSentMailDto {
 export interface AdminSentMailResponse extends Paginated {
   mails: AdminSentMailDto[];
 }
+
+// --- Broadcasts (/admin/mail/broadcasts) -----------------------------------
+
+export interface AdminBroadcastDto {
+  id: string;
+  name: string;
+  templateId: string;
+  kind: "announcements" | "newsletter";
+  fields: Record<string, unknown>;
+  subject: string;
+  audience: import("@/lib/broadcast/audience").BroadcastAudience;
+  status: "draft" | "scheduled" | "sending" | "sent" | "failed" | "cancelled";
+  /** What stops it being sent (empty when ready) */
+  problems: string[];
+  createdBy: { upid: string; name: string };
+  updatedBy: { upid: string; name: string };
+  lastTestAt?: string;
+  recipientCount?: number;
+  scheduledAt?: string;
+  sentAt?: string;
+  error?: string;
+  stats?: { delivered: number; opened: number; clicked: number; unsubscribed: number; bounced: number; updatedAt: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminBroadcastsResponse extends Paginated {
+  broadcasts: AdminBroadcastDto[];
+}
+
+export interface AdminAudiencePreview {
+  total: number;
+  sample: import("@/lib/broadcast/recipients").RecipientPreview[];
+}

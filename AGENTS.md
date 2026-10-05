@@ -88,6 +88,28 @@ vars are documented in `.env.example`.
   Opting back in lifts the block (`PUT /contacts/{email}`
   `emailBlacklisted: false`). Contacts aren't kept in sync continuously:
   the broadcast send imports the audience with fresh attributes.
+- Broadcasts (`/admin/mail/broadcasts`, permission `mail.broadcast`:
+  com_admin and dev only), modelled on the diuscadi project's registry:
+  - `lib/broadcast/templates.ts` (client-safe): each template declares its
+    fields (the editor form is generated from them), its kind of email
+    (announcements / newsletter / author's choice) and a renderer. The same
+    code renders the preview, the test copy and the sent email. Every value
+    is escaped, links must be https (http only for localhost), no raw HTML.
+    The HTML carries Brevo merge tags (`{{ contact.FIRSTNAME | default :
+    'there' }}`, `{{ contact.PREFS_URL }}`, `{{ unsubscribe }}`), filled by
+    `personalize()` for previews and tests. To add a template: one entry in
+    `BROADCAST_TEMPLATES` and one case in `renderBody`.
+  - `lib/broadcast/audience.ts`: criteria stack (school, department, level,
+    role, contributors, verified students, incomplete profile, inactive
+    7-90 days from `LoginEvent` + session activity, joined between); none =
+    everyone. `lib/broadcast/recipients.ts` is the one resolver for the
+    count preview and the send: always verified, unsuspended and accepting
+    that kind. The picker only offers values users actually have.
+  - `Broadcast` stores the template id and field values (not HTML), so a
+    draft reopens as left; only drafts can be edited or deleted. Picked
+    UniLibrary materials are re-read from the database on every save.
+  - "Send me a test" sends the saved draft to the signed-in admin through
+    ZeptoMail (one copy to staff is transactional).
 - Check settings with `pnpm email:test uniarchive.team@gmail.com`. To test
   sending code without real mail, point `SMTP_HOST` at a local fake SMTP
   server (`smtp-server` in a scratch folder) and run with

@@ -3,6 +3,7 @@
 // webmaster, dev). Admin-only: there's no /mod copy.
 import type { Metadata } from "next";
 import { requireStaffPage } from "@/app/_staff/guard";
+import { can } from "@/lib/auth/permissions";
 import { MailAdmin } from "@/components/admin/MailAdmin";
 
 export const metadata: Metadata = { title: "Mail · Admin" };
@@ -13,5 +14,5 @@ export default async function AdminMailPage({ searchParams }: { searchParams: Pr
   const session = await requireStaffPage("admin", "mail", "mail.send_user");
   const { to } = await searchParams;
   const upid = typeof to === "string" && UPID_PATTERN.test(to) ? to : undefined;
-  return <MailAdmin senderName={session.fullName} initialUpid={upid} />;
+  return <MailAdmin senderName={session.fullName} initialUpid={upid} canBroadcast={can(session.role, "mail.broadcast")} />;
 }

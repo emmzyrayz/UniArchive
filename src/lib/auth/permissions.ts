@@ -28,7 +28,8 @@ type Action =
   | "material.ingest" // bulk-upload PDFs and publish them after filling in details
   | "material.review_gifts" // publish PDFs students gifted to UniArchive
   // Email
-  | "mail.send_user"; // write to one user from /admin/mail (ZeptoMail)
+  | "mail.send_user" // write to one user from /admin/mail (ZeptoMail)
+  | "mail.broadcast"; // compose and send bulk email (Brevo)
 
 const PERMISSIONS: Record<UserRole, Action[]> = {
   student: ["download", "comment", "upload"],
@@ -102,6 +103,7 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "material.ingest",
     "material.review_gifts",
     "mail.send_user",
+    "mail.broadcast",
   ],
   webmaster: [
     "download",
@@ -150,6 +152,7 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "material.ingest",
     "material.review_gifts",
     "mail.send_user",
+    "mail.broadcast",
   ],
 };
 

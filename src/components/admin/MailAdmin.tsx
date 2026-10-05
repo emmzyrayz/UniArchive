@@ -6,6 +6,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import Link from "next/link";
 import type { AdminSentMailDto, AdminSentMailResponse, AdminUserDto, AdminUsersResponse } from "@/types/admin";
 import { STAFF_MESSAGE_LIMITS, renderStaffMessage } from "@/lib/emailLayout";
 import { Modal, ModalActions } from "./ReviewModals";
@@ -132,7 +133,15 @@ function StatusPill({ status }: { status: AdminSentMailDto["status"] }) {
   );
 }
 
-export function MailAdmin({ senderName, initialUpid }: { senderName: string; initialUpid?: string }) {
+export function MailAdmin({
+  senderName,
+  initialUpid,
+  canBroadcast,
+}: {
+  senderName: string;
+  initialUpid?: string;
+  canBroadcast: boolean;
+}) {
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -223,6 +232,13 @@ export function MailAdmin({ senderName, initialUpid }: { senderName: string; ini
       subtitle="Write to one user. It's sent from no-reply@ and replies go to support@."
       loading={log.loading}
       onRefresh={log.reload}
+      actions={
+        canBroadcast && (
+          <Link href="/admin/mail/broadcasts" className={secondaryButton}>
+            Broadcasts
+          </Link>
+        )
+      }
     >
       {notice && (
         <div role="status" className="mb-5 flex items-center justify-between gap-3 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-700 dark:text-green-400">
