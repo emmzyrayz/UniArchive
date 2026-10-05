@@ -16,7 +16,7 @@ services:
         - services/pdf-worker/**
     envVars:
       - key: APP_URL
-        value: https://www.uniarchive.com.ng
+        value: https://uniarchive.com.ng
       - key: PDF_WORKER_SECRET
         sync: false
       - key: BACKBLAZE_KEY_ID

@@ -12,7 +12,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Study-material archive for Nigerian university students: past questions,
 lecture notes and books, organised by university → faculty → department.
-Production: https://www.uniarchive.com.ng (canonical origin, see `src/lib/seo.ts`).
+Production: https://uniarchive.com.ng (canonical origin since 2026-10-05; www redirects
+to it; see `src/lib/seo.ts`).
 Repo: https://github.com/emmzyrayz/UniArchive, deploys from `main` on Vercel.
 
 ## Workflow rules

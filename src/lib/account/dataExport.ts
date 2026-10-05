@@ -141,7 +141,7 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
 
   return {
     about: {
-      service: "UniArchive (https://www.uniarchive.com.ng)",
+      service: "UniArchive (https://uniarchive.com.ng)",
       exportedAt: new Date().toISOString(),
       note:
         "Everything UniArchive stores about your account. Your uploaded files aren't included; download them from your library. Sign-in history covers the last 90 days.",

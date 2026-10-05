@@ -5,7 +5,7 @@ lecture notes and textbooks, organised by university → faculty → department,
 readable in the browser (even on low-end phones and offline) and typed out
 by contributors so they're searchable.
 
-- Production: https://www.uniarchive.com.ng (deploys from `main` on Vercel)
+- Production: https://uniarchive.com.ng (deploys from `main` on Vercel)
 - Personal project. This file tracks **where the project is going**;
   architecture, conventions and how things work live in
   [AGENTS.md](AGENTS.md).

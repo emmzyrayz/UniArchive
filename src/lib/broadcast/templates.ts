@@ -81,7 +81,7 @@ const SUBJECT: FieldDef = {
 };
 const CTA = (label = "", url = ""): FieldDef[] => [
   { name: "ctaLabel", label: "Button text", type: "text", max: 40, placeholder: "Open UniArchive", initial: label },
-  { name: "ctaUrl", label: "Button link", type: "url", max: 500, placeholder: "https://www.uniarchive.com.ng/...", initial: url },
+  { name: "ctaUrl", label: "Button link", type: "url", max: 500, placeholder: "https://uniarchive.com.ng/...", initial: url },
 ];
 
 export const BROADCAST_TEMPLATES: TemplateDef[] = [

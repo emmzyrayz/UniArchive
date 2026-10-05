@@ -43,7 +43,7 @@ failed). Nothing is lost while the worker is down: jobs wait in the queue.
    redeploy the app. Until it's set there, the internal routes answer 503 and
    jobs just queue up.
 
-`APP_URL` defaults to `https://www.uniarchive.com.ng` in `render.yaml`.
+`APP_URL` defaults to `https://uniarchive.com.ng` in `render.yaml`.
 
 ## Settings
 
