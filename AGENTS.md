@@ -317,6 +317,22 @@ vars are documented in `.env.example`.
   submit/edit/delete, failing open with short timeouts. "Materials that
   need typing" is a TODO there.
 
+## SEO
+
+- `/materials/[id]` is server-rendered (`page.tsx` loads it with
+  `lib/materialDetail.ts`, the same loader as `GET /api/materials/[id]`;
+  `MaterialView.tsx` is the interactive client part) and indexable: title,
+  course, school, outline and a preview of up to 30 typed questions and 20
+  typed notes are in the HTML, with LearningResource + BreadcrumbList
+  JSON-LD and a description that puts the searchable facts first (snippets
+  stop around 160 characters). Missing or inactive materials are a real
+  404 (noindex).
+- `/sitemap.xml` lists every active material (up to 45,000; past that use
+  `generateSitemaps()`), regenerated hourly. `next build` pre-renders it,
+  so it reads the database: build against a throwaway one when testing.
+- JSON-LD must escape `<` to the six characters backslash-u003c (in a JS
+  string literal written with two backslashes); with one backslash it is just `<` again.
+
 ## Gotchas
 
 - react-pdf 11 defaults to Suspense mode: a load error also throws to the

@@ -30,7 +30,10 @@ Last updated: 2026-10-05.
 - Staff areas: `/mod` for moderators, `/admin` for platform admins.
 - Email through ZeptoMail (`no-reply@`), support inbox via ImprovMX
   (`support@` → team Gmail).
-- SEO: metadata, sitemap, robots, OG images, JSON-LD.
+- SEO: metadata, sitemap, robots, OG images, JSON-LD. UniLibrary material
+  pages are server-rendered and indexable (October 2026): each has its
+  course, school, outline and a preview of its typed questions in the HTML,
+  LearningResource JSON-LD, and a place in the sitemap.
 - School email verification at signup (October 2026): optional step, the
   address must belong to the picked school, a code proves it, and it earns
   a Verified Student badge.
@@ -77,8 +80,6 @@ Unordered; pick by what matters most at the time.
   (TODO in `src/components/dashboard/ConversionsTab.tsx`).
 - **Add a school email after signup**: from Settings, for Google sign-ups
   and existing accounts (signup is the only place today).
-- **Indexable material pages**: server-render `/materials/[id]`, drop its
-  noindex and list materials in the sitemap (TODO in `src/app/sitemap.ts`).
 - **More broadcast templates**: Monthly digest (with automatic stats) and
   Profile nudge.
 - **Tidy Brevo lists**: each broadcast leaves a list in Brevo's "UniArchive

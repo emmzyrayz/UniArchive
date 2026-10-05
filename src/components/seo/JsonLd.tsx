@@ -38,7 +38,7 @@ const graph = {
 };
 
 // "<" escaped so no string in the data can close the <script> tag
-const json = JSON.stringify(graph).replace(/</g, "\u003c");
+const json = JSON.stringify(graph).replace(/</g, "\\u003c");
 
 export function JsonLd() {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: json }} />;
