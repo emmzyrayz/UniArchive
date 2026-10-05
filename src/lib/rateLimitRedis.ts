@@ -50,6 +50,8 @@ const limiters = {
   broadcastSend: make(10, "24 h", "rl:broadcast-send"),
   // "Download my data": reads every collection for the user
   dataExport: make(5, "1 h", "rl:data-export"),
+  // Submitting or changing survey answers, per IP (anyone can answer)
+  surveyResponse: make(20, "1 h", "rl:survey-response"),
   // Posting comments
   comment: make(10, "1 m", "rl:comment"),
   // Public read (materials, profiles) — generous

@@ -16,6 +16,7 @@
 import { Types } from "mongoose";
 import { findSimilar } from "@/lib/fuzzyMatch";
 import { getUserModel } from "@/lib/models/userModel";
+import { getSurveyResponseModel } from "@/lib/models/surveyResponseModel";
 import {
   getSchoolSuggestionModel,
   type ISchoolSuggestion,
@@ -98,7 +99,35 @@ async function placeUsers(
     { pendingSuggestionId: suggestionId },
     { $set: set, ...(department ? { $unset: { pendingSuggestionId: "" } } : {}) },
   );
+  await placeSurveyResponses(suggestionId, university, faculty, department);
   return result.modifiedCount;
+}
+
+/**
+ * Survey responses that typed this school get the catalog records, so
+ * results filters pick them up. They keep pointing at the suggestion until
+ * it is complete, like users do.
+ */
+async function placeSurveyResponses(
+  suggestionId: Types.ObjectId,
+  university: UniRef,
+  faculty?: FacultyRef,
+  department?: DepartmentRef,
+): Promise<void> {
+  const Response = await getSurveyResponseModel();
+  const set: Record<string, unknown> = {
+    "respondent.universityId": university._id,
+    "respondent.universityName": university.name,
+    "respondent.universityAbbr": university.abbreviation,
+  };
+  if (faculty) Object.assign(set, { "respondent.facultyId": faculty._id, "respondent.facultyName": faculty.name });
+  if (department) {
+    Object.assign(set, { "respondent.departmentId": department._id, "respondent.departmentName": department.name });
+  }
+  await Response.updateMany(
+    { schoolSuggestionId: suggestionId },
+    { $set: set, $unset: { "respondent.schoolUnlisted": "", ...(department ? { schoolSuggestionId: "" } : {}) } },
+  );
 }
 
 // --- Matching one suggestion against a settled university ----------------------
@@ -420,6 +449,12 @@ export async function toAdminSuggestionDtos(docs: ISchoolSuggestion[]): Promise<
     { $group: { _id: "$pendingSuggestionId", count: { $sum: 1 } } },
   ]);
   const waitingBy = new Map(waiting.map((w) => [String(w._id), w.count]));
+  const Response = await getSurveyResponseModel();
+  const answered = await Response.aggregate<{ _id: Types.ObjectId; count: number }>([
+    { $match: { schoolSuggestionId: { $in: [...ids, ...linked.map((l) => l._id)] } } },
+    { $group: { _id: "$schoolSuggestionId", count: { $sum: 1 } } },
+  ]);
+  const answeredBy = new Map(answered.map((w) => [String(w._id), w.count]));
 
   const isId = (v: Types.ObjectId | undefined): v is Types.ObjectId => !!v;
   const universityIds = docs.flatMap((d) => [d.existingUniversityId, d.duplicateOfUniversityId]).filter(isId);
@@ -460,7 +495,10 @@ export async function toAdminSuggestionDtos(docs: ISchoolSuggestion[]): Promise<
       suggestedUniversityOwnership: d.suggestedUniversityOwnership,
       suggestedFacultyName: d.suggestedFacultyName,
       suggestedDepartmentName: d.suggestedDepartmentName,
-      submittedByUpid: d.submittedByUpid,
+      submittedByUpid: d.submittedByUpid || undefined,
+      source: d.source ?? "profile",
+      surveyResponses:
+        (answeredBy.get(id) ?? 0) + myLinked.reduce((n, l) => n + (answeredBy.get(String(l._id)) ?? 0), 0),
       submittedAt: new Date(d.submittedAt).toISOString(),
       adminPriority: d.adminPriority ?? 1,
       linkedCount: myLinked.length,

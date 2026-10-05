@@ -290,10 +290,16 @@ export function cleanRespondentConfig(raw: unknown): RespondentConfig {
 export interface RespondentInput {
   name?: string;
   email?: string;
-  /** A catalog university, or a typed name when it isn't listed */
+  /**
+   * Catalog ids for the parts that are listed, typed names for the ones
+   * that aren't. Typed parts go to the school-suggestion queue, so a typed
+   * part needs the parts below it.
+   */
   universityId?: string;
   universityName?: string;
+  facultyId?: string;
   facultyName?: string;
+  departmentId?: string;
   departmentName?: string;
   schoolUnlisted?: boolean;
   level?: string;
@@ -302,6 +308,8 @@ export interface RespondentInput {
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const OBJECT_ID = /^[a-f0-9]{24}$/;
+// Same rule as school suggestions (api/institutions/suggest)
+const NAME_PATTERN = /^[\p{L}\p{N}\s.,'’&()\-/]+$/u;
 
 /** Validates the "about you" part; `errors` keyed by field. */
 export function cleanRespondent(config: RespondentConfig, raw: unknown): { respondent: RespondentInput; errors: Record<string, string> } {
@@ -323,17 +331,31 @@ export function cleanRespondent(config: RespondentConfig, raw: unknown): { respo
     need("email", !!out.email, "Enter your email.");
   }
   if (config.school !== "off") {
+    const id = (v: unknown) => (typeof v === "string" && OBJECT_ID.test(v) ? v : undefined);
     const unlisted = input.schoolUnlisted === true;
-    const id = typeof input.universityId === "string" && OBJECT_ID.test(input.universityId) ? input.universityId : undefined;
-    const uni = str(input.universityName, 200);
-    if (!unlisted && id) out.universityId = id;
+    const uni = str(input.universityName, 150);
+    const faculty = str(input.facultyName, 150);
+    const department = str(input.departmentName, 150);
+    const universityId = unlisted ? undefined : id(input.universityId);
+    const facultyId = universityId ? id(input.facultyId) : undefined;
+    const departmentId = facultyId ? id(input.departmentId) : undefined;
+    if (universityId) out.universityId = universityId;
+    if (facultyId) out.facultyId = facultyId;
+    if (departmentId) out.departmentId = departmentId;
     if (uni) out.universityName = uni;
-    if (unlisted && uni) out.schoolUnlisted = true;
-    const faculty = str(input.facultyName, 200);
-    const department = str(input.departmentName, 200);
     if (faculty) out.facultyName = faculty;
     if (department) out.departmentName = department;
-    need("school", !!(out.universityId || (unlisted && uni)), "Pick your school, or type it if it isn't listed.");
+    if (unlisted && uni) out.schoolUnlisted = true;
+    need("school", !!(universityId || out.schoolUnlisted), "Pick your school, or type it if it isn't listed.");
+    // A typed school or faculty goes for review, which needs what's below it
+    const typedSchool = !!out.schoolUnlisted;
+    const typedFaculty = !!universityId && !facultyId && !!faculty;
+    if ((typedSchool || typedFaculty) && (!faculty || !department)) {
+      errors.school = "Add your faculty and department too, so we can add them to UniArchive.";
+    }
+    for (const [part, value] of [["school", uni], ["faculty", faculty], ["department", department]] as const) {
+      if (value && !NAME_PATTERN.test(value)) errors.school = `The ${part} name has characters that aren't allowed.`;
+    }
   }
   if (config.level !== "off") {
     const level = SURVEY_LEVELS.includes(input.level as (typeof SURVEY_LEVELS)[number]) ? (input.level as string) : "";

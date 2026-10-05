@@ -17,6 +17,11 @@ export function isPublicProfilePath(pathname: string): boolean {
   return !!match && match[1] !== "edit";
 }
 
+/** "/surveys" and "/surveys/<slug>": anyone can answer a survey. */
+export function isPublicSurveyPath(pathname: string): boolean {
+  return /^\/surveys(\/[^/]+)?\/?$/.test(pathname);
+}
+
 /** "/materials/<id>": a UniLibrary material's page is public, like the feed. */
 export function isPublicMaterialPath(pathname: string): boolean {
   return /^\/materials\/[^/]+\/?$/.test(pathname);

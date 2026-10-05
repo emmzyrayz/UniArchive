@@ -496,7 +496,8 @@ export function SuggestionsAdmin() {
                 <p className="mt-1 text-sm text-text-secondary">Faculty: {s.suggestedFacultyName}</p>
                 <p className="text-sm text-text-secondary">Department: {s.suggestedDepartmentName}</p>
                 <p className="mt-1 text-xs text-text-muted">
-                  by @{s.submittedByUpid} · {timeAgo(s.submittedAt)}
+                  {s.submittedByUpid ? `by @${s.submittedByUpid}` : "from a survey"} · {timeAgo(s.submittedAt)}
+                  {s.surveyResponses > 0 && ` · named in ${s.surveyResponses} survey response${s.surveyResponses === 1 ? "" : "s"}`}
                   {s.linkedCount > 0 && ` · ${s.linkedCount} other${s.linkedCount === 1 ? "" : "s"} from the same school`}
                   {[s.suggestedUniversityState, s.suggestedUniversityOwnership].filter(Boolean).length > 0 &&
                     ` · ${[s.suggestedUniversityState, s.suggestedUniversityOwnership].filter(Boolean).join(", ")}`}

@@ -8,6 +8,7 @@ import { can } from "@/lib/auth/permissions";
 import {
   canEnterStaffArea,
   isPublicMaterialPath,
+  isPublicSurveyPath,
   isPublicProfilePath,
   PUBLIC_PAGE_PATHS,
   staffAreaOf,
@@ -739,7 +740,7 @@ const canAccessRoute = useCallback(
 
     if (PUBLIC_PAGE_PATHS.has(path)) return true;
     if (publicPrefixes.some((prefix) => path.startsWith(prefix))) return true;
-    if (isPublicProfilePath(path) || isPublicMaterialPath(path)) return true;
+    if (isPublicProfilePath(path) || isPublicMaterialPath(path) || isPublicSurveyPath(path)) return true;
     if (!hasActiveSession) return false;
     if (!userProfile) return false;
 

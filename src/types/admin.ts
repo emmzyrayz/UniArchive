@@ -165,7 +165,11 @@ export interface AdminSuggestionDto {
   suggestedUniversityOwnership?: "Federal" | "State" | "Private";
   suggestedFacultyName: string;
   suggestedDepartmentName: string;
-  submittedByUpid: string;
+  /** Empty for survey suggestions (no submitter) */
+  submittedByUpid?: string;
+  source: "profile" | "survey";
+  /** Survey responses that named this school (incl. linked suggestions) */
+  surveyResponses: number;
   submittedAt: string;
   adminPriority: number;
   /** Other students' suggestions linked to this one */

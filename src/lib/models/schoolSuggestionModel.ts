@@ -20,6 +20,9 @@ export const SUGGESTION_STATUSES = [
 ] as const;
 export type SuggestionStatus = (typeof SUGGESTION_STATUSES)[number];
 
+export const SUGGESTION_SOURCES = ["profile", "survey"] as const;
+export type SuggestionSource = (typeof SUGGESTION_SOURCES)[number];
+
 /** Statuses that still await an admin decision. */
 export const ACTIVE_SUGGESTION_STATUSES: SuggestionStatus[] = [
   "pending",
@@ -38,9 +41,13 @@ export interface ISchoolSuggestion {
   suggestedFacultyName: string;
   suggestedDepartmentName: string;
 
-  // Who and when
-  submittedBy: Types.ObjectId;
-  submittedByUpid: string;
+  // Who and when. Survey suggestions come from anyone, signed in or not,
+  // so they have no submitter (no profile waits on them); the responses
+  // that named the school point at the suggestion instead.
+  source: SuggestionSource;
+  surveyId?: Types.ObjectId;
+  submittedBy?: Types.ObjectId;
+  submittedByUpid?: string;
   submittedAt: Date;
   canWithdrawUntil: Date; // submittedAt + 24h
 
@@ -78,8 +85,10 @@ const SchoolSuggestionSchema = new Schema<ISchoolSuggestion, ISchoolSuggestionMo
     suggestedFacultyName: { type: String, required: true, trim: true },
     suggestedDepartmentName: { type: String, required: true, trim: true },
 
-    submittedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    submittedByUpid: { type: String, required: true },
+    source: { type: String, enum: SUGGESTION_SOURCES, default: "profile" },
+    surveyId: { type: Schema.Types.ObjectId, ref: "Survey" },
+    submittedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    submittedByUpid: { type: String },
     submittedAt: { type: Date, required: true },
     canWithdrawUntil: { type: Date, required: true },
 

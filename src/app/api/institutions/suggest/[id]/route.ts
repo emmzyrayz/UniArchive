@@ -27,7 +27,7 @@ export async function DELETE(request: NextRequest, context: Context) {
     if (!suggestion) {
       return NextResponse.json({ message: "Suggestion not found." }, { status: 404 });
     }
-    if (suggestion.submittedBy.toString() !== session.userId) {
+    if (suggestion.submittedBy?.toString() !== session.userId) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
     if (!ACTIVE_SUGGESTION_STATUSES.includes(suggestion.status)) {

@@ -19,6 +19,7 @@ import { SESSION_JWT_COOKIE, verifySessionJwt } from "@/lib/auth/jwt";
 import {
   canEnterStaffArea,
   isPublicMaterialPath,
+  isPublicSurveyPath,
   isPublicProfilePath,
   modPathFor,
   PUBLIC_PAGE_PATHS,
@@ -52,6 +53,7 @@ function isPublic(pathname: string): boolean {
     // Other users' public profiles; /profile and /profile/edit stay private
     isPublicProfilePath(pathname) ||
     isPublicMaterialPath(pathname) ||
+    isPublicSurveyPath(pathname) ||
     STATIC_FILE.test(pathname) ||
     METADATA_IMAGE.test(pathname)
   );
