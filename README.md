@@ -36,7 +36,7 @@ Last updated: 2026-10-05.
   LearningResource JSON-LD, and a place in the sitemap.
 - School email verification at signup (October 2026): optional step, the
   address must belong to the picked school, a code proves it, and it earns
-  a Verified Student badge.
+  a Verified Student badge. Added or changed later from Settings too.
 - Mail system (October 2026): ZeptoMail for one-to-one mail (account
   emails, and admins writing to a user at `/admin/mail`); Brevo for
   broadcasts at `/admin/mail/broadcasts` (seven templates, stacking
@@ -78,8 +78,6 @@ Unordered; pick by what matters most at the time.
 - **"Materials that need typing"** on the dashboard's Conversions tab: past
   questions and notes with no typed content yet, near the user's courses
   (TODO in `src/components/dashboard/ConversionsTab.tsx`).
-- **Add a school email after signup**: from Settings, for Google sign-ups
-  and existing accounts (signup is the only place today).
 - **More broadcast templates**: Monthly digest (with automatic stats) and
   Profile nudge.
 - **Tidy Brevo lists**: each broadcast leaves a list in Brevo's "UniArchive

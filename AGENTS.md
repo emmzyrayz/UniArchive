@@ -193,8 +193,13 @@ vars are documented in `.env.example`.
   consumes a verified token (same school, within 1 hour, once) to store
   `schoolEmail` (encrypted), `schoolEmailHash` (unique sparse: one account
   per school email) and `schoolEmailVerifiedAt`. Verifying the main email then awards the
-  `verified_student` badge. Only offered at signup for now: Google sign-ups
-  and existing accounts can't add one yet.
+  `verified_student` badge. Signed-in users add or change one from
+  Settings > Account (`SchoolEmailCard` popup, `/api/user/school-email`
+  + `/send` + `/verify`, `lib/userSchoolEmail.ts`): checked against the
+  profile's school (a catalog university not in `schoolData` is matched on
+  its own abbreviation and website), stored and badged at once. Both flows
+  share the code step in `lib/schoolEmailChallenge.ts`. There's no
+  "remove" (the badge is kept for good), only "change".
 
 ## Staff areas (/mod and /admin)
 

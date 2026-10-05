@@ -100,6 +100,8 @@ export async function POST(request: NextRequest) {
           tokenHash: hashToken(schoolEmailToken),
           school,
           used: false,
+          // Settings challenges belong to an existing account
+          userId: { $exists: false },
           verifiedAt: { $exists: true },
           expiresAt: { $gt: new Date() },
         },

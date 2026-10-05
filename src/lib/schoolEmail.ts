@@ -35,15 +35,18 @@ function addKey(keys: Map<string, Set<string>>, key: string, ending: string) {
   keys.set(key, endings);
 }
 
-for (const u of universitiesData.universities) {
-  const keys = KEYS_BY_SCHOOL.get(u.name) ?? new Map<string, Set<string>>();
-  const abbreviation = u.abbreviation?.trim().toLowerCase();
+type SchoolKeys = Map<string, Set<string>>;
+
+/** Keys from a school's abbreviation and website (added into `keys`). */
+function addSchoolInfo(keys: SchoolKeys, info: { abbreviation?: string; website?: string }) {
+  const abbreviation = info.abbreviation?.trim().toLowerCase();
   if (abbreviation && abbreviation.length >= MIN_ABBREVIATION_LENGTH && /^[a-z0-9-]+$/.test(abbreviation)) {
     addKey(keys, abbreviation, ACADEMIC_ENDING);
   }
+  if (!info.website) return;
   try {
     // "www.unizik.edu.ng" -> key "unizik", ending "edu.ng"
-    const parts = new URL(u.website).hostname.toLowerCase().split(".");
+    const parts = new URL(info.website).hostname.toLowerCase().split(".");
     parts.forEach((part, i) => {
       if (part && !GENERIC_PARTS.has(part) && i < parts.length - 1) {
         addKey(keys, part, parts.slice(i + 1).join("."));
@@ -52,6 +55,11 @@ for (const u of universitiesData.universities) {
   } catch {
     // No usable website: the abbreviation alone
   }
+}
+
+for (const u of universitiesData.universities) {
+  const keys = KEYS_BY_SCHOOL.get(u.name) ?? new Map<string, Set<string>>();
+  addSchoolInfo(keys, u);
   KEYS_BY_SCHOOL.set(u.name, keys);
 }
 
@@ -70,11 +78,23 @@ export type SchoolEmailCheck =
   | { ok: true; email: string }
   | { ok: false; reason: "invalid" | "unknown_school" | "mismatch" };
 
-/** Checks that `value` is an email address at `school` (by name). */
-export function checkSchoolEmail(value: string, school: string): SchoolEmailCheck {
+/**
+ * Checks that `value` is an email address at `school` (by name). A school
+ * that isn't in schoolData (e.g. one only in the university catalog, as set
+ * on the profile page) can pass its own abbreviation and website instead.
+ */
+export function checkSchoolEmail(
+  value: string,
+  school: string,
+  fallback?: { abbreviation?: string; website?: string },
+): SchoolEmailCheck {
   const email = normaliseSchoolEmail(value);
   if (email.length > 254 || !SCHOOL_EMAIL_REGEX.test(email)) return { ok: false, reason: "invalid" };
-  const keys = KEYS_BY_SCHOOL.get(school);
+  let keys = KEYS_BY_SCHOOL.get(school);
+  if ((!keys || keys.size === 0) && fallback) {
+    keys = new Map();
+    addSchoolInfo(keys, fallback);
+  }
   if (!keys || keys.size === 0) return { ok: false, reason: "unknown_school" };
   const domainParts = email.slice(email.lastIndexOf("@") + 1).split(".");
   const matches = domainParts.some((part, i) =>

@@ -10,6 +10,7 @@ import { ConnectedAccounts } from "./ConnectedAccounts";
 import { SessionsPanel } from "./SessionsPanel";
 import { EmailPrefsPanel } from "./EmailPrefsPanel";
 import { AccountPanel } from "./AccountPanel";
+import { SchoolEmailCard } from "./SchoolEmailCard";
 import { DataExportCard } from "./DataExportCard";
 import { DeleteAccountPanel } from "./DeleteAccountPanel";
 
@@ -93,6 +94,7 @@ export default function SettingsPage({
           {activeTab === "account" && (
             <div className="space-y-6">
               <AccountPanel />
+              <SchoolEmailCard />
 
               <DeleteAccountPanel />
             </div>

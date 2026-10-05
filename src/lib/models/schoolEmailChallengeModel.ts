@@ -20,6 +20,9 @@ export interface ISchoolEmailChallenge {
   email: string;
   emailHash: string;
   school: string;
+  // Set when a signed-in user started it from Settings: only they can
+  // verify it, and signup never accepts it
+  userId?: Types.ObjectId;
   otpHash: string;
   otpExpiresAt: Date;
   attempts: number;
@@ -37,6 +40,7 @@ const SchoolEmailChallengeSchema = new Schema<ISchoolEmailChallenge, ISchoolEmai
   email: { type: String, required: true },
   emailHash: { type: String, required: true, index: true },
   school: { type: String, required: true },
+  userId: { type: Schema.Types.ObjectId, ref: "User" },
   otpHash: { type: String, required: true },
   otpExpiresAt: { type: Date, required: true },
   attempts: { type: Number, default: 0 },
