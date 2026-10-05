@@ -41,6 +41,10 @@ Last updated: 2026-10-05.
   cancel, stats). Users choose announcements (default on) and the
   newsletter (opt-in) in Settings or from a link in every broadcast, and
   Brevo unsubscribes flow back by webhook.
+- Account control (October 2026): Settings links to profile editing and
+  password change, "Download my data" exports everything as JSON, and
+  accounts can be deleted (emailed code, 7-day grace that a sign-in
+  cancels, then a daily purge that keeps published work anonymously).
 
 **Platform materials (September–October 2026)**
 1. Staff bulk upload (in-browser hashing, lossless compression, page counts)
@@ -73,8 +77,6 @@ Unordered; pick by what matters most at the time.
   (TODO in `src/components/dashboard/ConversionsTab.tsx`).
 - **Add a school email after signup**: from Settings, for Google sign-ups
   and existing accounts (signup is the only place today).
-- **Settings that are UI only**: profile editing, "Download my data" and
-  account deletion.
 - **Indexable material pages**: server-render `/materials/[id]`, drop its
   noindex and list materials in the sitemap (TODO in `src/app/sitemap.ts`).
 - **More broadcast templates**: Monthly digest (with automatic stats) and

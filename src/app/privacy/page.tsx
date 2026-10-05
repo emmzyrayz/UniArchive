@@ -13,7 +13,7 @@ export const metadata = pageMetadata.privacy;
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 4, 2026">
+    <LegalPage title="Privacy Policy" updated="October 5, 2026">
       <LegalSection number={1} title="Introduction">
         <p>
           UniArchive (&ldquo;we&rdquo;, &ldquo;our&rdquo;, &ldquo;us&rdquo;) is an
@@ -142,9 +142,15 @@ export default function PrivacyPage() {
           items={[
             "View and update your information on your profile and settings pages.",
             "Choose which announcement and newsletter emails you get, at any time, in Settings > Notifications or from the link in those emails.",
+            "Download a copy of everything we hold about you, at any time, in Settings > Privacy (Download my data).",
             <>
-              Request account deletion by contacting us at <LegalEmail />. We
-              will process your request within 30 days.
+              Delete your account in Settings &gt; Account. After you confirm
+              with a code we email you, your account is hidden and signed out
+              at once and erased 7 days later; signing in before then cancels
+              it. Materials you published in the UniLibrary, typed questions
+              and notes, and your comments stay for other students without
+              your name (&ldquo;a former member&rdquo;); everything else is
+              erased. You can also ask us at <LegalEmail />.
             </>,
             "Access your uploaded materials through the platform at any time while your account is active.",
           ]}

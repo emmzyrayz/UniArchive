@@ -205,7 +205,7 @@ function MaterialRow({
         </span>
       </p>
       <p className="mt-0.5 text-xs text-text-muted">
-        by @{m.submittedByUpid} · verified {timeAgo(m.tier1VerifiedAt)} by @{m.tier1VerifiedByUpid}
+        by {m.submittedByUpid ? `@${m.submittedByUpid}` : "a former member"} · verified {timeAgo(m.tier1VerifiedAt)} by @{m.tier1VerifiedByUpid}
       </p>
       {m.tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">

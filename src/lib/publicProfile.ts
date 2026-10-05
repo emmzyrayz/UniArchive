@@ -9,7 +9,7 @@ import type { PublicProfile } from "@/types/publicProfile";
 // hide the account, never returned.
 const PUBLIC_FIELDS =
   "upid username fullName profilePhoto bio role universityName universityAbbr " +
-  "facultyName departmentName level verifiedMaterialCount createdAt isSuspended";
+  "facultyName departmentName level verifiedMaterialCount createdAt isSuspended deletion";
 
 // UPIDs are initials plus digits, e.g. "nedunizik1234"
 const UPID_PATTERN = /^[a-z0-9]{1,60}$/i;
@@ -30,14 +30,16 @@ type PublicUserDoc = Pick<
   | "verifiedMaterialCount"
   | "createdAt"
   | "isSuspended"
+  | "deletion"
 > & { _id: Types.ObjectId };
 
-/** The user behind `upid`, or null if unknown, malformed or suspended. */
+/** The user behind `upid`, or null if unknown, malformed, suspended or being deleted. */
 export async function findPublicUser(upid: string): Promise<PublicUserDoc | null> {
   if (!UPID_PATTERN.test(upid)) return null;
   const User = await getUserModel();
   const user = await User.findOne({ upid }).select(PUBLIC_FIELDS).lean<PublicUserDoc>();
-  return user && !user.isSuspended ? user : null;
+  // Suspended accounts and accounts waiting to be deleted look not found
+  return user && !user.isSuspended && !user.deletion ? user : null;
 }
 
 export function toPublicProfile(user: PublicUserDoc): PublicProfile {

@@ -20,6 +20,7 @@ import type { AnswerDto, QuestionDto } from "@/types/layer2";
 import { MathText } from "./math";
 import { AddQuestionForm } from "./AddQuestionForm";
 import { SubmitAnswerForm } from "./SubmitAnswerForm";
+import { ProfileHandle } from "@/components/profile/ProfileHandle";
 
 const smallButton = "text-xs font-medium text-neutral-500 hover:text-primary disabled:opacity-50";
 const atLeast = (role: UserRole, min: UserRole) => roleHierarchy[role] >= roleHierarchy[min];
@@ -60,9 +61,7 @@ function AnswerCard({
   return (
     <div className={`rounded-lg border p-3 ${a.isAccepted ? "border-green-500/40 bg-green-500/5" : "border-border"}`}>
       <p className="text-xs text-text-muted">
-        <Link href={`/profile/${encodeURIComponent(a.submittedByUpid)}`} className="font-medium text-text-secondary hover:underline">
-          @{a.submittedByUpid}
-        </Link>{" "}
+        <ProfileHandle upid={a.submittedByUpid} className="font-medium text-text-secondary hover:underline" />{" "}
         · {timeAgo(a.createdAt)}
       </p>
       {a.isAccepted && (

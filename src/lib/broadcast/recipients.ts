@@ -60,6 +60,8 @@ export async function audienceFilter(audience: BroadcastAudience, kind: EmailKin
   const and: Filter[] = [
     { isVerified: true },
     { isSuspended: { $ne: true } },
+    // Waiting to be deleted (lib/account/deletion.ts)
+    { deletion: { $exists: false } },
     kind === "newsletter" ? { "emailPrefs.newsletter": true } : { "emailPrefs.announcements": { $ne: false } },
   ];
   if (audience.schools.length) {
@@ -113,7 +115,7 @@ export interface AudienceOptions {
 /** The values the audience picker offers: only what users actually have. */
 export async function audienceOptions(): Promise<AudienceOptions> {
   const User = await getUserModel();
-  const match = { $match: { isVerified: true, isSuspended: { $ne: true } } };
+  const match = { $match: { isVerified: true, isSuspended: { $ne: true }, deletion: { $exists: false } } };
   const byCount = { $sort: { count: -1 as const, _id: 1 as const } };
   const [schools, departments, levels, roles] = await Promise.all([
     User.aggregate<{ _id: string; count: number }>([

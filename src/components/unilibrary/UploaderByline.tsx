@@ -1,15 +1,12 @@
 // components/unilibrary/UploaderByline.tsx
-// "@upid" linking to the uploader's profile, or "UniArchive" for platform
-// materials (uploaded by staff or gifted), which credit nobody.
-import Link from "next/link";
+// "@upid" linking to the uploader's profile, "UniArchive" for platform
+// materials (uploaded by staff or gifted), which credit nobody, or "a former
+// member" when the uploader deleted their account.
+import { ProfileHandle } from "@/components/profile/ProfileHandle";
 
 export function UploaderByline({ upid, isPlatform }: { upid: string; isPlatform?: boolean }) {
-  if (isPlatform || !upid) {
+  if (isPlatform) {
     return <span className="font-medium text-text-secondary">UniArchive</span>;
   }
-  return (
-    <Link href={`/profile/${encodeURIComponent(upid)}`} className="text-primary hover:underline">
-      @{upid}
-    </Link>
-  );
+  return <ProfileHandle upid={upid} className="text-primary hover:underline" />;
 }

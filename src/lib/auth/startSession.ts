@@ -26,6 +26,7 @@ import {
   signSessionJwt,
 } from "@/lib/auth/jwt";
 import { cacheTokenVersion } from "@/lib/auth/tokenVersionCache";
+import { cancelPendingDeletion } from "@/lib/account/deletion";
 
 export type SessionSubject = Pick<
   IUser,
@@ -56,6 +57,14 @@ export async function startSession(
 ): Promise<void> {
   const userId = String(user._id);
   const tokenVersion = user.tokenVersion ?? 0;
+
+  // Signing in during an account's 7-day deletion grace period cancels it
+  // (every sign-in comes through here: password, Google, device codes)
+  try {
+    await cancelPendingDeletion(userId);
+  } catch (error) {
+    console.error("startSession: failed to cancel a pending deletion", error);
+  }
   const rawToken = generateToken();
   const client = getLoginContext(request);
 

@@ -159,6 +159,24 @@ vars are documented in `.env.example`.
   `/api/auth/sessions` lists them and signs out one device, all other devices
   or everywhere (`scope=all` also bumps tokenVersion and forgets trusted
   devices). Settings > Privacy shows them.
+- Settings > Account: profile is edited at `/profile/edit`; passwords are
+  changed (or, for Google-only accounts, set) through the emailed reset
+  code. Settings > Privacy > "Download my data": `GET
+  /api/user/data-export` (`lib/account/dataExport.ts`), one JSON file of
+  everything we hold, secrets dropped.
+- Account deletion (`lib/account/deletion.ts`): an emailed code
+  (`/api/user/delete-account/request` + `/confirm`) sets `user.deletion`
+  {requestedAt, purgeAfter = +7 days}, bumps tokenVersion and signs out
+  everywhere. Pending accounts have no public profile and get no
+  broadcasts; any sign-in cancels it (`startSession` calls
+  `cancelPendingDeletion`). Staff roles can't delete their account. The
+  daily Vercel Cron `/api/cron/purge-accounts` (Bearer `CRON_SECRET`, 10 a
+  run) erases due accounts: books behind a UniLibrary material, the
+  materials, typed content, comments and reactions are kept with the upid,
+  name and photo blanked (shown as "a former member", `ProfileHandle`);
+  everything else is deleted (files, avatar, Brevo contact), the user
+  record last so a failed run just resumes. A new collection holding user
+  data needs a step in both the export and the purge.
 - Field encryption: emails and phones are AES-encrypted, looked up by
   `emailHash` / `phoneHash` (`src/lib/encryption.ts`).
 - School email (optional signup step): the address must belong to the
@@ -330,8 +348,8 @@ public profiles (`/profile/[upid]`), full admin panel (`/admin`), SEO
 
 ## Known gaps
 
-- `/settings`: profile editing, "Download my data" and account deletion are
-  UI only (not wired). Email notification toggles are real.
+- `/settings` has no UI-only controls left (profile editing links to
+  `/profile/edit`).
 - No automated test suite yet; verification is typecheck, lint, build and
   manual endpoint checks (see Workflow rules). For logic that touches the
   database, run it against a throwaway `mongodb-memory-server` installed in

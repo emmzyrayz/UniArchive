@@ -20,6 +20,7 @@ import {
 import { initialsOf } from "@/components/profile/profileUi";
 import { timeAgo } from "@/components/admin/reviewShared";
 import type { CommentDto, CommentsResponse } from "@/types/comments";
+import { ProfileHandle } from "@/components/profile/ProfileHandle";
 
 type Sort = "newest" | "top";
 
@@ -208,9 +209,11 @@ function CommentItem({
       <Avatar name={c.author?.name ?? "?"} photo={c.author?.profilePhoto} />
       <div className="min-w-0 flex-1">
         <p className="text-xs text-text-muted">
-          <Link href={`/profile/${encodeURIComponent(c.author?.upid ?? "")}`} className="font-medium text-text-secondary hover:underline">
-            @{c.author?.upid}
-          </Link>{" "}
+          {c.author ? (
+            <ProfileHandle upid={c.author.upid} className="font-medium text-text-secondary hover:underline" />
+          ) : (
+            <span className="italic">deleted</span>
+          )}{" "}
           · {timeAgo(c.createdAt)}
           {c.editedAt && " · edited"}
           {isReply && <span aria-label="reply"> ↩</span>}

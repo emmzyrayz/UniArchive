@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { useUser } from "@/context/userContext";
 import { useTheme, type Theme } from "@/hooks/useTheme";
-import AuthInput from "@/app/auth/components/UI/AuthInput";
-import { Button } from "@/components/UI/Buttons";
 import { ConnectedAccounts } from "./ConnectedAccounts";
 import { SessionsPanel } from "./SessionsPanel";
 import { EmailPrefsPanel } from "./EmailPrefsPanel";
+import { AccountPanel } from "./AccountPanel";
+import { DataExportCard } from "./DataExportCard";
+import { DeleteAccountPanel } from "./DeleteAccountPanel";
 
 type Tab = "account" | "appearance" | "notifications" | "privacy";
 
@@ -39,7 +40,7 @@ export default function SettingsPage({
   // ?tab=privacy&google=... when coming back from connecting Google
   const { tab, google } = use(searchParams);
   const router = useRouter();
-  const { hasActiveSession, isLoading, getUserDisplayName } = useUser();
+  const { hasActiveSession, isLoading } = useUser();
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>(isTab(tab) ? tab : "account");
 
@@ -91,50 +92,9 @@ export default function SettingsPage({
           {/* Account tab */}
           {activeTab === "account" && (
             <div className="space-y-6">
-              <div className="rounded-xl border border-border bg-surface-raised p-6">
-                <h2 className="font-semibold text-text-primary mb-4">Profile details</h2>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <AuthInput
-                      name="firstName"
-                      label="First name"
-                      type="text"
-                      defaultValue={getUserDisplayName().split(" ")[0]}
-                      disabled
-                    />
-                    <AuthInput
-                      name="lastName"
-                      label="Last name"
-                      type="text"
-                      defaultValue={getUserDisplayName().split(" ").slice(1).join(" ")}
-                      disabled
-                    />
-                  </div>
-                  <p className="text-xs text-text-muted">
-                    Profile editing is coming soon. Connect the server to save changes.
-                  </p>
-                </div>
-              </div>
+              <AccountPanel />
 
-              <div className="rounded-xl border border-border bg-surface-raised p-6">
-                <h2 className="font-semibold text-text-primary mb-2">Password</h2>
-                <p className="text-sm text-text-secondary mb-4">
-                  Change your account password. You&apos;ll need to verify your current one first.
-                </p>
-                <Button variant="secondary" onClick={() => router.push("/auth?view=forgot-password")}>
-                  Reset password via email
-                </Button>
-              </div>
-
-              <div className="rounded-xl border border-error/30 bg-error/5 p-6">
-                <h2 className="font-semibold text-error mb-2">Danger zone</h2>
-                <p className="text-sm text-text-secondary mb-4">
-                  Deleting your account is permanent and cannot be undone.
-                </p>
-                <Button variant="secondary">
-                  Request account deletion
-                </Button>
-              </div>
+              <DeleteAccountPanel />
             </div>
           )}
 
@@ -172,14 +132,7 @@ export default function SettingsPage({
           {activeTab === "privacy" && (
             <div className="space-y-4">
               <ConnectedAccounts result={typeof google === "string" ? google : undefined} />
-              <div className="rounded-xl border border-border bg-surface-raised p-6">
-                <h2 className="font-semibold text-text-primary mb-2">Your data</h2>
-                <p className="text-sm text-text-secondary mb-4">
-                  All your documents are private to your account. We encrypt your personal
-                  details (email, phone) before storing them.
-                </p>
-                <Button variant="secondary">Download my data</Button>
-              </div>
+              <DataExportCard />
               <SessionsPanel />
             </div>
           )}

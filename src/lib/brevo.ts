@@ -208,3 +208,14 @@ export async function getCampaignStats(campaignId: number): Promise<BrevoCampaig
     },
   };
 }
+
+/** Removes a contact from Brevo entirely (account deletion). */
+export async function deleteBrevoContact(email: string): Promise<void> {
+  try {
+    await brevoRequest("DELETE", `/contacts/${encodeURIComponent(email)}`);
+  } catch (error) {
+    // Never was a contact (no broadcast reached them): nothing to remove
+    if (error instanceof BrevoError && error.status === 404) return;
+    throw error;
+  }
+}

@@ -16,6 +16,7 @@ import { adminRequest, secondaryButton } from "@/components/admin/adminUi";
 import { roleHierarchy, type UserRole } from "@/types/roles";
 import type { ContentDocumentDto } from "@/types/layer2";
 import { ContentEditor } from "./ContentEditor";
+import { ProfileHandle } from "@/components/profile/ProfileHandle";
 
 const atLeast = (role: UserRole, min: UserRole) => roleHierarchy[role] >= roleHierarchy[min];
 
@@ -146,9 +147,7 @@ export function ContentViewer({
               <h3 className="text-xl font-bold text-text-primary">{current.title}</h3>
               <p className="text-xs text-text-muted">
                 by{" "}
-                <Link href={`/profile/${encodeURIComponent(current.createdByUpid)}`} className="hover:underline">
-                  @{current.createdByUpid}
-                </Link>{" "}
+                <ProfileHandle upid={current.createdByUpid} />{" "}
                 · {current.lastEditedAt ? `last edited ${timeAgo(current.lastEditedAt)}` : `written ${timeAgo(current.createdAt)}`}
                 {current.verificationTier && (
                   <span className="ml-2 rounded-full bg-green-500/10 px-2 py-0.5 font-semibold text-green-700 dark:text-green-400">
@@ -163,9 +162,7 @@ export function ContentViewer({
                     {current.sourceTextbook.title}
                   </Link>{" "}
                   by{" "}
-                  {current.sourceTextbook.isPlatform
-                    ? "UniArchive"
-                    : `@${current.sourceTextbook.submittedByUpid}`}
+                  {current.sourceTextbook.isPlatform ? "UniArchive" : <ProfileHandle upid={current.sourceTextbook.submittedByUpid} />}
                 </p>
               )}
               {(mayEdit || mayDelete) && (

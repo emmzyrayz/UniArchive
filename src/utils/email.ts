@@ -641,3 +641,79 @@ export async function sendStaffMessageEmail(params: {
     return { ok: false, error: reason.slice(0, 200) };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Account deletion (lib/account/deletion.ts)
+// ---------------------------------------------------------------------------
+
+/** Code confirming the account owner wants it deleted. */
+export async function sendAccountDeletionCode(params: { toEmail: string; toName: string; otp: string }): Promise<boolean> {
+  const { toEmail, toName, otp } = params;
+  const text = [
+    `Hi ${toName},`,
+    "",
+    "Someone asked to delete your UniArchive account. If this was you, enter this code to confirm:",
+    "",
+    `    ${otp}`,
+    "",
+    "This code expires in 10 minutes. Your account is kept for 7 days after you confirm; signing in during that time cancels the deletion.",
+    "If you didn't ask for this, ignore this email and consider changing your password.",
+  ].join("\n");
+  const html = reviewEmailHtml(
+    "Confirm deleting your UniArchive account",
+    "Delete Your Account",
+    `
+          <h2 style="color: #333; margin-top: 0;">Hi ${escapeHtml(toName)},</h2>
+          <p>Someone asked to delete your UniArchive account. If this was you, enter this code to confirm:</p>
+          ${codeBlockHtml("Your Confirmation Code", otp)}
+          <p>This code expires in 10 minutes. Your account is kept for 7 days after you confirm; signing in during that time cancels the deletion.</p>
+          <p>If you didn't ask for this, ignore this email and consider changing your password.</p>`,
+  );
+  return emailService.sendEmail({ to: toEmail, subject: "Confirm deleting your UniArchive account", html, text });
+}
+
+/** The deletion is confirmed: when it happens and how to stop it. */
+export async function sendAccountDeletionScheduled(params: { toEmail: string; toName: string; purgeAfter: Date }): Promise<boolean> {
+  const { toEmail, toName, purgeAfter } = params;
+  const when = purgeAfter.toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Lagos" });
+  const signIn = appUrl("/auth?view=signin");
+  const text = [
+    `Hi ${toName},`,
+    "",
+    `Your UniArchive account will be deleted on ${when}. You've been signed out everywhere.`,
+    "",
+    `Changed your mind? Sign in before then and the deletion is cancelled: ${signIn}`,
+    "",
+    "Materials you published in the UniLibrary stay there for other students, credited to a former member; everything else is erased.",
+  ].join("\n");
+  const html = reviewEmailHtml(
+    "Your UniArchive account will be deleted",
+    "Account Deletion Scheduled",
+    `
+          <h2 style="color: #333; margin-top: 0;">Hi ${escapeHtml(toName)},</h2>
+          <p>Your UniArchive account will be deleted on <strong>${escapeHtml(when)}</strong>. You've been signed out everywhere.</p>
+          <p>Changed your mind? <a href="${escapeHtml(signIn)}" style="color: #667eea;">Sign in</a> before then and the deletion is cancelled.</p>
+          <p>Materials you published in the UniLibrary stay there for other students, credited to a former member; everything else is erased.</p>`,
+  );
+  return emailService.sendEmail({ to: toEmail, subject: "Your UniArchive account will be deleted", html, text });
+}
+
+/** Signing in during the grace period cancelled the deletion. */
+export async function sendAccountDeletionCancelled(params: { toEmail: string; toName: string }): Promise<boolean> {
+  const { toEmail, toName } = params;
+  const text = [
+    `Hi ${toName},`,
+    "",
+    "Welcome back. You signed in, so your account is no longer scheduled for deletion. Everything is as you left it.",
+    "If that sign-in wasn't you, change your password now.",
+  ].join("\n");
+  const html = reviewEmailHtml(
+    "Your UniArchive account won't be deleted",
+    "Deletion Cancelled",
+    `
+          <h2 style="color: #333; margin-top: 0;">Hi ${escapeHtml(toName)},</h2>
+          <p>Welcome back. You signed in, so your account is no longer scheduled for deletion. Everything is as you left it.</p>
+          <p>If that sign-in wasn't you, <a href="${escapeHtml(appUrl("/auth?view=forgot-password"))}" style="color: #667eea;">change your password</a> now.</p>`,
+  );
+  return emailService.sendEmail({ to: toEmail, subject: "Your UniArchive account won't be deleted", html, text });
+}

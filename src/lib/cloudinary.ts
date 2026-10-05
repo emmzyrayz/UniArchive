@@ -223,3 +223,18 @@ export function isOwnAvatarUrl(url: string, userId: string): boolean {
   );
   return pattern.test(url);
 }
+
+/** Deletes a user's avatar (account deletion). Already gone counts as deleted. */
+export async function deleteUserAvatar(userId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const result = await client().uploader.destroy(`${avatarFolder(userId)}/${AVATAR_PUBLIC_ID}`, {
+      resource_type: "image",
+      type: "upload",
+      invalidate: true,
+    });
+    if (result.result === "ok" || result.result === "not found") return { success: true };
+    return { success: false, error: `Cloudinary destroy: ${result.result}` };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Delete failed" };
+  }
+}

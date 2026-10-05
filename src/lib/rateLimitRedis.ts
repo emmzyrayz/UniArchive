@@ -48,6 +48,8 @@ const limiters = {
   staffMail: make(30, "1 h", "rl:staff-mail"),
   // Broadcasts sent or scheduled through Brevo, per admin
   broadcastSend: make(10, "24 h", "rl:broadcast-send"),
+  // "Download my data": reads every collection for the user
+  dataExport: make(5, "1 h", "rl:data-export"),
   // Posting comments
   comment: make(10, "1 m", "rl:comment"),
   // Public read (materials, profiles) — generous

@@ -44,6 +44,13 @@ export interface IUser extends Document {
   schoolEmail?: string;
   schoolEmailHash?: string;
   schoolEmailVerifiedAt?: Date;
+  // Account deletion (lib/account/deletion.ts): requested with an emailed
+  // code; erased by the daily purge once purgeAfter passes, unless the user
+  // signs in first (which cancels it)
+  deletion?: { requestedAt: Date; purgeAfter: Date };
+  deletionCodeHash?: string;
+  deletionCodeExpires?: Date;
+  deletionCodeAttempts?: number;
   // Bulk email (Brevo broadcasts); see lib/emailPrefs.ts. Absent = defaults
   emailPrefs?: {
     announcements?: boolean;
@@ -168,6 +175,12 @@ const UserSchema = new Schema<IUser>(
     schoolEmail: { type: String },
     schoolEmailHash: { type: String },
     schoolEmailVerifiedAt: { type: Date },
+    deletion: {
+      type: new Schema({ requestedAt: { type: Date, required: true }, purgeAfter: { type: Date, required: true } }, { _id: false }),
+    },
+    deletionCodeHash: { type: String },
+    deletionCodeExpires: { type: Date },
+    deletionCodeAttempts: { type: Number },
     emailPrefs: {
       announcements: { type: Boolean },
       newsletter: { type: Boolean },
@@ -226,6 +239,8 @@ const UserSchema = new Schema<IUser>(
 // Optional-but-unique fields: sparse so documents without them don't collide.
 UserSchema.index({ username: 1 }, { unique: true, sparse: true });
 UserSchema.index({ regNumberHash: 1 }, { unique: true, sparse: true });
+// The daily purge looks up accounts whose grace period has ended
+UserSchema.index({ "deletion.purgeAfter": 1 }, { sparse: true });
 // One account per school email
 UserSchema.index({ schoolEmailHash: 1 }, { unique: true, sparse: true });
 UserSchema.index({ googleId: 1 }, { unique: true, sparse: true });
