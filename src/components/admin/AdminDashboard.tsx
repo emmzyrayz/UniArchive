@@ -21,6 +21,8 @@ export interface AdminViewer {
   canMail: boolean;
   /** "mail.broadcast": bulk email through Brevo */
   canBroadcast: boolean;
+  /** "survey.manage": surveys and their results */
+  canSurveys: boolean;
 }
 
 function StatCard({ label, value, href }: { label: string; value?: number; href?: string }) {
@@ -85,6 +87,7 @@ export function AdminDashboard({ viewer }: { viewer: AdminViewer }) {
     { label: "Users", href: `${base}/users`, show: viewer.canManageUsers },
     { label: "Mail", href: `${base}/mail`, show: viewer.canMail },
     { label: "Broadcasts", href: `${base}/mail/broadcasts`, show: viewer.canBroadcast },
+    { label: "Surveys", href: `${base}/surveys`, show: viewer.canSurveys },
     { label: "Upload materials", href: `${base}/materials/upload`, show: viewer.canIngest },
     {
       label: "Upload queue",

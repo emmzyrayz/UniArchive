@@ -149,6 +149,7 @@ export async function requirePermission(
     | "material.review_gifts"
     | "mail.send_user"
     | "mail.broadcast"
+    | "survey.manage"
   >,
 ): Promise<SessionUser> {
   const user = await requireAuth(request);
