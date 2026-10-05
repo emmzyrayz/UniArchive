@@ -1,25 +1,18 @@
 // app/read/[id]/layout.tsx
-import { headers } from "next/headers";
+// Loads the book with the same code as GET /api/books/[id]
+// (lib/readerBook.ts), straight from the session cookie, instead of calling
+// our own API over HTTP. That self-call went through NEXT_PUBLIC_APP_URL
+// with the cookies copied over, and a redirect on the way dropped them, so
+// signed-in readers were bounced to sign in (and then home) in a loop.
 import { notFound, redirect } from "next/navigation";
 import { ReaderShell } from "@/components/reader/ReaderShell";
 import type { Book } from "@/types/library";
 import { privateMetadata } from "@/lib/seo";
+import { getServerSessionUser } from "@/lib/auth/serverSession";
+import { openBookForReader } from "@/lib/readerBook";
 
 // A reader page is someone's own book: never indexed
 export const metadata = privateMetadata("Reader");
-
-// Origin for calling our own API from the server. Prefer the configured app
-// URL over the request's Host header, which the client controls.
-async function apiOrigin(): Promise<string> {
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "");
-  if (configured) return configured;
-
-  const h = await headers();
-  const proto =
-    h.get("x-forwarded-proto") ??
-    (process.env.NODE_ENV === "production" ? "https" : "http");
-  return `${proto}://${h.get("host")}`;
-}
 
 export default async function ReadLayout({
   children,
@@ -29,29 +22,19 @@ export default async function ReadLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const cookie = (await headers()).get("cookie") ?? "";
 
-  const response = await fetch(
-    `${await apiOrigin()}/api/books/${encodeURIComponent(id)}`,
-    {
-      // Forward the browser's session cookie so the API can check ownership
-      headers: { cookie },
-      cache: "no-store",
-    },
-  );
-
-  if (response.status === 401) {
-    redirect("/auth?view=signin");
-  }
-  // 404 covers both "doesn't exist" and "not yours" (the API doesn't distinguish)
-  if (response.status === 404) {
-    notFound();
-  }
-  if (!response.ok) {
-    throw new Error(`Failed to load book ${id} (HTTP ${response.status})`);
+  const session = await getServerSessionUser();
+  if (!session) {
+    // Come back to this book after signing in
+    redirect(`/auth?view=signin&from=${encodeURIComponent(`/read/${id}`)}`);
   }
 
-  const { book } = (await response.json()) as { book: Book };
+  const opened = await openBookForReader(id, session);
+  // Covers both "doesn't exist" and "not yours" (deliberately the same)
+  if (opened.kind === "not_found") notFound();
+  if (opened.kind === "storage_unavailable") {
+    throw new Error(`Storage is unavailable for book ${id}. Please try again.`);
+  }
 
-  return <ReaderShell book={book}>{children}</ReaderShell>;
+  return <ReaderShell book={opened.book as Book}>{children}</ReaderShell>;
 }

@@ -5,18 +5,17 @@
 //                            then the record and every reader's annotations
 //                            and reading progress on it. Refused while the book has a
 //                            submission under review or published.
-import { NextResponse, after, type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { isValidObjectId } from "mongoose";
 import { LIBRARY_BOOKS, getBookModel } from "@/lib/models/bookModel";
-import { getMaterialModel } from "@/lib/models/materialModel";
-import { redis } from "@/lib/redis";
 import { requireAuth } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
 import { storageClient } from "@/lib/storage";
 import { pageImagePrefix } from "@/lib/pdfJobs";
-import { deleteCloudinaryPdf, getCloudinaryPdfUrl } from "@/lib/cloudinary";
+import { deleteCloudinaryPdf } from "@/lib/cloudinary";
 import { toBookDto, type BookDoc } from "@/lib/dto/book";
 import { findReadableBook } from "@/lib/bookAccess";
+import { openBookForReader } from "@/lib/readerBook";
 import { getAnnotationModel } from "@/lib/models/annotationModel";
 import { getReadingProgressModel } from "@/lib/models/readingProgressModel";
 import {
@@ -25,12 +24,6 @@ import {
 } from "@/lib/models/materialSubmissionModel";
 
 type Context = { params: Promise<{ id: string }> };
-
-// Long enough for a reading session: pdf.js keeps making range requests
-// against the same URL as the reader scrolls.
-const READ_URL_TTL_SECONDS = 4 * 60 * 60;
-// A reader counts as one download per material per day
-const DOWNLOAD_DEDUPE_SECONDS = 24 * 60 * 60;
 
 // Non-owners get the same 404 as a missing book, so ids can't be probed.
 const notFound = () =>
@@ -51,100 +44,33 @@ async function findOwnedBook(request: NextRequest, context: Context) {
 const isCloudinary = (book: BookDoc) =>
   book.storageProvider === "cloudinary" && !!book.cloudinaryPublicId;
 
-async function signedReadUrl(book: BookDoc): Promise<string | null> {
-  if (isCloudinary(book)) {
-    try {
-      return getCloudinaryPdfUrl(book.cloudinaryPublicId!);
-    } catch (error) {
-      console.error("GET /api/books/[id]: failed to sign Cloudinary URL:", error);
-      return null;
-    }
-  }
-  const signed = await storageClient.generatePresignedDownloadUrl(
-    book.storageKey,
-    READ_URL_TTL_SECONDS,
-  );
-  if (!signed.success || !signed.downloadUrl) {
-    console.error("GET /api/books/[id]: failed to sign download URL:", signed.error);
-    return null;
-  }
-  return signed.downloadUrl;
-}
-
 export async function GET(request: NextRequest, context: Context) {
   try {
     const session = await requireAuth(request);
-    const found = await findReadableBook((await context.params).id, session);
-    if (!found) return notFound();
+    const { id } = await context.params;
 
     // ?meta=1: just the record (e.g. the submission form). No signed URL,
     // and it doesn't count as opening the book.
     if (request.nextUrl.searchParams.get("meta") === "1") {
+      const found = await findReadableBook(id, session);
+      if (!found) return notFound();
       return NextResponse.json(
         { book: toBookDto(found.book) },
         { headers: { "Cache-Control": "private, no-store" } },
       );
     }
 
-    // Storage is private, so the stored URL can't be read by the browser.
-    // Hand the reader a signed URL instead.
-    const fileUrl = await signedReadUrl(found.book);
-    if (!fileUrl) {
+    // Same code as the /read/[id] layout (lib/readerBook.ts)
+    const opened = await openBookForReader(id, session);
+    if (opened.kind === "not_found") return notFound();
+    if (opened.kind === "storage_unavailable") {
       return NextResponse.json(
         { message: "Storage is unavailable. Please try again." },
         { status: 502 },
       );
     }
-
-    // Fire-and-forget: a failed bookkeeping write must never block or break
-    // the read. timestamps: false so opening a book doesn't bump updatedAt.
-    // A reviewer opening it isn't the owner's reading activity.
-    if (found.isOwner) {
-      (await getBookModel())
-        .updateOne(
-          { _id: found.book._id },
-          { $set: { lastOpenedAt: new Date() } },
-          { timestamps: false },
-        )
-        .exec()
-        .catch((error) => {
-          console.error("GET /api/books/[id]: failed to update lastOpenedAt:", error);
-        });
-    }
-
-    // A non-owner opening a published UniLibrary material counts as a
-    // download (the reader now holds the file). Once per reader per material
-    // per day, so reloads and the reader's own refetches don't inflate it.
-    const materialId = found.isOwner ? undefined : found.publishedMaterialId;
-    if (materialId) {
-      const readerId = session.userId;
-      after(async () => {
-        try {
-          const first = await redis.set(`download:${materialId}:${readerId}`, "1", {
-            nx: true,
-            ex: DOWNLOAD_DEDUPE_SECONDS,
-          });
-          if (!first) return;
-          await (await getMaterialModel()).updateOne(
-            { _id: materialId },
-            { $inc: { downloadCount: 1 } },
-            { timestamps: false },
-          );
-        } catch (error) {
-          console.error("GET /api/books/[id]: failed to count download:", error);
-        }
-      });
-    }
-
-    // The published material's outline, for the reader's Contents tab
-    const material = await (await getMaterialModel())
-      .findOne({ bookId: found.book._id, isActive: true })
-      .select("outline")
-      .lean()
-      .catch(() => null);
-
     return NextResponse.json(
-      { book: { ...toBookDto(found.book), fileUrl, outline: material?.outline ?? null } },
+      { book: opened.book },
       // Signed URLs expire; never let a cache serve a stale one
       { headers: { "Cache-Control": "private, no-store" } },
     );

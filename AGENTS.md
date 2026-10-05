@@ -304,9 +304,13 @@ vars are documented in `.env.example`.
 - react-pdf 11 defaults to Suspense mode: a load error also throws to the
   nearest error boundary and takes the whole page down. Pass
   `suspense={false}` (see `PdfPane`) and handle `onLoadError`.
-- `NEXT_PUBLIC_APP_URL` is inlined at build time, and the reader's layout
-  fetches its own API through it: a local production server must run on
-  that port (3000 with the current `.env.local`) or `/read` fails.
+- `NEXT_PUBLIC_APP_URL` is inlined at build time (site URL for links and
+  metadata). Never call our own API over HTTP from a server component: the
+  reader layout used to, through that URL with the cookies copied over, and
+  a redirect on the way (another host) dropped them, sending signed-in
+  readers back to sign in, then home, in a loop. Share the code instead
+  (`lib/readerBook.ts` serves both `/read/[id]` and `GET /api/books/[id]`),
+  and keep `from=` on any redirect to sign-in.
 - `pnpm dev` (Turbopack) fails on every page with "The PNG is not in RGBA
   format" from `src/app/favicon.ico`; `pnpm build`/`start` (webpack) work.
   Test against a production build until the icon is regenerated.
