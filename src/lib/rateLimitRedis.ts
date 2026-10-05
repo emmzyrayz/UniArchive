@@ -46,6 +46,8 @@ const limiters = {
   admin: make(120, "1 m", "rl:admin"),
   // Emails an admin writes to single users (/admin/mail)
   staffMail: make(30, "1 h", "rl:staff-mail"),
+  // Broadcasts sent or scheduled through Brevo, per admin
+  broadcastSend: make(10, "24 h", "rl:broadcast-send"),
   // Posting comments
   comment: make(10, "1 m", "rl:comment"),
   // Public read (materials, profiles) — generous

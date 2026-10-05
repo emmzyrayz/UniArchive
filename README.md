@@ -74,8 +74,9 @@ Unordered; pick by what matters most at the time.
   email one user from `/admin/mail` (ZeptoMail), and users choose their
   bulk email in Settings (Brevo unsubscribes flow back), and admins compose
   broadcasts from templates with a live preview, audience count and test
-  copy at `/admin/mail/broadcasts`; next, sending and scheduling them
-  through Brevo, with stats (announcements for everyone who hasn't unsubscribed, a newsletter
+  copy, then send or schedule them through Brevo and follow their stats,
+  at `/admin/mail/broadcasts`. Left: Monthly digest and Profile nudge
+  templates, adding a school email from Settings (announcements for everyone who hasn't unsubscribed, a newsletter
   for those who opted in, real email toggles in Settings).
 - **Regenerate `favicon.ico` as RGBA** so `pnpm dev` (Turbopack) works again;
   until then, test against production builds.

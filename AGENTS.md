@@ -95,8 +95,8 @@ vars are documented in `.env.example`.
     (announcements / newsletter / author's choice) and a renderer. The same
     code renders the preview, the test copy and the sent email. Every value
     is escaped, links must be https (http only for localhost), no raw HTML.
-    The HTML carries Brevo merge tags (`{{ contact.FIRSTNAME | default :
-    'there' }}`, `{{ contact.PREFS_URL }}`, `{{ unsubscribe }}`), filled by
+    The HTML carries Brevo merge tags (`{{ contact.FIRSTNAME|default:"there" }}`,
+    `{{ contact.PREFS_URL }}`, `{{ unsubscribe }}`), filled by
     `personalize()` for previews and tests. To add a template: one entry in
     `BROADCAST_TEMPLATES` and one case in `renderBody`.
   - `lib/broadcast/audience.ts`: criteria stack (school, department, level,
@@ -110,6 +110,23 @@ vars are documented in `.env.example`.
     UniLibrary materials are re-read from the database on every save.
   - "Send me a test" sends the saved draft to the signed-in admin through
     ZeptoMail (one copy to staff is transactional).
+  - Sending (`lib/broadcast/send.ts`, `POST .../[id]/send` with the
+    recipient count the admin confirmed; 409 + new total if it changed):
+    claims the draft (draft -> sending, so a double click can't send twice),
+    creates our contact attributes in Brevo if missing (UPID, SCHOOL, LEVEL,
+    ROLE, PREFS_URL), a list per broadcast in the "UniArchive broadcasts"
+    folder, imports the audience into it with fresh attributes (5,000 per
+    import, waits up to 40s each), then creates the campaign from
+    `BREVO_SENDER_EMAIL` (default updates@) with Reply-To support@, and
+    sends it now or leaves it scheduled with Brevo (10 min to 90 days
+    ahead). A failure before Brevo was asked to send puts it back to draft
+    with the error; at or after that point it's "failed" and only
+    "Duplicate" makes a new draft (it may have gone out). Cancel uses
+    `PUT /emailCampaigns/{id}/status {status: "cancel"}` (Brevo won't
+    delete a scheduled campaign). Stats come from `globalStats` (cached 5
+    min; also flips scheduled -> sent). 10 sends a day per admin.
+  - Not yet: a cleanup of old per-broadcast Brevo lists, and sending more
+    than ~40s of imports in one request (fine at our size).
 - Check settings with `pnpm email:test uniarchive.team@gmail.com`. To test
   sending code without real mail, point `SMTP_HOST` at a local fake SMTP
   server (`smtp-server` in a scratch folder) and run with

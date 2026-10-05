@@ -4,7 +4,7 @@
 // are local until saved; switching steps, testing and leaving all save.
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AdminBroadcastDto } from "@/types/admin";
@@ -16,6 +16,7 @@ import { Modal, ModalActions } from "../ReviewModals";
 import { AdminPageShell, adminRequest, cardClass, dangerButton, inputClass, primaryButton, secondaryButton } from "../adminUi";
 import { TemplateFieldsForm } from "./TemplateFieldsForm";
 import { AudiencePicker } from "./AudiencePicker";
+import { DuplicateButton, SendPanel, StatusPanel } from "./SendPanels";
 
 type Step = "content" | "audience" | "review";
 const STEPS: { id: Step; label: string }[] = [
@@ -43,20 +44,24 @@ export function BroadcastEditor({ id }: { id: string }) {
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const apply = (b: AdminBroadcastDto) => {
+  const apply = useCallback((b: AdminBroadcastDto) => {
     setLoaded(b);
     setName(b.name);
     setKind(b.kind);
     setFields(b.fields as TemplateFields);
     setAudience(b.audience);
     setDirty(false);
-  };
+  }, []);
 
   useEffect(() => {
     adminRequest<{ broadcast: AdminBroadcastDto }>(`/api/admin/broadcasts/${id}`)
-      .then(({ broadcast }) => apply(broadcast))
+      .then(({ broadcast }) => {
+        apply(broadcast);
+        // Sent, scheduled or failed ones open on their status
+        if (broadcast.status !== "draft") setStep("review");
+      })
       .catch((err: Error) => setLoadError(err.message));
-  }, [id]);
+  }, [id, apply]);
 
   // Warn before leaving with unsaved edits
   useEffect(() => {
@@ -279,6 +284,7 @@ export function BroadcastEditor({ id }: { id: string }) {
               <p className="text-green-700 dark:text-green-400">Content and audience are complete.</p>
             )}
           </div>
+          {editable ? (
           <div className={`${cardClass} space-y-3 text-sm`}>
             <h2 className="font-semibold text-text-primary">Test and send</h2>
             <p className="text-text-secondary">
@@ -294,15 +300,30 @@ export function BroadcastEditor({ id }: { id: string }) {
               {busy === "test" ? "Sending..." : "Send me a test"}
             </button>
             {loaded.lastTestAt && <p className="text-xs text-text-muted">Last test {timeAgo(loaded.lastTestAt)}.</p>}
-            <p className="rounded-lg border border-border bg-surface p-3 text-xs text-text-muted">
-              Sending to the audience through Brevo (now or scheduled) arrives in the next update.
-            </p>
-            {editable && (
+            <hr className="border-border" />
+            <SendPanel
+              broadcast={loaded}
+              ready={problems.length === 0}
+              ensureSaved={save}
+              onSent={(b) => {
+                apply(b);
+                setMessage({
+                  tone: "ok",
+                  text: b.status === "scheduled" ? "Scheduled with Brevo." : "Sent to Brevo. Delivery takes a few minutes.",
+                });
+              }}
+            />
+            <hr className="border-border" />
+            <div className="flex flex-wrap gap-2">
+              <DuplicateButton id={loaded.id} />
               <button type="button" className={dangerButton} onClick={() => setConfirmDelete(true)} disabled={busy !== null}>
                 Delete draft
               </button>
-            )}
+            </div>
           </div>
+          ) : (
+            <StatusPanel broadcast={loaded} onChange={apply} />
+          )}
         </div>
       )}
 

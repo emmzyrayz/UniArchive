@@ -10,7 +10,7 @@
 // no raw-HTML template ("Custom message" takes plain text).
 //
 // The rendered email carries Brevo merge tags, filled in per recipient:
-//   {{ contact.FIRSTNAME | default : 'there' }}  greeting
+//   {{ contact.FIRSTNAME|default:"there" }}      greeting
 //   {{ contact.PREFS_URL }}                      their /email-preferences link
 //   {{ unsubscribe }}                            Brevo's unsubscribe link
 // personalize() fills them for the preview and the test copy.
@@ -529,9 +529,10 @@ function renderBody(template: TemplateDef, f: TemplateFields): Body {
   }
 }
 
-// A Brevo merge tag, put into the HTML as is (escaping would break the
-// filter's quotes); it's a constant, never user input
-const GREETING = "Hi {{ contact.FIRSTNAME | default : 'there' }},";
+// A Brevo merge tag (their documented default-filter syntax), put into the
+// HTML as is: escaping would break the filter's quotes. A constant, never
+// user input.
+export const GREETING = 'Hi {{ contact.FIRSTNAME|default:"there" }},';
 
 /** The email as Brevo will send it, merge tags included. */
 export function renderBroadcast(template: TemplateDef, fields: TemplateFields, kind: EmailKind): RenderedBroadcast {
@@ -571,7 +572,7 @@ export function personalize(
   const fill = (s: string, escape: boolean) => {
     const e = escape ? escapeHtml : (v: string) => v;
     return s
-      .replaceAll("{{ contact.FIRSTNAME | default : 'there' }}", e(values.firstName || "there"))
+      .replaceAll('{{ contact.FIRSTNAME|default:"there" }}', e(values.firstName || "there"))
       .replaceAll("{{ contact.PREFS_URL }}", e(values.prefsUrl))
       .replaceAll("{{ unsubscribe }}", e(values.unsubscribeUrl));
   };

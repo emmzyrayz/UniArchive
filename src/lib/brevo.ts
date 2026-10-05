@@ -66,3 +66,145 @@ export async function unblockBrevoContact(email: string): Promise<void> {
     throw error;
   }
 }
+
+// --- Broadcast building blocks (lib/broadcast/send.ts) ------------------------
+
+/** The contact attributes broadcasts fill in (FIRSTNAME/LASTNAME are built in). */
+export const BROADCAST_ATTRIBUTES = ["UPID", "SCHOOL", "LEVEL", "ROLE", "PREFS_URL"] as const;
+
+let attributesReady = false;
+
+/** Creates any missing custom attributes (text), once per server process. */
+export async function ensureContactAttributes(): Promise<void> {
+  if (attributesReady) return;
+  const { attributes = [] } = await brevoRequest<{ attributes?: { name: string; category: string }[] }>(
+    "GET",
+    "/contacts/attributes",
+  );
+  const existing = new Set(attributes.filter((a) => a.category === "normal").map((a) => a.name.toUpperCase()));
+  for (const name of BROADCAST_ATTRIBUTES) {
+    if (existing.has(name)) continue;
+    try {
+      await brevoRequest("POST", `/contacts/attributes/normal/${name}`, { type: "text" });
+    } catch (error) {
+      // Created meanwhile (another send): fine
+      if (!(error instanceof BrevoError && error.status === 400 && /exist/i.test(error.message))) throw error;
+    }
+  }
+  attributesReady = true;
+}
+
+const FOLDER_NAME = "UniArchive broadcasts";
+
+/** The contact folder broadcast lists live in (created on first use). */
+export async function broadcastFolderId(): Promise<number> {
+  const { folders = [] } = await brevoRequest<{ folders?: { id: number; name: string }[] }>(
+    "GET",
+    "/contacts/folders?limit=50&offset=0",
+  );
+  const found = folders.find((f) => f.name === FOLDER_NAME);
+  if (found) return found.id;
+  const { id } = await brevoRequest<{ id: number }>("POST", "/contacts/folders", { name: FOLDER_NAME });
+  return id;
+}
+
+export async function createContactList(name: string, folderId: number): Promise<number> {
+  const { id } = await brevoRequest<{ id: number }>("POST", "/contacts/lists", { name, folderId });
+  return id;
+}
+
+export interface BrevoContact {
+  email: string;
+  attributes: Record<string, string>;
+}
+
+/** Starts an import of contacts into a list; returns the process id. */
+export async function importContacts(listId: number, contacts: BrevoContact[]): Promise<number> {
+  const { processId } = await brevoRequest<{ processId: number }>("POST", "/contacts/import", {
+    jsonBody: contacts,
+    listIds: [listId],
+    updateExistingContacts: true,
+    // Keep attributes we don't send rather than blanking them
+    emptyContactsAttributes: false,
+  });
+  return processId;
+}
+
+/** Waits for a background process (an import) to finish. */
+export async function waitForProcess(processId: number, timeoutMs: number): Promise<"completed" | "timeout"> {
+  const deadline = Date.now() + timeoutMs;
+  let delay = 1000;
+  while (Date.now() < deadline) {
+    const { status } = await brevoRequest<{ status: string }>("GET", `/processes/${processId}`);
+    if (status === "completed") return "completed";
+    if (status === "failed" || status === "cancelled") {
+      throw new BrevoError(`Brevo contact import ${status}`, 502);
+    }
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    delay = Math.min(delay * 1.5, 4000);
+  }
+  return "timeout";
+}
+
+export async function createEmailCampaign(campaign: {
+  name: string;
+  subject: string;
+  sender: { name: string; email: string };
+  replyTo: string;
+  htmlContent: string;
+  listId: number;
+  scheduledAt?: Date;
+}): Promise<number> {
+  const { id } = await brevoRequest<{ id: number }>("POST", "/emailCampaigns", {
+    name: campaign.name,
+    subject: campaign.subject,
+    sender: campaign.sender,
+    replyTo: campaign.replyTo,
+    htmlContent: campaign.htmlContent,
+    recipients: { listIds: [campaign.listId] },
+    ...(campaign.scheduledAt && { scheduledAt: campaign.scheduledAt.toISOString() }),
+  });
+  return id;
+}
+
+export async function sendCampaignNow(campaignId: number): Promise<void> {
+  await brevoRequest("POST", `/emailCampaigns/${campaignId}/sendNow`);
+}
+
+/** Stops a scheduled campaign (Brevo won't delete a scheduled one). */
+export async function cancelCampaign(campaignId: number): Promise<void> {
+  await brevoRequest("PUT", `/emailCampaigns/${campaignId}/status`, { status: "cancel" });
+}
+
+export interface BrevoCampaignStatus {
+  status: string;
+  scheduledAt?: string;
+  sentDate?: string;
+  stats: { delivered: number; opened: number; clicked: number; unsubscribed: number; bounced: number };
+}
+
+export async function getCampaignStats(campaignId: number): Promise<BrevoCampaignStatus> {
+  const data = await brevoRequest<{
+    status: string;
+    scheduledAt?: string;
+    sentDate?: string;
+    statistics?: {
+      globalStats?: Partial<
+        Record<"delivered" | "uniqueViews" | "uniqueClicks" | "unsubscriptions" | "hardBounces" | "softBounces", number>
+      >;
+    };
+  }>("GET", `/emailCampaigns/${campaignId}?statistics=globalStats`);
+  const g = data.statistics?.globalStats ?? {};
+  return {
+    status: data.status,
+    ...(data.scheduledAt && { scheduledAt: data.scheduledAt }),
+    ...(data.sentDate && { sentDate: data.sentDate }),
+    stats: {
+      delivered: g.delivered ?? 0,
+      opened: g.uniqueViews ?? 0,
+      clicked: g.uniqueClicks ?? 0,
+      unsubscribed: g.unsubscriptions ?? 0,
+      bounced: (g.hardBounces ?? 0) + (g.softBounces ?? 0),
+    },
+  };
+}
