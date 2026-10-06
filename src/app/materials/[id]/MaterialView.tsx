@@ -24,6 +24,9 @@ import type { MaterialDetail } from "@/types/layer2";
 import type { TypedPreview } from "@/lib/materialDetail";
 import { DOCUMENT_TYPE_LABELS } from "@/lib/constants/layer2";
 import { hasHigherOrEqualRole } from "@/types/roles";
+import { VerificationBadge } from "@/components/unilibrary/VerificationBadge";
+import { UnverifiedNotice, useUnverifiedNotice } from "@/components/unilibrary/UnverifiedNotice";
+import { ReportMaterialDialog } from "@/components/unilibrary/ReportMaterialDialog";
 
 type Tab = "pdf" | "questions" | "notes";
 
@@ -37,6 +40,9 @@ function MaterialViewContent({ material: m, preview }: { material: MaterialDetai
   const [tab, setTab] = useState<Tab>(TABS.includes(requestedTab as Tab) ? (requestedTab as Tab) : "pdf");
   // Counts change as people add typed content on this page
   const [counts, setCounts] = useState<{ questions?: number; notes?: number }>({});
+  const unverified = !!m.unverified;
+  const notice = useUnverifiedNotice(m._id, unverified);
+  const [reporting, setReporting] = useState(false);
 
   const backLink = (
     <Link href="/unilibrary" className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary">
@@ -47,8 +53,8 @@ function MaterialViewContent({ material: m, preview }: { material: MaterialDetai
   const questionCount = counts.questions ?? m.typedQuestionCount;
   const noteCount = counts.notes ?? m.typedNoteCount;
   // A tab shows where that kind of content belongs, or wherever some exists
-  const showQuestions = QUESTION_CATEGORIES.includes(m.category) || questionCount > 0;
-  const showNotes = NOTE_CATEGORIES.includes(m.category) || noteCount > 0;
+  const showQuestions = (!!m.category && QUESTION_CATEGORIES.includes(m.category)) || questionCount > 0;
+  const showNotes = (!!m.category && NOTE_CATEGORIES.includes(m.category)) || noteCount > 0;
   const badge = categoryBadge(m.category, m.subcategory);
   const place = [m.universityAbbr || m.universityName, m.courseCode, m.level && levelLabel(m.level), m.semester && `${m.semester} Semester`]
     .filter(Boolean)
@@ -64,14 +70,22 @@ function MaterialViewContent({ material: m, preview }: { material: MaterialDetai
     <div className="mt-[70px] min-h-screen px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-4xl space-y-6">
         {backLink}
+        {notice.isOpen && (
+          <UnverifiedNotice
+            unidentified={!m.category}
+            onClose={notice.close}
+            onReport={() => {
+              notice.close();
+              setReporting(true);
+            }}
+          />
+        )}
+        {reporting && <ReportMaterialDialog materialId={m._id} signedIn={hasActiveSession} onClose={() => setReporting(false)} />}
 
         <header className="space-y-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className={`${BADGE_CLASS} ${badge.className}`}>{badge.label}</span>
-            <span className={`${BADGE_CLASS} border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300`}>✓ Verified</span>
-            {m.verificationTier === "tier2" && (
-              <span className={`${BADGE_CLASS} border-yellow-500/40 bg-yellow-500/15 text-yellow-700 dark:text-yellow-300`}>⭐ Endorsed</span>
-            )}
+            <VerificationBadge unverified={unverified} tier={m.verificationTier} onExplain={notice.open} />
           </div>
           <h1 className="text-2xl font-bold text-text-primary">
             {m.courseCode ? `${m.courseCode} — ${m.title}` : m.title}
@@ -85,7 +99,30 @@ function MaterialViewContent({ material: m, preview }: { material: MaterialDetai
             {m.uploaderTopBadge && <span title={m.uploaderTopBadge.name}> {m.uploaderTopBadge.emoji}</span>} ·{" "}
             {timeAgo(m.createdAt)} · {m.viewCount.toLocaleString()} views
             {!!m.pageCount && ` · ${m.pageCount} pages`} · {formatFileSize(m.fileSize)}
+            {!unverified && (
+              <>
+                {" · "}
+                <button type="button" className="hover:text-text-primary hover:underline" onClick={() => setReporting(true)}>
+                  Report
+                </button>
+              </>
+            )}
           </p>
+          {unverified && (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200">
+              <p>
+                <strong>Unverified:</strong>{" "}
+                {m.category
+                  ? "these details haven't been checked by our team yet and may be wrong."
+                  : "nobody has said what this PDF is yet."}
+              </p>
+              <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                <button type="button" className="font-semibold underline" onClick={() => setReporting(true)}>
+                  Report a problem
+                </button>
+              </p>
+            </div>
+          )}
           {m.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {m.tags.map((t) => (
@@ -116,8 +153,8 @@ function MaterialViewContent({ material: m, preview }: { material: MaterialDetai
             ))}
         </div>
 
-        {hasActiveSession && ((tab === "questions" && QUESTION_CATEGORIES.includes(m.category)) ||
-          (tab === "notes" && NOTE_CATEGORIES.includes(m.category) && !!userProfile && hasHigherOrEqualRole(userProfile.role, "collaborator"))) && (
+        {hasActiveSession && ((tab === "questions" && (!!m.category && QUESTION_CATEGORIES.includes(m.category))) ||
+          (tab === "notes" && (!!m.category && NOTE_CATEGORIES.includes(m.category)) && !!userProfile && hasHigherOrEqualRole(userProfile.role, "collaborator"))) && (
           <Link
             href={`/contribute/${m._id}`}
             className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm hover:bg-primary/10"

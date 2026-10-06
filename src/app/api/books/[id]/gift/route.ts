@@ -20,6 +20,7 @@ import { getCloudinaryPdfUrl } from "@/lib/cloudinary";
 import { CLOUDINARY_MAX_SIZE } from "@/lib/storageRouter";
 import { LIBRARY_BOOKS, getBookModel, type BookStorageProvider } from "@/lib/models/bookModel";
 import { getUserModel } from "@/lib/models/userModel";
+import { upsertUnverifiedFromPlatformBook } from "@/lib/materialPublish";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest, context: Context) {
         .select("universityId universityName universityAbbr facultyId facultyName departmentId departmentName level semester")
         .lean();
 
-      await Book.create({
+      const gifted = await Book.create({
         title: book.title,
         description: note,
         fileUrl: storageClient.getPublicUrl(copy.key),
@@ -150,6 +151,8 @@ export async function POST(request: NextRequest, context: Context) {
           },
         },
       });
+      // Listed in the UniLibrary at once, unverified, with the student's note
+      await upsertUnverifiedFromPlatformBook(gifted.toObject() as Parameters<typeof upsertUnverifiedFromPlatformBook>[0]);
     } catch (error) {
       await release();
       if (copy) await storageClient.deleteFile(copy.key).catch(() => undefined);

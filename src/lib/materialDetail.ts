@@ -5,7 +5,7 @@
 // search for (course code + the actual questions).
 import { cache } from "react";
 import { isValidObjectId } from "mongoose";
-import { getMaterialModel, type IMaterial } from "@/lib/models/materialModel";
+import { PUBLIC_MATERIALS, getMaterialModel, type IMaterial } from "@/lib/models/materialModel";
 import { getTypedQuestionModel } from "@/lib/models/typedQuestionModel";
 import { getContentDocumentModel } from "@/lib/models/contentDocumentModel";
 import { PUBLIC_MATERIAL_FIELDS, toMaterialSummaries, type PublicMaterialDoc } from "@/lib/publicMaterials";
@@ -15,7 +15,7 @@ import type { MaterialDetail } from "@/types/layer2";
 async function loadMaterialDetail(id: string): Promise<(MaterialDetail & { updatedAt: string }) | null> {
   if (!isValidObjectId(id)) return null;
   const Material = await getMaterialModel();
-  const doc = await Material.findOne({ _id: id, isActive: true })
+  const doc = await Material.findOne({ _id: id, ...PUBLIC_MATERIALS })
     .select(`${PUBLIC_MATERIAL_FIELDS} outline updatedAt`)
     .lean<PublicMaterialDoc & Pick<IMaterial, "outline"> & { updatedAt?: Date }>();
   if (!doc) return null;

@@ -36,6 +36,10 @@ to 500L/600L, postgraduate) and course code.
   faculty, department, level, course and type; sort by newest or trending.
   Each material has a public page (searchable on Google) with its course
   details, table of contents or course outline, and typed questions.
+  Every PDF appears as soon as it's shared: ones our team hasn't checked
+  yet carry an **Unverified** badge (staff uploads nobody has described yet
+  show as "Unidentified PDF"), stay out of Google until checked, and can
+  be reported; three reports hide an unverified one until staff look.
 - **Read in the browser**: a PDF reader with highlights, bookmarks, reading
   progress, dark mode, scroll or single-page modes, and offline saving.
   Very large PDFs on low-end phones get a "open it on a computer" fallback

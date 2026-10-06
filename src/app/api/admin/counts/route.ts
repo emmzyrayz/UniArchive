@@ -8,7 +8,7 @@ import { handleRouteError } from "@/lib/api";
 import { getMaterialSubmissionModel } from "@/lib/models/materialSubmissionModel";
 import { getRoleApplicationModel } from "@/lib/models/roleApplicationModel";
 import { getSchoolSuggestionModel } from "@/lib/models/schoolSuggestionModel";
-import { getMaterialModel } from "@/lib/models/materialModel";
+import { VERIFIED_MATERIALS, getMaterialModel } from "@/lib/models/materialModel";
 import { getUserModel } from "@/lib/models/userModel";
 import { getUniversityModel } from "@/lib/models/university/universityModel";
 import { getCommentModel } from "@/lib/models/commentModel";
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       RoleApplication.countDocuments({ status: "pending" }),
       Suggestion.countDocuments({ status: "pending" }),
       Suggestion.countDocuments({ status: "possible_duplicate" }),
-      Material.countDocuments({ isActive: true }),
+      Material.countDocuments({ isActive: true, ...VERIFIED_MATERIALS }),
       User.estimatedDocumentCount(),
       User.countDocuments({ createdAt: { $gt: new Date(Date.now() - WEEK_MS) } }),
       University.countDocuments({ isActive: true }),

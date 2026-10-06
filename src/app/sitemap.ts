@@ -5,7 +5,7 @@
 // materials, split it with generateSitemaps() (the limit is 50,000 URLs).
 import type { MetadataRoute } from "next";
 import { absoluteUrl } from "@/lib/seo";
-import { getMaterialModel } from "@/lib/models/materialModel";
+import { VERIFIED_MATERIALS, getMaterialModel } from "@/lib/models/materialModel";
 
 export const revalidate = 3600;
 
@@ -26,7 +26,8 @@ const MAX_MATERIALS = 45_000;
 async function materialEntries(): Promise<MetadataRoute.Sitemap> {
   try {
     const Material = await getMaterialModel();
-    const docs = await Material.find({ isActive: true })
+    // Unverified PDFs stay out of search engines until staff check them
+    const docs = await Material.find({ isActive: true, ...VERIFIED_MATERIALS })
       .sort({ updatedAt: -1 })
       .limit(MAX_MATERIALS)
       .select("_id updatedAt")

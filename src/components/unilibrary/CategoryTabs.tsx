@@ -9,13 +9,15 @@ import { CATEGORY_TABS } from "./materialLabels";
 interface Props {
   active: string;
   counts: Partial<Record<MaterialCategory, number>>;
+  /** Everything matching the other filters, including unidentified PDFs (no category) */
+  allCount?: number;
   /** False until the first response arrives, so counts don't flash as 0. */
   countsLoaded: boolean;
   onChange: (category: string) => void;
 }
 
-export function CategoryTabs({ active, counts, countsLoaded, onChange }: Props) {
-  const all = Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0);
+export function CategoryTabs({ active, counts, allCount, countsLoaded, onChange }: Props) {
+  const all = allCount ?? Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0);
 
   return (
     <div className="sticky top-0 z-30 -mx-4 border-b border-border bg-background/95 px-4 backdrop-blur sm:mx-0 sm:px-0">

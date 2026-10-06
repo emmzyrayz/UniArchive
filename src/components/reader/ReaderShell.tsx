@@ -2,6 +2,7 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ReaderProvider } from "@/context/readerContext";
 import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
@@ -42,7 +43,17 @@ export function ReaderShell({
           <ReaderToolbar book={book} />
           <PageListSidebar />
           <ViewModeWarningDialog />
-          <div className="pt-14">{children}</div>
+          <div className="pt-14">
+            {book.unverifiedMaterialId && (
+              <p className="border-b border-amber-500/30 bg-amber-500/15 px-4 py-1.5 text-center text-xs text-amber-200">
+                ⚠ Unverified: this PDF&apos;s details haven&apos;t been checked yet.{" "}
+                <Link href={`/materials/${book.unverifiedMaterialId}`} className="font-semibold underline">
+                  Help identify it or report a problem
+                </Link>
+              </p>
+            )}
+            {children}
+          </div>
         </div>
       </ReaderProvider>
     </ReaderBookContext.Provider>

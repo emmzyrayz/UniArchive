@@ -1,16 +1,19 @@
 // GET /api/materials
-// The public UniLibrary feed: verified, active materials. No sign-in needed
-// to browse; reading still goes through /read/[bookId], which requires one.
+// The public UniLibrary feed: active materials, verified and unverified
+// (PDFs waiting for review, flagged `unverified` and shown with a badge),
+// minus unverified ones hidden by reports. No sign-in needed to browse;
+// reading still goes through /read/[bookId], which requires one.
 //
 // Filters: category, universityId, departmentId, courseCode, level, semester,
 // search (full-text on title/description/tags/courseCode, 2+ chars), tier
 // ("1" = verified only, "2" = endorsed). sort: "recent" (default),
 // "popular" (by views) or "trending" (time-decayed engagement, see
-// src/lib/trendingScore.ts). page, limit (default 20, max 50). Every
+// src/lib/trendingScore.ts; unverified ones score lower and unidentified
+// ones never trend). page, limit (default 20, max 50). Every
 // response carries per-category counts (all other filters applied).
 import { NextResponse, type NextRequest } from "next/server";
 import { Types, isValidObjectId } from "mongoose";
-import { getMaterialModel } from "@/lib/models/materialModel";
+import { PUBLIC_MATERIALS, VERIFIED_MATERIALS, getMaterialModel } from "@/lib/models/materialModel";
 import {
   PUBLIC_MATERIAL_FIELDS,
   toMaterialSummaries,
@@ -33,6 +36,8 @@ const MIN_SEARCH = 2;
 // even before it has many views overall)
 const TRENDING_CANDIDATES = 200;
 const SORTS = ["recent", "popular", "trending"] as const;
+// Unverified PDFs trend, but below verified ones with the same engagement
+const UNVERIFIED_TRENDING_WEIGHT = 0.75;
 
 const badRequest = (message: string) => NextResponse.json({ message }, { status: 400 });
 
@@ -70,7 +75,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(positiveInt(params.get("limit"), 20), MAX_LIMIT);
 
     // Everything except category, so the tab counts reflect the other filters
-    const base: Record<string, unknown> = { isActive: true };
+    const base: Record<string, unknown> = { ...PUBLIC_MATERIALS };
     if (universityId) base.universityId = new Types.ObjectId(universityId);
     if (departmentId) base.departmentId = new Types.ObjectId(departmentId);
     if (courseCode) {
@@ -78,7 +83,8 @@ export async function GET(request: NextRequest) {
     }
     if (level) base.level = level;
     if (semester) base.semester = semester;
-    if (tier) base.verificationTier = tier === "2" ? "tier2" : "tier1";
+    if (tier === "2") base.verificationTier = "tier2";
+    else if (tier === "1") Object.assign(base, VERIFIED_MATERIALS);
     if (search && search.length >= MIN_SEARCH) base.$text = { $search: search };
 
     const listFilter = category ? { ...base, category } : base;
@@ -101,7 +107,8 @@ export async function GET(request: NextRequest) {
     let total: number;
     if (sort === "trending") {
       const candidates = (sortOrder: Record<string, 1 | -1>) =>
-        Material.find(listFilter)
+        // Unidentified PDFs (no category yet) don't trend
+        Material.find({ category: { $exists: true }, ...listFilter })
           .sort(sortOrder)
           .limit(TRENDING_CANDIDATES)
           .select(PUBLIC_MATERIAL_FIELDS)
@@ -113,7 +120,10 @@ export async function GET(request: NextRequest) {
       const unique = new Map([...mostViewed, ...newest].map((d) => [String(d._id), d]));
       const now = Date.now();
       const ranked = [...unique.values()]
-        .map((doc) => ({ doc, score: calculateTrendingScore(doc, now) }))
+        .map((doc) => ({
+          doc,
+          score: calculateTrendingScore(doc, now) * (doc.status === "unverified" ? UNVERIFIED_TRENDING_WEIGHT : 1),
+        }))
         .sort(
           (a, b) =>
             b.score - a.score ||
@@ -141,7 +151,12 @@ export async function GET(request: NextRequest) {
     }
 
     const categoryCounts: MaterialsResponse["categoryCounts"] = {};
-    for (const g of await counts) categoryCounts[g._id] = g.count;
+    // Unidentified PDFs have no category, so no tab, but they're in "All"
+    let allCount = 0;
+    for (const g of await counts) {
+      allCount += g.count;
+      if (g._id) categoryCounts[g._id] = g.count;
+    }
 
     const body: MaterialsResponse = {
       materials,
@@ -150,6 +165,7 @@ export async function GET(request: NextRequest) {
       totalPages: Math.max(1, Math.ceil(total / limit)),
       hasMore: skip + materials.length < total,
       categoryCounts,
+      allCount,
     };
     return NextResponse.json(body, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

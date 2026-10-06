@@ -77,8 +77,8 @@ function ContributeWorkspace() {
 
   const { material, editing } = current;
   const role = userProfile.role;
-  const isQuestions = QUESTION_CATEGORIES.includes(material.category);
-  const isNotes = NOTE_CATEGORIES.includes(material.category);
+  const isQuestions = (!!material.category && QUESTION_CATEGORIES.includes(material.category));
+  const isNotes = (!!material.category && NOTE_CATEGORIES.includes(material.category));
 
   if (!isQuestions && !isNotes) {
     return <Shell materialId={materialId}>This kind of material isn&apos;t typed out. Past questions, notes and textbooks are.</Shell>;

@@ -145,7 +145,9 @@ export async function loadVerificationTiers(
   const materials = await Material.find({ submissionId: { $in: ids } })
     .select("submissionId verificationTier")
     .lean();
-  return new Map(materials.map((m) => [m.submissionId.toString(), m.verificationTier]));
+  return new Map(
+    materials.flatMap((m) => (m.submissionId && m.verificationTier ? [[m.submissionId.toString(), m.verificationTier] as const] : [])),
+  );
 }
 
 export function toAdminSubmissionDto(

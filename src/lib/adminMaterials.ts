@@ -7,7 +7,7 @@ export const ADMIN_MATERIAL_FIELDS =
   "bookId title category subcategory tags universityId universityName universityAbbr " +
   "facultyName departmentName courseCode level semester academicYear verificationTier " +
   "tier1VerifiedAt tier1VerifiedByUpid submittedByUpid viewCount downloadCount reportCount " +
-  "isActive createdAt";
+  "isActive hiddenByReports status createdAt";
 
 export type AdminMaterialDoc = Pick<
   IMaterial,
@@ -35,6 +35,8 @@ export type AdminMaterialDoc = Pick<
   | "reportCount"
   | "isActive"
   | "createdAt"
+  | "status"
+  | "hiddenByReports"
 >;
 
 export function toAdminMaterialDto(doc: AdminMaterialDoc): AdminMaterialDto {
@@ -54,14 +56,16 @@ export function toAdminMaterialDto(doc: AdminMaterialDoc): AdminMaterialDto {
     level: doc.level,
     semester: doc.semester,
     academicYear: doc.academicYear,
+    status: doc.status ?? "verified",
     verificationTier: doc.verificationTier,
-    tier1VerifiedAt: new Date(doc.tier1VerifiedAt).toISOString(),
+    tier1VerifiedAt: doc.tier1VerifiedAt ? new Date(doc.tier1VerifiedAt).toISOString() : undefined,
     tier1VerifiedByUpid: doc.tier1VerifiedByUpid,
     submittedByUpid: doc.submittedByUpid,
     viewCount: doc.viewCount ?? 0,
     downloadCount: doc.downloadCount ?? 0,
     reportCount: doc.reportCount ?? 0,
     isActive: doc.isActive,
+    ...(doc.hiddenByReports ? { hiddenByReports: true } : {}),
     createdAt: new Date(doc.createdAt).toISOString(),
   };
 }

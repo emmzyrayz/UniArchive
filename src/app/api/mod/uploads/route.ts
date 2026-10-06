@@ -16,6 +16,7 @@ import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { storageClient } from "@/lib/storage";
 import { newPdfJob } from "@/lib/pdfJobs";
 import { getBookModel, PLATFORM_STATUSES, type PlatformStatus } from "@/lib/models/bookModel";
+import { upsertUnverifiedFromPlatformBook } from "@/lib/materialPublish";
 import {
   PLATFORM_MAX_FILE_SIZE,
   isOwnPlatformKey,
@@ -113,6 +114,9 @@ export async function POST(request: NextRequest) {
         originalSize: Math.max(originalSize, size),
       },
     });
+
+    // Listed in the UniLibrary at once as an unidentified PDF
+    await upsertUnverifiedFromPlatformBook(doc.toObject() as PlatformBookDoc);
 
     return NextResponse.json(
       { file: toPlatformFileDto(doc.toObject() as PlatformBookDoc, session.userId) },

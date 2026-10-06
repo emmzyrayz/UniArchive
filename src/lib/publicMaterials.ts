@@ -42,6 +42,7 @@ export const PUBLIC_MATERIAL_FIELDS = [
   "reactionCount",
   "commentCount",
   "source",
+  "status",
 ].join(" ");
 
 export type PublicMaterialDoc = Pick<
@@ -76,6 +77,7 @@ export type PublicMaterialDoc = Pick<
   | "reactionCount"
   | "commentCount"
   | "source"
+  | "status"
 >;
 
 export function toMaterialSummary(doc: PublicMaterialDoc): MaterialSummary {
@@ -98,6 +100,7 @@ export function toMaterialSummary(doc: PublicMaterialDoc): MaterialSummary {
     semester: doc.semester,
     academicYear: doc.academicYear,
     verificationTier: doc.verificationTier,
+    ...(doc.status === "unverified" ? { unverified: true } : {}),
     hasTypedContent: !!doc.hasTypedContent,
     viewCount: doc.viewCount ?? 0,
     downloadCount: doc.downloadCount ?? 0,

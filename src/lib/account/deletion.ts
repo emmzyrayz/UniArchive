@@ -25,6 +25,7 @@ import { getAnnotationModel } from "@/lib/models/annotationModel";
 import { getReadingProgressModel } from "@/lib/models/readingProgressModel";
 import { getMaterialSubmissionModel } from "@/lib/models/materialSubmissionModel";
 import { getMaterialModel } from "@/lib/models/materialModel";
+import { removeUnverifiedMaterial } from "@/lib/materialPublish";
 import { getCommentModel } from "@/lib/models/commentModel";
 import { getReactionModel } from "@/lib/models/reactionModel";
 import { getTypedQuestionModel } from "@/lib/models/typedQuestionModel";
@@ -39,6 +40,7 @@ import { getLoginEventModel } from "@/lib/models/loginEventModel";
 import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
 import { getTrustedDeviceModel } from "@/lib/models/trustedDeviceModel";
 import { getSurveyResponseModel } from "@/lib/models/surveyResponseModel";
+import { getMaterialReportModel } from "@/lib/models/materialReportModel";
 import { getPendingLinkModel } from "@/lib/models/pendingLinkModel";
 import { getSentMailModel } from "@/lib/models/sentMailModel";
 import { decryptSensitiveData } from "@/lib/encryption";
@@ -212,6 +214,8 @@ export async function purgeAccount(userId: Types.ObjectId): Promise<PurgeSummary
     .select("storageProvider cloudinaryPublicId storageKey pageImages")
     .lean<{ _id: Types.ObjectId; storageProvider?: string; cloudinaryPublicId?: string; storageKey: string; pageImages?: unknown }[]>();
   for (const book of books) {
+    // A PDF still waiting for review leaves the library with its owner
+    await removeUnverifiedMaterial(book._id);
     if (await Material.exists({ bookId: book._id })) {
       await Book.updateOne({ _id: book._id }, { $set: { ownerUpid: "" } });
       summary.booksKept++;
@@ -276,6 +280,7 @@ export async function purgeAccount(userId: Types.ObjectId): Promise<PurgeSummary
   await remove("trustedDevices", () => TrustedDevice.deleteMany({ userId: id }));
   await remove("pendingLinks", () => PendingLink.deleteMany({ userId: id }));
   await remove("staffMessages", () => SentMail.deleteMany({ toUserId: id }));
+  await remove("materialReports", async () => (await getMaterialReportModel()).deleteMany({ userId: id }));
 
   // 4. Outside services
   if (user.profilePhoto && isOwnAvatarUrl(user.profilePhoto, uid)) {

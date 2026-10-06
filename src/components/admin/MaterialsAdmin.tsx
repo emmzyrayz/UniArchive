@@ -153,14 +153,14 @@ function MaterialRow({
   const m = material;
   const outlineKind = outlineKindFor(m.subcategory);
 
-  const setActive = async (isActive: boolean) => {
+  const update = async (body: { isActive: boolean } | { clearReports: true }) => {
     setBusy(true);
     setError(null);
     try {
       const { material: updated } = await adminRequest<{ material: AdminMaterialDto }>(
         `/api/admin/materials/${m.id}`,
         "PATCH",
-        { isActive },
+        body,
       );
       setConfirming(false);
       onUpdated(updated);
@@ -191,21 +191,34 @@ function MaterialRow({
           </p>
           {place && <p className="mt-0.5 truncate text-xs text-text-secondary">{place}</p>}
         </div>
-        {!m.isActive && (
-          <span className="rounded-full bg-neutral-500/10 px-2.5 py-0.5 text-xs font-semibold text-text-secondary">
-            Inactive
-          </span>
-        )}
+        <div className="flex flex-wrap gap-1.5">
+          {m.status === "unverified" && (
+            <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+              Unverified
+            </span>
+          )}
+          {m.hiddenByReports && (
+            <span className="rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:text-red-400">
+              Hidden by reports
+            </span>
+          )}
+          {!m.isActive && (
+            <span className="rounded-full bg-neutral-500/10 px-2.5 py-0.5 text-xs font-semibold text-text-secondary">
+              Inactive
+            </span>
+          )}
+        </div>
       </div>
       <p className="mt-2 text-xs text-text-muted">
-        {m.verificationTier === "tier2" ? "Tier 2 ⭐" : "Tier 1 ✓"} · {categoryLabel(m.category, m.subcategory)} ·{" "}
+        {m.status === "unverified" ? "Waiting for review" : m.verificationTier === "tier2" ? "Tier 2 ⭐" : "Tier 1 ✓"} · {categoryLabel(m.category, m.subcategory)} ·{" "}
         {m.viewCount.toLocaleString()} views ·{" "}
         <span className={m.reportCount ? "font-semibold text-red-600 dark:text-red-400" : ""}>
           {m.reportCount} report{m.reportCount === 1 ? "" : "s"}
         </span>
       </p>
       <p className="mt-0.5 text-xs text-text-muted">
-        by {m.submittedByUpid ? `@${m.submittedByUpid}` : "a former member"} · verified {timeAgo(m.tier1VerifiedAt)} by @{m.tier1VerifiedByUpid}
+        by {m.submittedByUpid ? `@${m.submittedByUpid}` : "a former member"}
+        {m.tier1VerifiedAt ? ` · verified ${timeAgo(m.tier1VerifiedAt)} by @${m.tier1VerifiedByUpid}` : ` · listed ${timeAgo(m.createdAt)}`}
       </p>
       {m.tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -233,7 +246,7 @@ function MaterialRow({
             <button type="button" onClick={() => setConfirming(false)} className={secondaryButton}>
               Cancel
             </button>
-            <button type="button" onClick={() => setActive(false)} disabled={busy} className={dangerButton}>
+            <button type="button" onClick={() => update({ isActive: false })} disabled={busy} className={dangerButton}>
               {busy ? "Deactivating…" : "Deactivate"}
             </button>
           </div>
@@ -251,12 +264,23 @@ function MaterialRow({
           <button type="button" onClick={() => setEditing(true)} className={secondaryButton}>
             Edit
           </button>
+          {(m.hiddenByReports || m.reportCount > 0) && (
+            <button
+              type="button"
+              onClick={() => update({ clearReports: true })}
+              disabled={busy}
+              className={secondaryButton}
+              title="Clear its reports (and show it again if they hid it)"
+            >
+              {m.hiddenByReports ? "Restore" : "Clear reports"}
+            </button>
+          )}
           {m.isActive ? (
             <button type="button" onClick={() => setConfirming(true)} className={dangerButton}>
               Deactivate
             </button>
           ) : (
-            <button type="button" onClick={() => setActive(true)} disabled={busy} className={primaryButton}>
+            <button type="button" onClick={() => update({ isActive: true })} disabled={busy} className={primaryButton}>
               {busy ? "Reactivating…" : "Reactivate"}
             </button>
           )}

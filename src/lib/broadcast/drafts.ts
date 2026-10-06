@@ -2,7 +2,7 @@
 // Server helpers for broadcast drafts: cleaning input from the editor,
 // refreshing picked materials from the database, and the API shape.
 import { Types } from "mongoose";
-import { getMaterialModel } from "@/lib/models/materialModel";
+import { VERIFIED_MATERIALS, getMaterialModel } from "@/lib/models/materialModel";
 import type { IBroadcast } from "@/lib/models/broadcastModel";
 import type { AdminBroadcastDto } from "@/types/admin";
 import type { EmailKind } from "@/lib/emailPrefs";
@@ -39,7 +39,7 @@ async function refreshMaterials(fields: TemplateFields, problems: string[]): Pro
     if (!Array.isArray(value) || value.length === 0 || typeof value[0] !== "object") continue;
     const refs = value as MaterialRef[];
     const Material = await getMaterialModel();
-    const docs = await Material.find({ _id: { $in: refs.map((r) => new Types.ObjectId(r.id)) }, isActive: true })
+    const docs = await Material.find({ _id: { $in: refs.map((r) => new Types.ObjectId(r.id)) }, isActive: true, ...VERIFIED_MATERIALS })
       .select("title courseCode universityAbbr universityName")
       .lean<{ _id: Types.ObjectId; title: string; courseCode?: string; universityAbbr?: string; universityName?: string }[]>();
     const byId = new Map(docs.map((d) => [String(d._id), d]));

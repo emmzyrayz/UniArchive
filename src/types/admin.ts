@@ -57,7 +57,7 @@ export interface AdminMaterialDto {
   id: string;
   bookId: string;
   title: string;
-  category: string;
+  category?: string;
   subcategory?: string;
   tags: string[];
   universityId?: string;
@@ -69,14 +69,17 @@ export interface AdminMaterialDto {
   level?: string;
   semester?: string;
   academicYear?: string;
-  verificationTier: "tier1" | "tier2";
-  tier1VerifiedAt: string;
-  tier1VerifiedByUpid: string;
+  status: "unverified" | "verified";
+  verificationTier?: "tier1" | "tier2";
+  tier1VerifiedAt?: string;
+  tier1VerifiedByUpid?: string;
   submittedByUpid: string;
   viewCount: number;
   downloadCount: number;
   reportCount: number;
   isActive: boolean;
+  /** Unverified and hidden by readers' reports until staff look */
+  hiddenByReports?: boolean;
   createdAt: string;
 }
 

@@ -33,14 +33,14 @@ export async function checkConversionAccess(
   if (!material) return { ok: false, status: 404, message: "Material not found." };
 
   if (kind === "questions") {
-    if (!QUESTION_CATEGORIES.includes(material.category)) {
+    if (!material.category || !QUESTION_CATEGORIES.includes(material.category)) {
       return { ok: false, status: 400, message: "Questions can only be typed out for past question materials." };
     }
     if (targetDocId) return { ok: false, status: 400, message: "targetDocId is only for notes." };
     return { ok: true, material };
   }
 
-  if (!NOTE_CATEGORIES.includes(material.category)) {
+  if (!material.category || !NOTE_CATEGORIES.includes(material.category)) {
     return { ok: false, status: 400, message: "Notes can only be written for notes and textbook materials." };
   }
   if (!canWriteNotes(session.role)) {

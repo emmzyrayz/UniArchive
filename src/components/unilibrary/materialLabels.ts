@@ -43,9 +43,11 @@ const CATEGORY_BADGES: Record<MaterialCategory, [string, Tone]> = {
 };
 
 export function categoryBadge(
-  category: MaterialCategory,
+  category: MaterialCategory | undefined,
   subcategory?: MaterialSubcategory,
 ): { label: string; className: string } {
+  // No category: an unidentified PDF nobody has described yet
+  if (!category) return { label: "Unidentified PDF", className: TONE_CLASS.grey };
   const [label, tone] =
     (subcategory && SUBCATEGORY_BADGES[subcategory]) ??
     CATEGORY_BADGES[category] ?? ["Document", "grey"];
@@ -73,12 +75,13 @@ export const levelLabel = (level: string) => (/^\d+$/.test(level) ? `${level}L` 
 
 export const TIER_OPTIONS = [
   { id: "", label: "All" },
-  { id: "1", label: "✓ Verified" },
+  { id: "1", label: "✓ Verified only" },
   { id: "2", label: "⭐ Endorsed" },
 ] as const;
 
 /** The full kind ("Past Question", "Lecture Notes"), not the badge's short label. */
-export function materialKindLabel(category: MaterialCategory, subcategory?: MaterialSubcategory): string {
+export function materialKindLabel(category: MaterialCategory | undefined, subcategory?: MaterialSubcategory): string {
+  if (!category) return "Unidentified PDF";
   const c = CATEGORIES.find((x) => x.id === category);
   return c?.subcategories.find((x) => x.id === subcategory)?.label ?? c?.label ?? "Study material";
 }

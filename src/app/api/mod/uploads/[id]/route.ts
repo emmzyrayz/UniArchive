@@ -13,6 +13,7 @@ import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { storageClient } from "@/lib/storage";
 import { pageImagePrefix } from "@/lib/pdfJobs";
 import { getBookModel } from "@/lib/models/bookModel";
+import { removeUnverifiedMaterial } from "@/lib/materialPublish";
 import {
   PLATFORM_READ_URL_SECONDS,
   claimedByOther,
@@ -96,6 +97,9 @@ export async function DELETE(request: NextRequest, context: Context) {
     if (!discarded) {
       return NextResponse.json({ message: "This file changed. Reload and try again." }, { status: 409 });
     }
+
+    // It leaves the UniLibrary, where it was listed as unidentified
+    await removeUnverifiedMaterial(book._id);
 
     // Stop any pending worker job, and remove its page images
     await Book.updateOne({ _id: book._id, "pdfJob.status": "queued" }, { $set: { "pdfJob.status": "failed", "pdfJob.error": "Discarded" } });

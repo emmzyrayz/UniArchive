@@ -6,7 +6,8 @@
 // Deactivate / reactivate a material, or correct its metadata.
 // Permission: "admin.view_submissions" for both.
 //
-// Body (all optional): isActive, title, courseCode, level, semester,
+// Body (all optional): isActive, clearReports (true: puts a PDF hidden by
+// reports back in the listing and resets its report count), title, courseCode, level, semester,
 // academicYear, tags, outline ({ entries: [...] }, or null / no entries to
 // remove it; see lib/outline.ts). An empty string clears courseCode / level /
 // semester / academicYear. Everything else (submitter, book, storage, verification
@@ -121,6 +122,11 @@ export async function PATCH(request: NextRequest, context: Context) {
     if (body.isActive !== undefined) {
       if (typeof body.isActive !== "boolean") return fail(400, "isActive must be true or false.");
       set.isActive = body.isActive;
+    }
+    if (body.clearReports !== undefined) {
+      if (body.clearReports !== true) return fail(400, "clearReports must be true.");
+      set.reportCount = 0;
+      unset.hiddenByReports = "";
     }
 
     const title = optionalString(body.title, 300);

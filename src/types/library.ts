@@ -41,4 +41,6 @@ export interface Book {
    * the reader's GET /api/books/[id] when the book backs a material.
    */
   outline?: MaterialOutline | null;
+  /** The book backs a material still waiting for review (the reader says so) */
+  unverifiedMaterialId?: string;
 }

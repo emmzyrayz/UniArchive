@@ -1,8 +1,11 @@
 // src/lib/models/materialModel.ts
-// A verified UniLibrary material (Layer 1). Created only by a reviewer's
-// tier-1 verification of a MaterialSubmission; one Material per submission.
-// The file itself stays on the submitter's Book; this record carries the
-// platform metadata and the verification trail.
+// A UniLibrary material (Layer 1): one per PDF (Book). It starts
+// "unverified" as soon as a student submits a PDF or staff upload one
+// (lib/materialPublish.ts), so it is readable at once with an Unverified
+// badge; tier-1 verification of its MaterialSubmission (or publishing a
+// platform file) makes it "verified". Unidentified platform uploads have no
+// submission and no category yet. The file itself stays on the Book; this
+// record carries the platform metadata and the verification trail.
 //
 // Tiers: tier1 (auditor+ checked it is real and relevant, green badge) and
 // tier2 (a lecturer+ other than the submitter endorsed it, gold crown).
@@ -28,23 +31,41 @@ export type VerificationTier = "tier1" | "tier2";
 export const MATERIAL_SOURCES = ["community", "platform"] as const;
 export type MaterialSource = (typeof MATERIAL_SOURCES)[number];
 
-/** Filter for materials that credit their submitter (older ones have no source). */
-export const COMMUNITY_MATERIALS = { source: { $ne: "platform" } } as const;
+export const MATERIAL_STATUSES = ["unverified", "verified"] as const;
+export type MaterialStatus = (typeof MATERIAL_STATUSES)[number];
+
+/** Verified materials (older ones have no status: they were all verified). */
+export const VERIFIED_MATERIALS = { status: { $ne: "unverified" } } as const;
+
+/**
+ * What the public UniLibrary shows: active, and not hidden by readers'
+ * reports (unverified PDFs with REPORTS_TO_HIDE reports wait for staff).
+ */
+export const PUBLIC_MATERIALS = { isActive: true, hiddenByReports: { $ne: true } } as const;
+export const REPORTS_TO_HIDE = 3;
+
+/**
+ * Filter for materials that credit their submitter: verified community
+ * ones (older ones have no source). Unverified ones earn nothing yet.
+ */
+export const COMMUNITY_MATERIALS = { source: { $ne: "platform" }, ...VERIFIED_MATERIALS } as const;
 
 export interface IMaterial {
   _id: Types.ObjectId;
 
   // Source references
-  submissionId: Types.ObjectId; // ref: MaterialSubmission
+  submissionId?: Types.ObjectId; // ref: MaterialSubmission (none for unidentified platform files)
   bookId: Types.ObjectId; // ref: Book (original upload)
   submittedBy: Types.ObjectId; // ref: User
   submittedByUpid: string;
   source: MaterialSource;
+  status: MaterialStatus;
 
   // Content metadata (same taxonomy as the submission form)
   title: string;
   description: string;
-  category: MaterialCategory;
+  /** Absent only on unidentified (unverified platform) PDFs */
+  category?: MaterialCategory;
   subcategory?: MaterialSubcategory;
   tags: string[];
   language: string;
@@ -70,13 +91,13 @@ export interface IMaterial {
   fileSize: number;
   pageCount?: number;
 
-  // Verification
-  verificationTier: VerificationTier;
+  // Verification (absent while unverified)
+  verificationTier?: VerificationTier;
 
   // Tier 1 — any auditor+
-  tier1VerifiedBy: Types.ObjectId;
-  tier1VerifiedByUpid: string;
-  tier1VerifiedAt: Date;
+  tier1VerifiedBy?: Types.ObjectId;
+  tier1VerifiedByUpid?: string;
+  tier1VerifiedAt?: Date;
   tier1Note?: string;
 
   // Tier 2 — lecturer+ only, optional, cannot be self-verified
@@ -107,6 +128,8 @@ export interface IMaterial {
 
   // Visibility (an admin can deactivate a material)
   isActive: boolean;
+  /** Unverified and reported by REPORTS_TO_HIDE people: out of the listing until staff look */
+  hiddenByReports?: boolean;
 
   createdAt: Date;
   updatedAt: Date;
@@ -120,22 +143,26 @@ export interface IMaterialModel extends Model<IMaterial> {
   ): Promise<IMaterial[]>;
 }
 
+/** Mongoose `required` for fields only verified materials must have. */
+function isVerified(this: { status?: MaterialStatus }): boolean {
+  return this.status !== "unverified";
+}
+
 const MaterialSchema = new Schema<IMaterial, IMaterialModel>(
   {
-    submissionId: {
-      type: Schema.Types.ObjectId,
-      ref: "MaterialSubmission",
-      required: true,
-      unique: true, // one Material per submission
-    },
+    // One Material per submission; unidentified platform files have none
+    // (partial unique index below; scripts/backfillUnverifiedMaterials.ts
+    // replaces the old plain unique one)
+    submissionId: { type: Schema.Types.ObjectId, ref: "MaterialSubmission" },
     bookId: { type: Schema.Types.ObjectId, ref: "Book", required: true },
     submittedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     submittedByUpid: { type: String, required: true },
     source: { type: String, enum: MATERIAL_SOURCES, default: "community" },
+    status: { type: String, enum: MATERIAL_STATUSES, default: "verified" },
 
     title: { type: String, required: true, trim: true },
-    description: { type: String, required: true, trim: true },
-    category: { type: String, required: true, enum: MATERIAL_CATEGORY_IDS },
+    description: { type: String, required: isVerified, trim: true, default: "" },
+    category: { type: String, required: isVerified, enum: MATERIAL_CATEGORY_IDS },
     subcategory: { type: String, enum: MATERIAL_SUBCATEGORY_IDS },
     tags: [{ type: String, trim: true, lowercase: true }],
     language: { type: String, default: "English" },
@@ -158,16 +185,11 @@ const MaterialSchema = new Schema<IMaterial, IMaterialModel>(
     fileSize: { type: Number, required: true },
     pageCount: { type: Number },
 
-    verificationTier: {
-      type: String,
-      enum: ["tier1", "tier2"],
-      required: true,
-      default: "tier1",
-    },
+    verificationTier: { type: String, enum: ["tier1", "tier2"], required: isVerified },
 
-    tier1VerifiedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    tier1VerifiedByUpid: { type: String, required: true },
-    tier1VerifiedAt: { type: Date, required: true },
+    tier1VerifiedBy: { type: Schema.Types.ObjectId, ref: "User", required: isVerified },
+    tier1VerifiedByUpid: { type: String, required: isVerified },
+    tier1VerifiedAt: { type: Date, required: isVerified },
     tier1Note: { type: String, maxlength: 1000 },
 
     tier2VerifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
@@ -210,10 +232,16 @@ const MaterialSchema = new Schema<IMaterial, IMaterialModel>(
     commentCount: { type: Number, default: 0 },
 
     isActive: { type: Boolean, default: true },
+    hiddenByReports: { type: Boolean },
   },
   { timestamps: true },
 );
 
+MaterialSchema.index(
+  { submissionId: 1 },
+  { name: "submissionId_partial", unique: true, partialFilterExpression: { submissionId: { $type: "objectId" } } },
+);
+MaterialSchema.index({ status: 1, isActive: 1, createdAt: -1 });
 MaterialSchema.index({ submittedBy: 1, createdAt: -1 });
 // Read access checks: "is this book published?"
 MaterialSchema.index({ bookId: 1, isActive: 1 });

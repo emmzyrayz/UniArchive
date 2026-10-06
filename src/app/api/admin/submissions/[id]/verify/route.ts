@@ -2,7 +2,8 @@
 // Body: { tier: 1 | 2, note?: string }
 //
 // Tier 1 ("submission.verify_tier1"): submitted | in_review -> verified.
-//   Creates the Material record from the submission and its Book, bumps the
+//   Verifies the submission's Material (listed as unverified since it was
+//   submitted; created if it wasn't) from the submission and its Book, bumps the
 //   submitter's verifiedMaterialCount, logs a ContributionEvent and emails them.
 // Tier 2 ("submission.verify_tier2"): endorses an already verified material.
 //   Never on the caller's own submission.
@@ -29,7 +30,7 @@ import {
 } from "@/lib/adminSubmissions";
 import { sendSubmissionVerifiedEmail } from "@/utils/email";
 import { awardBadgesAfter } from "@/lib/badges";
-import { createMaterialRecord } from "@/lib/materialPublish";
+import { verifyMaterialRecord } from "@/lib/materialPublish";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -103,12 +104,11 @@ async function verifyTier1(
 
   let material;
   try {
-    const created = await createMaterialRecord(verified, book, session, {
+    material = await verifyMaterialRecord(verified, book, session, {
       source: "community",
       note,
       verifiedAt: now,
     });
-    material = created.toObject();
   } catch (error) {
     // Put the submission back where it was so it can be decided again
     await Submission.updateOne(

@@ -8,6 +8,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { getMaterialSubmissionModel } from "@/lib/models/materialSubmissionModel";
+import { removeUnverifiedMaterial } from "@/lib/materialPublish";
 import {
   DECIDABLE_STATUSES,
   adminSubmissionResponse,
@@ -59,6 +60,8 @@ export async function PATCH(request: NextRequest, context: Context) {
         { status: 409 },
       );
     }
+    // It leaves the UniLibrary, where it was listed as unverified
+    await removeUnverifiedMaterial(rejected.bookId);
 
     const contact = await loadSubmitterContact(rejected.submittedBy);
     if (contact) {

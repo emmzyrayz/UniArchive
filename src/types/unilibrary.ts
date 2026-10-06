@@ -16,7 +16,8 @@ export interface MaterialSummary {
   bookId: string;
   title: string;
   description: string;
-  category: MaterialCategory;
+  /** Absent on unidentified PDFs (staff uploads nobody has described yet) */
+  category?: MaterialCategory;
   subcategory?: MaterialSubcategory;
   tags: string[];
   language?: string;
@@ -29,7 +30,10 @@ export interface MaterialSummary {
   level?: string;
   semester?: string;
   academicYear?: string;
-  verificationTier: "tier1" | "tier2";
+  /** Absent while unverified */
+  verificationTier?: "tier1" | "tier2";
+  /** Details not checked by staff yet (shown with an Unverified badge) */
+  unverified?: boolean;
   hasTypedContent: boolean;
   viewCount: number;
   downloadCount: number;
@@ -65,4 +69,6 @@ export interface MaterialsResponse {
   hasMore: boolean;
   /** Per-category totals with every filter except category applied. */
   categoryCounts: Partial<Record<MaterialCategory, number>>;
+  /** All matching materials, including unidentified PDFs (no category) */
+  allCount?: number;
 }

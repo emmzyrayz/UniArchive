@@ -63,7 +63,7 @@ export async function POST(request: NextRequest, context: Context) {
     await enforceRateLimit(request, "standard", `content-write:${session.userId}`);
     const material = await loadActiveMaterial((await context.params).id);
     if (!material) return fail(404, "Material not found.");
-    if (!NOTE_CATEGORIES.includes(material.category)) {
+    if (!material.category || !NOTE_CATEGORIES.includes(material.category)) {
       return fail(400, "Typed notes can only be added to notes and textbook materials.");
     }
 

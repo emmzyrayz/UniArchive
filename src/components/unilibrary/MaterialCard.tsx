@@ -20,6 +20,7 @@ import {
 } from "@/lib/constants/reactions";
 import type { MaterialSummary } from "@/types/unilibrary";
 import { BADGE_CLASS, categoryBadge, levelLabel } from "./materialLabels";
+import { VerificationBadge } from "./VerificationBadge";
 import { CommentSection } from "./CommentSection";
 import { UploaderByline } from "./UploaderByline";
 
@@ -272,21 +273,7 @@ export function MaterialCard({ material, isAuthenticated, onRead, userReaction }
             </span>
           )}
         </div>
-        {material.verificationTier === "tier2" ? (
-          <span
-            className={`${BADGE_CLASS} border-yellow-500/40 bg-yellow-500/15 text-yellow-700 dark:text-yellow-300`}
-            title="Endorsed by a lecturer"
-          >
-            ⭐ Endorsed
-          </span>
-        ) : (
-          <span
-            className={`${BADGE_CLASS} border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300`}
-            title="Checked by a UniArchive reviewer"
-          >
-            ✓ Verified
-          </span>
-        )}
+        <VerificationBadge unverified={material.unverified} tier={material.verificationTier} />
       </div>
 
       <h3 className="mt-3 text-base font-semibold leading-snug text-text-primary">{heading}</h3>

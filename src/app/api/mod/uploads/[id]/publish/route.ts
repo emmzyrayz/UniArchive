@@ -27,7 +27,7 @@ import {
 } from "@/lib/models/materialSubmissionModel";
 import { reviewNote } from "@/lib/adminSubmissions";
 import { parseSubmissionBody, resolveAcademicRefs, type SubmissionBody } from "@/lib/submissions";
-import { createMaterialRecord } from "@/lib/materialPublish";
+import { verifyMaterialRecord } from "@/lib/materialPublish";
 import { parseOutline } from "@/lib/outline";
 import {
   claimedByOther,
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest, context: Context) {
       });
       submissionId = submission._id;
 
-      const material = await createMaterialRecord(submission.toObject(), { ...book, pageCount }, session, {
+      const material = await verifyMaterialRecord(submission.toObject(), { ...book, pageCount }, session, {
         source: "platform",
         verifiedAt: now,
         outline: outline.value ?? undefined,

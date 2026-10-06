@@ -32,6 +32,7 @@ import { getSentMailModel } from "@/lib/models/sentMailModel";
 import { getSurveyModel, type ISurvey } from "@/lib/models/surveyModel";
 import { getSurveyResponseModel, type ISurveyResponse } from "@/lib/models/surveyResponseModel";
 import { answerText } from "@/lib/survey/questions";
+import { getMaterialReportModel } from "@/lib/models/materialReportModel";
 import { decryptSensitiveData } from "@/lib/encryption";
 import { BADGE_DEFINITIONS, type BadgeId } from "@/lib/constants/badges";
 import { effectiveEmailPrefs } from "@/lib/emailPrefs";
@@ -139,6 +140,7 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
   ]);
 
   const surveyResponses = await exportSurveyResponses(id);
+  const materialReports = await (await getMaterialReportModel()).find({ userId: id }).select("materialId reason note createdAt").lean();
 
   const account = {
     upid: user.upid,
@@ -192,6 +194,7 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     roleApplications: scrub(applications),
     schoolSuggestions: scrub(suggestions),
     surveyResponses,
+    materialReports: scrub(materialReports),
     contributionHistory: scrub(contributions),
     messagesFromTheUniArchiveTeam: scrub(messages),
     signInHistory: scrub(signIns),

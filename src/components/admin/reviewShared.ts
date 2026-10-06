@@ -36,7 +36,8 @@ export function canEndorse(s: AdminSubmissionDto, viewer: Viewer): boolean {
 }
 
 /** "Past Question" when there's a subcategory, else the category label. */
-export function categoryLabel(category: string, subcategory?: string): string {
+export function categoryLabel(category: string | undefined, subcategory?: string): string {
+  if (!category) return "Unidentified PDF";
   const cat = CATEGORIES.find((c) => c.id === category);
   if (!cat) return category;
   const sub = subcategory ? cat.subcategories.find((s) => s.id === subcategory) : undefined;

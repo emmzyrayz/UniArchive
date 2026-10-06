@@ -2,8 +2,10 @@
 // A UniLibrary material's public page, rendered on the server so search
 // engines (and slow phones) get the real content: title, course, school,
 // description, outline and a preview of the typed questions and notes.
-// Indexable, listed in the sitemap, with LearningResource + breadcrumb
-// JSON-LD. Missing or taken-down materials are a real 404.
+// Verified ones are indexable, listed in the sitemap, with
+// LearningResource + breadcrumb JSON-LD; unverified ones (details not
+// checked yet) are noindex with no JSON-LD. Missing, taken-down or
+// report-hidden materials are a real 404.
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createMetadata, absoluteUrl, SITE_URL } from "@/lib/seo";
@@ -44,7 +46,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const path = `/materials/${encodeURIComponent(id)}`;
   const m = await getMaterialDetail(id).catch(() => null);
   if (!m) return createMetadata({ title: "Material not found", path, noIndex: true });
-  return createMetadata({ title: `${displayName(m)} · UniLibrary`, description: describe(m), path });
+  // Unverified details may be wrong: kept out of search engines until checked
+  return createMetadata({ title: `${displayName(m)} · UniLibrary`, description: describe(m), path, noIndex: !!m.unverified });
 }
 
 /** schema.org data: the material as a LearningResource, plus breadcrumbs. */
@@ -98,7 +101,7 @@ export default async function MaterialPage({ params }: Props) {
   const preview = await getTypedPreview(material._id);
   return (
     <>
-      <MaterialJsonLd m={material} />
+      {!material.unverified && <MaterialJsonLd m={material} />}
       <MaterialView material={material} preview={preview} />
     </>
   );

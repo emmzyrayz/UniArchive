@@ -196,7 +196,7 @@ function UniLibraryFeed() {
         <header className="mb-4 lg:mb-6">
           <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">UniLibrary</h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Verified past questions, notes and textbooks from Nigerian universities.
+            Past questions, notes and textbooks from Nigerian universities. Ones marked ⚠ Unverified are waiting for our team to check them.
           </p>
         </header>
 
@@ -204,6 +204,7 @@ function UniLibraryFeed() {
           <CategoryTabs
             active={filters.category}
             counts={feed?.categoryCounts ?? {}}
+            allCount={feed?.allCount}
             countsLoaded={!!feed}
             onChange={(category) => updateFilters({ category })}
           />

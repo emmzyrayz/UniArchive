@@ -63,6 +63,12 @@ export default function PrivacyPage() {
               prevent abuse.
             </>,
             <>
+              <Term>Reports:</Term> if you report a UniLibrary material, we
+              keep the reason and any note with your account so our team can
+              follow up. They are in &ldquo;Download my data&rdquo; and deleted
+              with your account.
+            </>,
+            <>
               <Term>Surveys:</Term> when you answer a survey at{" "}
               <Link href="/surveys" className="text-primary hover:underline">/surveys</Link>{" "}
               (signed in or not), we keep your answers and the details the

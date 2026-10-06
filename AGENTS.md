@@ -290,6 +290,40 @@ vars are documented in `.env.example`.
   uploads with trailing checksums aren't decoded by every S3-compatible
   store). The root tsconfig excludes `services/`.
 
+## UniLibrary: unverified PDFs
+
+- Every PDF is listed as soon as it exists, not only once staff verify it:
+  a `Material` (one per Book, keyed by `bookId`) starts `status:
+  "unverified"` when a student submits (`saveSubmission`), staff upload
+  (`POST /api/mod/uploads`) or a student gifts a PDF, and tier-1
+  verification / platform publish turn the same record "verified"
+  (`verifyMaterialRecord`). All of it lives in `lib/materialPublish.ts`.
+  Rejecting a submission or discarding an upload removes the unverified
+  record (`removeUnverifiedMaterial`; only hidden if people already
+  commented, reacted or typed it out). Bulk uploads have no category or
+  submission: shown as "Unidentified PDF" (`categoryBadge`).
+- Filters on `materialModel.ts`: `VERIFIED_MATERIALS`; `COMMUNITY_MATERIALS`
+  now also excludes unverified ones (no credit, badges or profile listing
+  until verified); `PUBLIC_MATERIALS` (active, not hidden by reports) for
+  the feed, material pages and who may read a PDF (`bookAccess`).
+  Verified-only: sitemap, broadcast material picker, admin counts.
+- Public: `GET /api/materials` mixes both (`unverified: true` on the
+  summary; `tier=1` = verified only; unverified score 0.75× in trending,
+  unidentified never trend; `allCount` includes unidentified). Cards and
+  `/materials/[id]` show `VerificationBadge`; an unverified page is
+  noindex with no JSON-LD and opens `UnverifiedNotice` once per device;
+  the reader shows a banner (`Book.unverifiedMaterialId`).
+- Reports: `POST /api/materials/[id]/report` (`MaterialReport`, one per
+  user, reasons in `lib/constants/materialReports.ts`, `materialReport`
+  limiter). Three reports hide an unverified PDF (`hiddenByReports`) until
+  staff "Restore" it in /materials (`clearReports`); verified ones are
+  only counted. Reports are in the data export and deleted in the purge.
+- Existing databases need `pnpm db:unverified-materials --apply` once
+  (dry run without `--apply`): it swaps the plain unique `submissionId_1`
+  index for the partial `submissionId_partial` (until then only one
+  unidentified upload can be listed), marks old materials verified and
+  lists PDFs already waiting. **Not yet run on production.**
+
 ## Conversion workspace (typing out materials)
 
 - `/contribute/[materialId]` (`?doc=<id>` edits a typed note): the PDF

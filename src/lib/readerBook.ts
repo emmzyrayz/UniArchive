@@ -94,12 +94,21 @@ export async function openBookForReader(id: string, session: SessionUser): Promi
     });
   }
 
-  // The published material's outline, for the reader's Contents tab
+  // The published material's outline, for the reader's Contents tab, and
+  // whether its details are still waiting for review
   const material = await (await getMaterialModel())
     .findOne({ bookId: found.book._id, isActive: true })
-    .select("outline")
-    .lean<{ outline?: MaterialOutline }>()
+    .select("outline status")
+    .lean<{ _id: unknown; outline?: MaterialOutline; status?: string }>()
     .catch(() => null);
 
-  return { kind: "ok", book: { ...toBookDto(found.book), fileUrl, outline: material?.outline ?? null } };
+  return {
+    kind: "ok",
+    book: {
+      ...toBookDto(found.book),
+      fileUrl,
+      outline: material?.outline ?? null,
+      ...(material?.status === "unverified" ? { unverifiedMaterialId: String(material._id) } : {}),
+    },
+  };
 }

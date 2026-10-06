@@ -20,6 +20,7 @@ import {
 } from "@/lib/models/materialSubmissionModel";
 import { isMaterialCategory, isSubcategoryOf } from "@/lib/constants/materialCategories";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
+import { upsertUnverifiedFromSubmission } from "@/lib/materialPublish";
 import { loadPendingSuggestionForCompletion } from "@/lib/schoolSuggestions";
 import type { SessionUser } from "@/lib/auth/session";
 import { PROFILE_LEVELS, PROFILE_SEMESTERS } from "@/lib/constants/profile";
@@ -379,6 +380,11 @@ export async function saveSubmission(
   if (submitting) {
     const User = await getUserModel();
     await User.updateOne({ _id: session.userId }, { $inc: { submissionCount: 1 } });
+    // Readable in the UniLibrary at once, marked unverified until reviewed
+    const file = await Book.findById(book._id)
+      .select("storageProvider storageKey cloudinaryPublicId fileSize pageCount")
+      .lean();
+    if (file) await upsertUnverifiedFromSubmission(submission, file);
   }
   return submission;
 }
