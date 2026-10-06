@@ -24,6 +24,9 @@ Repo: https://github.com/emmzyrayz/UniArchive, deploys from `main` on Vercel.
   a build, or `pnpm dev`): hit the affected pages and API routes, including
   the error paths, and check the server log. Say plainly what could not be
   tested (e.g. a real Google sign-in) instead of implying it was.
+- **Keep the docs current** in the same commit: AGENTS.md for how things
+  work, README.md for the product overview ("What UniArchive is", read by
+  people and other AI tools) and the roadmap.
 - **Then commit and push to `main`.** Conventional-commit style messages
   (`feat:`, `fix:`, `chore(seo):` ...), one logical change per commit.
 - Never write test data to the database in `.env.local` (it is the real
@@ -380,6 +383,11 @@ vars are documented in `.env.example`.
   "Survey invite" broadcast template emails a link through Brevo.
 - Accounts: the data export includes signed-in responses; the purge keeps
   them in the results without userId, name, email or IP hash.
+- README "Writing survey questions" is the brief for writing questions
+  (types, limits, the JSON shape `cleanQuestions` accepts). Keep it in step
+  with `LIMITS` and `QUESTION_TYPES` in `lib/survey/questions.ts`. The
+  builder has no JSON import yet: questions are added one by one, or sent
+  as `questions` in `PATCH /api/admin/surveys/[id]`.
 
 ## SEO
 
