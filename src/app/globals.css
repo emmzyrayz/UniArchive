@@ -67,7 +67,12 @@
 }
 
 /* 4. Base HTML styling mapped to your new semantic tokens */
+html {
+  overflow-x: hidden;
+}
+
 body {
+  overflow-x: hidden;
   background-color: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-sans);

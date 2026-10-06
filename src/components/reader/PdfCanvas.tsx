@@ -148,7 +148,7 @@ export function PdfCanvas({ book }: { book: Book }) {
 
   if (fetchCheck.status === "checking") {
     return (
-      <div className="w-[600px] h-[800px] bg-neutral-800 animate-pulse rounded" />
+      <div className="w-[600px] max-w-full h-[800px] bg-neutral-800 animate-pulse rounded" />
     );
   }
 
@@ -175,7 +175,7 @@ export function PdfCanvas({ book }: { book: Book }) {
         setLoadedUpTo(Math.min(initialLoad, numPages));
       }}
       loading={
-        <div className="w-[600px] h-[800px] bg-neutral-800 animate-pulse rounded" />
+        <div className="w-[600px] max-w-full h-[800px] bg-neutral-800 animate-pulse rounded" />
       }
       error={
         <div className="w-[600px] max-w-full p-6 rounded bg-neutral-800 text-sm text-neutral-300">

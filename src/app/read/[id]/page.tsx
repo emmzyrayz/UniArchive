@@ -15,7 +15,7 @@ import { getCachedPageCount } from "@/lib/offlineCache";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 const pageSkeleton = () => (
-  <div className="w-[600px] h-[800px] bg-neutral-800 animate-pulse rounded" />
+  <div className="w-[600px] max-w-full h-[800px] bg-neutral-800 animate-pulse rounded" />
 );
 
 // pdf.js 6 won't even parse on browsers without class static blocks, so its

@@ -7,13 +7,13 @@ import { motion } from "motion/react";
 
 export default function NotFound() {
   return (
-    <div className="flex w-screen h-screen items-center justify-center relative bg-[radial-gradient(at_50%_-20%,_#908392,_#0d060e)] p-0">
+    <div className="flex w-full h-screen items-center justify-center relative bg-[radial-gradient(at_50%_-20%,_#908392,_#0d060e)] p-0 overflow-hidden">
       <Link
         href="/"
         className="flex flex-col gap-9 items-center justify-center w-full scrollbar-hide min-h-full m-0"
       >
         <motion.div
-          className="row flex w-[80%] "
+          className="row flex w-[80%] max-w-full"
           animate={{
             y: [0, 10, 0],
           }}
