@@ -14,6 +14,7 @@
 // tokenVersion with the copy in Redis, so a revoked JWT (suspension, role
 // change) can't keep routing by an old role for its last 15 minutes. That
 // one Redis read is skipped everywhere else to keep page loads fast.
+import { devAuthActive } from "@/lib/auth/devAuthFlags";
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_JWT_COOKIE, verifySessionJwt } from "@/lib/auth/jwt";
 import {
@@ -62,6 +63,10 @@ function isPublic(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   if (isPublic(pathname)) return NextResponse.next();
+  // Dev mode (`next dev` on localhost with DEV_USER_UPID, lib/auth/devAuth.ts):
+  // every request is that account, so there's no sign-in to check here;
+  // pages and APIs still check its role and permissions themselves
+  if (devAuthActive(request.headers.get("host"))) return NextResponse.next();
 
   const claims = await verifySessionJwt(
     request.cookies.get(SESSION_JWT_COOKIE)?.value,

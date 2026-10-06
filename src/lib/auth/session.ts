@@ -9,6 +9,7 @@
 //  - tokenVersion: each session records the user's tokenVersion at sign-in;
 //    bumping it (suspend, role change) revokes every existing session, so
 //    the user must sign in again. No extra query: it's the same User read.
+import { devAuthActive, getDevSessionUser } from "@/lib/auth/devAuth";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCacheModel } from "@/lib/models/sessionCacheModel";
 import { getUserModel } from "@/lib/models/userModel";
@@ -47,10 +48,12 @@ export function readSessionToken(request: NextRequest): string | null {
   return token && /^[a-f0-9]{64}$/.test(token) ? token : null;
 }
 
-// Returns the session user or null
+// Returns the session user or null. In dev mode (lib/auth/devAuth.ts) that
+// is always the DEV_USER_UPID account, whatever cookies are sent.
 export async function getCurrentSessionUser(
   request: NextRequest,
 ): Promise<SessionUser | null> {
+  if (devAuthActive(request.headers.get("host"))) return getDevSessionUser();
   return getSessionUserByToken(readSessionToken(request));
 }
 

@@ -9,6 +9,7 @@ import { UserProvider } from "@/context/userContext";
 import { PwaInstallButton } from "@/components/UI/PwaInstallButton";
 import ProfileCompletionModal from "@/components/profile/ProfileCompletionModal";
 import { BadgeToast } from "@/components/UI/BadgeToast";
+import { DevModeBadge } from "@/components/DevModeBadge";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -113,6 +114,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       {/* No manual <head> needed — Next.js injects metadata automatically */}
       <body className="min-h-full flex flex-col">
         <JsonLd />
+        <DevModeBadge />
         <UserProvider>
           <ClientWrapper>
             <NavigationWrapper>{children}</NavigationWrapper>

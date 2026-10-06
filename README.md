@@ -243,5 +243,9 @@ pnpm build && pnpm start -p 3000
 ```
 
 `.env.local` points at the real database: never write test data to it.
+To skip signing in while developing, set `DEV_USER_UPID` (your account's
+upid) in `.env.local`: `pnpm dev` on localhost then signs you in as that
+account automatically and shows a 🛠 DEV MODE badge. It does nothing in
+production builds.
 Testing notes, gotchas and every subsystem are documented in
 [AGENTS.md](AGENTS.md).

@@ -32,6 +32,14 @@ Repo: https://github.com/emmzyrayz/UniArchive, deploys from `main` on Vercel.
 - Never write test data to the database in `.env.local` (it is the real
   one). Test DB-touching logic by reading code paths and hitting endpoints
   signed out, or ask first.
+- **Dev mode** (`lib/auth/devAuth.ts`): with `DEV_USER_UPID=<your upid>` in
+  `.env.local`, `pnpm dev` on localhost treats every request as that
+  account (`getCurrentSessionUser`, `getServerSessionUser` and the proxy
+  skip sign-in; roles and permissions still apply), with a 🛠 DEV MODE
+  badge at the top (`DevModeBadge`, `GET /api/auth/dev-mode`). Off unless
+  NODE_ENV is "development" (inlined as "production" by `next build`),
+  never on Vercel, never for requests from another device's network URL.
+  `.env.local` points at the real database, so dev-mode changes are real.
 - Local Google sign-in under `pnpm start` needs
   `AUTH_TRUST_HOST=true NEXTAUTH_URL=http://localhost:3100` (the `.env.local`
   `NEXTAUTH_URL` points at Vercel, and Auth.js only auto-trusts the host there).
