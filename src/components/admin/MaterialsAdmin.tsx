@@ -86,7 +86,7 @@ function EditPanel({
   };
 
   return (
-    <form onSubmit={save} className="mt-4 grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
+    <form onSubmit={save} className="mt-4 grid grid-cols-1 gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
       <label className="text-xs text-text-secondary sm:col-span-2">
         Title
         <input className={`mt-1 ${inputClass}`} value={form.title} maxLength={300} required onChange={(e) => set("title")(e.target.value)} />
@@ -341,7 +341,7 @@ export function MaterialsAdmin({ universities }: { universities: UniversityOptio
         onChange={(s) => filter(() => setStatus(s))}
       />
 
-      <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <input
           type="search"
           className={inputClass}

@@ -73,8 +73,9 @@ export function OfflineReader({ bookId }: { bookId: string }) {
 
   return (
     <ReaderShell book={state.book}>
-      <div className="flex justify-center py-8 px-4">
-        <div className="relative shadow-2xl select-none">
+      {/* Scrolls sideways when zoomed wider than the screen (see read/[id]/page.tsx) */}
+      <div className="overflow-x-auto py-8 px-4">
+        <div className="relative mx-auto w-fit shadow-2xl select-none">
           <ImageReader book={state.book} cacheOnly />
         </div>
       </div>

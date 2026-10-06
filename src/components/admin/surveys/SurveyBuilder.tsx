@@ -528,7 +528,7 @@ export function SurveyBuilder({ id }: { id: string }) {
         </p>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-4">
           <section className={cardClass} aria-labelledby="details">
             <h2 id="details" className="mb-3 font-semibold text-text-primary">
@@ -576,7 +576,7 @@ export function SurveyBuilder({ id }: { id: string }) {
               placeholder="Shown after someone submits. Leave empty for a plain thank you."
               onChange={(e) => edit(setThankYou)(e.target.value)}
             />
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="text-sm text-text-primary">
                 Opens (optional)
                 <input type="datetime-local" className={`${inputClass} mt-1`} value={opensAt} onChange={(e) => edit(setOpensAt)(e.target.value)} />

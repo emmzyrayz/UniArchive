@@ -276,7 +276,7 @@ export function MaterialCard({ material, isAuthenticated, onRead, userReaction }
         <VerificationBadge unverified={material.unverified} tier={material.verificationTier} />
       </div>
 
-      <h3 className="mt-3 text-base font-semibold leading-snug text-text-primary">{heading}</h3>
+      <h3 className="mt-3 text-base font-semibold leading-snug text-text-primary [overflow-wrap:anywhere]">{heading}</h3>
       {period && <p className="mt-0.5 text-xs text-text-secondary">{period}</p>}
 
       {material.description && (

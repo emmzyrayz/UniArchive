@@ -348,7 +348,7 @@ export default function EditProfilePage() {
       <form onSubmit={onSubmit} noValidate className="mx-auto max-w-5xl">
         <h1 className="text-2xl font-bold text-text-primary mb-6">Edit profile</h1>
 
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
           {/* LEFT: avatar + locked fields */}
           <section className={`${PROFILE_CARD_CLASS} p-6 space-y-6 self-start`}>
             <AvatarUploader
@@ -378,7 +378,7 @@ export default function EditProfilePage() {
           <section className={`${PROFILE_CARD_CLASS} p-6 space-y-8`}>
             <div>
               <SectionHeading>Personal info</SectionHeading>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <AuthInput
                   id="firstName"
                   label="First name"
@@ -421,7 +421,7 @@ export default function EditProfilePage() {
                 {errors.bio && <p className="text-sm text-error mt-1">{errors.bio}</p>}
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 mt-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-4">
                 <AuthInput
                   id="dob"
                   type="date"
@@ -487,7 +487,7 @@ export default function EditProfilePage() {
                   />
                 )}
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <label htmlFor="faculty" className="block text-sm font-medium text-text-secondary">
                       Faculty

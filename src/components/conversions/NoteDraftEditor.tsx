@@ -138,7 +138,7 @@ export function NoteDraftEditor({
 
   return (
     <div className="space-y-4 p-4">
-      <fieldset disabled={readOnly} className="grid gap-3 sm:grid-cols-2">
+      <fieldset disabled={readOnly} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className={fieldLabel}>
           Type
           <select

@@ -66,7 +66,7 @@ function TemplatePicker({ onCancel }: { onCancel: () => void }) {
         </button>
       </div>
       {error && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {BROADCAST_TEMPLATES.map((t) => (
           <button
             key={t.id}

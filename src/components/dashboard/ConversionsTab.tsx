@@ -196,7 +196,7 @@ function NeedsTyping({ data, more, onMore }: { data: NeedsTypingResult; more: bo
           to see ones from your own courses first.
         </p>
       )}
-      <ul className="grid gap-3 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {data.items.map((m) => (
           <li key={m.id} className="flex flex-col rounded-xl border border-border bg-surface-raised p-4">
             <p className="text-xs font-medium text-primary">{m.reason}</p>

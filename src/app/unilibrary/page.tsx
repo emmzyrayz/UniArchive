@@ -200,7 +200,7 @@ function UniLibraryFeed() {
           </p>
         </header>
 
-        <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:gap-x-10 lg:gap-y-4">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:gap-x-10 lg:gap-y-4">
           <CategoryTabs
             active={filters.category}
             counts={feed?.categoryCounts ?? {}}

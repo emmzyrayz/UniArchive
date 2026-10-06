@@ -130,7 +130,7 @@ export function AudiencePicker({
   const set = (patch: Partial<BroadcastAudience>) => onChange({ ...audience, ...patch });
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
       <div className={`${cardClass} space-y-5`}>
         <p className="text-sm text-text-secondary">
           Every criterion you set must match. Leave everything empty to reach everyone who gets{" "}
@@ -153,7 +153,7 @@ export function AudiencePicker({
               selected={audience.departmentIds}
               onToggle={(v) => set({ departmentIds: toggle(audience.departmentIds, v) })}
             />
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <CheckList
                 title="Levels"
                 items={options.levels.map((l) => ({ value: l.value, label: l.value, count: l.count }))}
@@ -203,7 +203,7 @@ export function AudiencePicker({
             days ({INACTIVE_DAYS.min}-{INACTIVE_DAYS.max})
           </label>
         </fieldset>
-        <fieldset className="grid gap-3 sm:grid-cols-2">
+        <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <legend className="mb-1 text-sm font-medium text-text-secondary">Joined between (optional)</legend>
           <label className="text-xs text-text-muted">
             From

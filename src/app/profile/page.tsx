@@ -201,7 +201,7 @@ export default function ProfilePage() {
         )}
 
         {/* Personal + academic */}
-        <motion.div {...fadeUp(0.1)} className="grid gap-6 md:grid-cols-2">
+        <motion.div {...fadeUp(0.1)} className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <section className={`${PROFILE_CARD_CLASS} p-6`}>
             <h2 className="text-xs font-semibold tracking-wider uppercase text-text-muted mb-4">
               Personal info

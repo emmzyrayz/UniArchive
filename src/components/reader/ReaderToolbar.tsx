@@ -3,7 +3,7 @@
 
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
-import { useReader } from "@/context/readerContext";
+import { MIN_ZOOM, useReader } from "@/context/readerContext";
 import { useDeviceCapability } from "@/hooks/useDeviceCapability";
 import { canRunModernPdf } from "@/lib/deviceCapability";
 import { HIGHLIGHT_COLORS } from "@/lib/constants/annotations";
@@ -141,7 +141,7 @@ export function ReaderToolbar({ book }: { book: Book }) {
           {/* Zoom */}
           <button
             type="button"
-            onClick={() => setZoom(Math.max(0.6, zoom - 0.2))}
+            onClick={() => setZoom(Math.max(MIN_ZOOM, Math.round((zoom - 0.2) * 100) / 100))}
             className="p-2 rounded-md text-neutral-300 hover:bg-neutral-800"
             aria-label="Zoom out"
           >

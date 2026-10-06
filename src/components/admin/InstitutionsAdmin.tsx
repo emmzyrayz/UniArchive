@@ -236,7 +236,7 @@ function EditUniversityForm({
   );
 
   return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+    <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div className="sm:col-span-2">{text("Name", "name", { required: true, maxLength: 150 })}</div>
       {text("Abbreviation", "abbreviation", { required: true, maxLength: 15 })}
       <label className="text-xs text-text-secondary">
@@ -582,7 +582,7 @@ export function InstitutionsAdmin() {
         </button>
       }
     >
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <div>
           <input
             type="search"

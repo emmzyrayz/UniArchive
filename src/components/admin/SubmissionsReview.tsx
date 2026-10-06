@@ -314,7 +314,7 @@ export function SubmissionsReview({
                 const rejecting = quickReject?.id === s.id;
                 return (
                   <li key={s.id} className="border-b border-border px-5 py-4 last:border-b-0">
-                    <div className="grid gap-2 md:grid-cols-[2fr_1fr_1.5fr_1fr] md:gap-4">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-[2fr_1fr_1.5fr_1fr] md:gap-4">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-text-primary">{s.title}</p>
                         <p className="truncate text-xs text-text-muted">

@@ -222,7 +222,7 @@ export function BroadcastEditor({ id }: { id: string }) {
 
       <fieldset disabled={!editable} className="contents">
         {step === "content" && (
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <div className={`${cardClass} space-y-4`}>
               <label className="block text-sm font-medium text-text-secondary">
                 Internal name (only admins see it)
@@ -253,7 +253,7 @@ export function BroadcastEditor({ id }: { id: string }) {
       </fieldset>
 
       {step === "review" && (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div className={`${cardClass} space-y-3 text-sm`}>
             <h2 className="font-semibold text-text-primary">Summary</h2>
             <p>

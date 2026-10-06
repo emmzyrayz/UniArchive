@@ -296,7 +296,7 @@ export function SurveyResults({ id }: { id: string }) {
       }
     >
       <section className={`${cardClass} mb-5`} aria-label="Filters">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Select
             label="School"
             value={filters.school}

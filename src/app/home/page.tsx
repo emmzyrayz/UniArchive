@@ -263,7 +263,7 @@ export default function HomePage() {
             <h2 className="text-xs font-semibold tracking-wider uppercase text-text-muted mb-4">
               Your submissions
             </h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {submissions.items.map((s) => (
                 <div
                   key={s._id}

@@ -19,6 +19,9 @@ import {
   MAX_HIGHLIGHTS,
 } from "@/lib/constants/annotations";
 
+/** Smallest zoom: below "fit to width" on a small phone (an A4 page fits 360px at ~0.55) */
+export const MIN_ZOOM = 0.3;
+
 export type ViewMode = "paged" | "scroll";
 
 // Annotations are saved this often while they have unsaved changes, and

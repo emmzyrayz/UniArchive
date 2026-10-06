@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { Document, Page as PDFPage, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
-import { useReader } from "@/context/readerContext";
+import { MIN_ZOOM, useReader } from "@/context/readerContext";
 import { useDeviceCapability } from "@/hooks/useDeviceCapability";
 import { HighlightLayer } from "@/components/reader/HighlighterLayer";
 import type { Book } from "@/types/library";
@@ -18,14 +18,27 @@ import type { Book } from "@/types/library";
 // Wrapper polyfills URL.parse inside the worker, then loads pdf.worker.min.mjs
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.wrapper.mjs";
 
+// The page's side padding (px-4 on the reader page), kept clear when fitting
+const FIT_MARGIN = 32;
+
 type FetchCheckState =
   | { status: "checking" }
   | { status: "ok" }
   | { status: "error"; message: string };
 
 export function PdfCanvas({ book }: { book: Book }) {
-  const { currentPage, numPages, zoom, viewMode, setNumPages, goToPage } =
+  const { currentPage, numPages, zoom, viewMode, setNumPages, goToPage, setZoom } =
     useReader();
+  // On a narrow screen the default zoom makes pages wider than the screen:
+  // the first page to load sets the zoom to fit the width instead (once per book)
+  const fittedRef = useRef<string | null>(null);
+  const fitToWidth = (page: { originalWidth: number }) => {
+    if (fittedRef.current === book.fileUrl || !page.originalWidth) return;
+    fittedRef.current = book.fileUrl;
+    const available = window.innerWidth - FIT_MARGIN;
+    const fit = Math.floor((available / page.originalWidth) * 100) / 100;
+    if (fit < zoom) setZoom(Math.max(MIN_ZOOM, fit));
+  };
   const { capability, config, ready } = useDeviceCapability();
   const showHighlights = capability !== "low";
 
@@ -185,7 +198,7 @@ export function PdfCanvas({ book }: { book: Book }) {
     >
       {viewMode === "paged" ? (
         <div className="relative">
-          <PDFPage pageNumber={currentPage} scale={zoom} />
+          <PDFPage pageNumber={currentPage} scale={zoom} onLoadSuccess={fitToWidth} />
           {showHighlights && <HighlightLayer pageNumber={currentPage} />}
         </div>
       ) : (
@@ -207,7 +220,7 @@ export function PdfCanvas({ book }: { book: Book }) {
               }}
               className="relative"
             >
-              <PDFPage pageNumber={pageNum} scale={zoom} />
+              <PDFPage pageNumber={pageNum} scale={zoom} onLoadSuccess={fitToWidth} />
               {showHighlights && <HighlightLayer pageNumber={pageNum} />}
             </div>
           ))}

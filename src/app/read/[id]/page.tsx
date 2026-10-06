@@ -88,9 +88,11 @@ export default function ReadPage() {
   else reader = <PdfUnsupported book={book} />;
 
   return (
-    <div className="flex justify-center py-8 px-4">
+    // Scrolls sideways when a page is zoomed wider than the screen; mx-auto
+    // centres it otherwise (flex centring would cut off its left edge)
+    <div className="overflow-x-auto py-8 px-4">
       <div
-        className="relative shadow-2xl select-none"
+        className="relative mx-auto w-fit shadow-2xl select-none"
         style={{ userSelect: "none" }}
       >
         {reader}

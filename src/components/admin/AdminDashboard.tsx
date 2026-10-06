@@ -123,7 +123,7 @@ export function AdminDashboard({ viewer }: { viewer: AdminViewer }) {
           <StatCard label="Total materials" value={counts?.totalMaterials} href={`${base}/materials`} />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <section className={cardClass} aria-labelledby="quick-links">
             <h2 id="quick-links" className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
               Quick links

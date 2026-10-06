@@ -187,7 +187,7 @@ export function BasicsFields({
         {!errors.description && descriptionHint}
         <FieldError message={errors.description} />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor={`${idPrefix}-category`}>Category</Label>
           <select
@@ -269,7 +269,7 @@ export function AcademicFields({
   return (
     <>
       <UniversityCombobox value={form.university} onChange={selectUniversity} error={errors.university} />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor={`${idPrefix}-faculty`}>Faculty</Label>
           <select

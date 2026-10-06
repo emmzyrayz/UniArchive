@@ -486,6 +486,16 @@ vars are documented in `.env.example`.
 - `src/app/favicon.ico` must hold RGBA PNGs: Turbopack (`pnpm dev`) can't
   decode RGB ones ("The PNG is not in RGBA format"), webpack builds can.
   Regenerated 2026-10-06 (same pixels, alpha added).
+- Mobile widths: a `grid` that only sets columns at a breakpoint
+  (`sm:grid-cols-2`) has an *auto* column on phones, which grows to its
+  widest content (a scrolling tab strip, a long email or file name) and
+  pushes cards off screen. Always give it a phone column too:
+  `grid grid-cols-1 sm:grid-cols-2` (`grid-cols-1` is `minmax(0,1fr)`).
+  Don't centre something that can be wider than the screen with flex
+  `justify-center` (its left edge becomes unreachable): use an
+  `overflow-x-auto` wrapper and `mx-auto w-fit` (the reader does).
+  PDF pages fit the screen width on first load when the default zoom
+  would be wider (`fitToWidth` in `PdfCanvas`, `MIN_ZOOM` 0.3).
 - next-pwa's `reloadOnOnline` is **off** on purpose: it reloaded every page
   on reconnect, wiping in-progress work. The `/offline` fallback page
   reloads itself when the connection returns instead.
