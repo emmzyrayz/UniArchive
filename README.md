@@ -226,8 +226,6 @@ Unordered; pick by what matters most at the time.
   Profile nudge.
 - **Tidy Brevo lists**: each broadcast leaves a list in Brevo's "UniArchive
   broadcasts" folder; delete old ones now and then (by hand or a script).
-- **Regenerate `favicon.ico` as RGBA** so `pnpm dev` (Turbopack) works again;
-  until then, test against production builds.
 - **Signup from the catalog**: the signup school dropdown still reads the
   static `schoolData.ts`, while approved school suggestions (including
   ones from surveys) land in the university catalog. Moving signup to the

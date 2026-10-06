@@ -475,9 +475,9 @@ vars are documented in `.env.example`.
   readers back to sign in, then home, in a loop. Share the code instead
   (`lib/readerBook.ts` serves both `/read/[id]` and `GET /api/books/[id]`),
   and keep `from=` on any redirect to sign-in.
-- `pnpm dev` (Turbopack) fails on every page with "The PNG is not in RGBA
-  format" from `src/app/favicon.ico`; `pnpm build`/`start` (webpack) work.
-  Test against a production build until the icon is regenerated.
+- `src/app/favicon.ico` must hold RGBA PNGs: Turbopack (`pnpm dev`) can't
+  decode RGB ones ("The PNG is not in RGBA format"), webpack builds can.
+  Regenerated 2026-10-06 (same pixels, alpha added).
 - next-pwa's `reloadOnOnline` is **off** on purpose: it reloaded every page
   on reconnect, wiping in-progress work. The `/offline` fallback page
   reloads itself when the connection returns instead.

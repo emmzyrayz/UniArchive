@@ -42,6 +42,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} h-full antialiased`}
+      // The theme script below sets data-theme before React loads (no flash
+      // of the wrong theme), so this element's attributes differ on purpose
+      suppressHydrationWarning
     >
       <head>
         {/* Polyfills for Chrome forks that lag behind (e.g. Kiwi Browser,
