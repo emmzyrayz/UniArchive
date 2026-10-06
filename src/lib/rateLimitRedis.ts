@@ -56,6 +56,8 @@ const limiters = {
   surveyExport: make(30, "1 h", "rl:survey-export"),
   // Reporting UniLibrary materials, per user
   materialReport: make(20, "24 h", "rl:material-report"),
+  // "Help identify this PDF" suggestions, per user
+  materialSuggest: make(20, "24 h", "rl:material-suggest"),
   // Posting comments
   comment: make(10, "1 m", "rl:comment"),
   // Public read (materials, profiles) — generous

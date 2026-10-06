@@ -33,6 +33,7 @@ import { getSurveyModel, type ISurvey } from "@/lib/models/surveyModel";
 import { getSurveyResponseModel, type ISurveyResponse } from "@/lib/models/surveyResponseModel";
 import { answerText } from "@/lib/survey/questions";
 import { getMaterialReportModel } from "@/lib/models/materialReportModel";
+import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
 import { decryptSensitiveData } from "@/lib/encryption";
 import { BADGE_DEFINITIONS, type BadgeId } from "@/lib/constants/badges";
 import { effectiveEmailPrefs } from "@/lib/emailPrefs";
@@ -141,6 +142,7 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
 
   const surveyResponses = await exportSurveyResponses(id);
   const materialReports = await (await getMaterialReportModel()).find({ userId: id }).select("materialId reason note createdAt").lean();
+  const pdfSuggestions = await (await getMaterialSuggestionModel()).find({ userId: id }).select("materialId fields status createdAt updatedAt").lean();
 
   const account = {
     upid: user.upid,
@@ -195,6 +197,7 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     schoolSuggestions: scrub(suggestions),
     surveyResponses,
     materialReports: scrub(materialReports),
+    helpIdentifySuggestions: scrub(pdfSuggestions),
     contributionHistory: scrub(contributions),
     messagesFromTheUniArchiveTeam: scrub(messages),
     signInHistory: scrub(signIns),

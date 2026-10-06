@@ -12,12 +12,14 @@ import { Types } from "mongoose";
 import { getUserModel } from "@/lib/models/userModel";
 import { LIBRARY_BOOKS, getBookModel } from "@/lib/models/bookModel";
 import { COMMUNITY_MATERIALS, getMaterialModel } from "@/lib/models/materialModel";
+import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
 import { getCommentModel } from "@/lib/models/commentModel";
 import { getUserBadgeModel, type IUserBadge } from "@/lib/models/userBadgeModel";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
 import { redis } from "@/lib/redis";
 import {
   BADGE_DEFINITIONS,
+  PDF_DETECTIVE_ACCEPTED,
   BADGE_IDS,
   EARLY_ADOPTER_DAYS,
   PLATFORM_LAUNCH_DATE,
@@ -39,6 +41,7 @@ export type BadgeTrigger =
   | "role_changed"
   | "view_milestone"
   | "school_email_verified"
+  | "suggestion_accepted"
   // Every badge: catches up users who qualified before badges existed, or
   // whose check was missed (see catchUpBadgesAfter)
   | "catch_up";
@@ -62,6 +65,7 @@ const TRIGGER_BADGES: Record<BadgeTrigger, BadgeId[]> = {
   role_changed: ["collaborator", "auditor", "verified_lecturer"],
   view_milestone: ["popular_material"],
   school_email_verified: ["verified_student"],
+  suggestion_accepted: ["pdf_detective"],
   catch_up: BADGE_IDS,
 };
 
@@ -138,6 +142,10 @@ async function qualifies(badgeId: BadgeId, user: BadgeUser): Promise<boolean> {
     }
     case "verified_student":
       return !!user.schoolEmailVerifiedAt;
+    case "pdf_detective":
+      return (
+        (await (await getMaterialSuggestionModel()).countDocuments({ userId, status: "accepted" })) >= PDF_DETECTIVE_ACCEPTED
+      );
     case "collaborator":
       return user.role === "collaborator";
     case "auditor":

@@ -151,12 +151,15 @@ export function VerifyModal({
   tier,
   busy,
   error,
+  suggestionSummary,
   onCancel,
   onConfirm,
 }: {
   tier: 1 | 2;
   busy: boolean;
   error?: string | null;
+  /** Verifying with a reader's suggested details: shown so the reviewer knows */
+  suggestionSummary?: string;
   onCancel: () => void;
   onConfirm: (note: string) => void;
 }) {
@@ -167,6 +170,12 @@ export function VerifyModal({
 
   return (
     <Modal title={tier === 1 ? "Verify this material" : "Endorse this material"} onClose={onCancel}>
+      {suggestionSummary && (
+        <p className="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-text-secondary">
+          The submission&apos;s details will be replaced by the readers&apos; suggestion:{" "}
+          <strong className="text-text-primary">{suggestionSummary}</strong>
+        </p>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();

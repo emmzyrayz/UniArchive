@@ -5,6 +5,8 @@
 // the workspace's PDF viewer, used only when the upload had none (files over
 // 50 MB skip the browser's page count), and an optional outline
 // ({ entries: [...] }, see lib/outline.ts) for textbooks and lecture notes.
+// suggestionId: the reader's "Help identify" suggestion the form was filled
+// from; it (and agreeing ones) are accepted, the rest declined.
 //
 // Publishes a pending platform file to the UniLibrary in one step: a
 // MaterialSubmission created already verified (source "platform") and its
@@ -28,6 +30,9 @@ import {
 import { reviewNote } from "@/lib/adminSubmissions";
 import { parseSubmissionBody, resolveAcademicRefs, type SubmissionBody } from "@/lib/submissions";
 import { verifyMaterialRecord } from "@/lib/materialPublish";
+import { loadAcceptableSuggestion, settleSuggestions } from "@/lib/materialSuggestions";
+import { getMaterialModel } from "@/lib/models/materialModel";
+import type { IMaterialSuggestion } from "@/lib/models/materialSuggestionModel";
 import { parseOutline } from "@/lib/outline";
 import {
   claimedByOther,
@@ -53,7 +58,7 @@ export async function POST(request: NextRequest, context: Context) {
       return fail(409, `@${book.platform.claimedByUpid} is working on this file right now.`);
     }
 
-    const body = await readJson<SubmissionBody & { pageCount: number; outline: unknown }>(request);
+    const body = await readJson<SubmissionBody & { pageCount: number; outline: unknown; suggestionId: string }>(request);
     const viewerPageCount =
       typeof body?.pageCount === "number" && Number.isInteger(body.pageCount) && body.pageCount > 0
         ? Math.min(body.pageCount, 100_000)
@@ -66,6 +71,12 @@ export async function POST(request: NextRequest, context: Context) {
     const refs = await resolveAcademicRefs(input.institution);
     const outline = parseOutline(body?.outline, input.subcategory, pageCount);
     if (!outline.ok) return fail(400, outline.message);
+    let suggestion: IMaterialSuggestion | undefined;
+    if (body?.suggestionId !== undefined) {
+      const listed = await (await getMaterialModel()).findOne({ bookId: book._id, status: "unverified" }).select("_id").lean();
+      if (!listed) return fail(409, "This PDF has no suggestions to use.");
+      suggestion = await loadAcceptableSuggestion(listed._id, body.suggestionId);
+    }
 
     // Claim the publish first, so a concurrent publish or discard can't also win
     const now = new Date();
@@ -129,6 +140,10 @@ export async function POST(request: NextRequest, context: Context) {
         verifiedAt: now,
         outline: outline.value ?? undefined,
       });
+
+      await settleSuggestions(material._id, suggestion).catch((error) =>
+        console.error("publish: failed to settle suggestions:", error),
+      );
 
       await Book.updateOne(
         { _id: book._id },

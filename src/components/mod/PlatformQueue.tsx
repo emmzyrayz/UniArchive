@@ -128,6 +128,12 @@ export function PlatformQueue({ scopes }: { scopes: Scope[] }) {
                 </p>
                 <p className="mt-0.5 text-xs text-text-muted">
                   {f.originalFileName} · {formatFileSize(f.fileSize)}
+                  {!!f.suggestionCount && (
+                    <span className="font-semibold text-primary">
+                      {" "}
+                      · 💡 {f.suggestionCount} suggestion{f.suggestionCount === 1 ? "" : "s"}
+                    </span>
+                  )}
                   {f.originalSize > f.fileSize && ` (was ${formatFileSize(f.originalSize)})`}
                   {f.pageCount ? ` · ${f.pageCount} pages` : ""} · {f.source === "gift" ? "gifted" : "uploaded"} by @
                   {f.uploadedByUpid} {timeAgo(f.createdAt)}

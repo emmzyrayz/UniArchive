@@ -27,6 +27,7 @@ import { hasHigherOrEqualRole } from "@/types/roles";
 import { VerificationBadge } from "@/components/unilibrary/VerificationBadge";
 import { UnverifiedNotice, useUnverifiedNotice } from "@/components/unilibrary/UnverifiedNotice";
 import { ReportMaterialDialog } from "@/components/unilibrary/ReportMaterialDialog";
+import { HelpIdentifyDialog } from "@/components/unilibrary/HelpIdentifyDialog";
 
 type Tab = "pdf" | "questions" | "notes";
 
@@ -43,6 +44,7 @@ function MaterialViewContent({ material: m, preview }: { material: MaterialDetai
   const unverified = !!m.unverified;
   const notice = useUnverifiedNotice(m._id, unverified);
   const [reporting, setReporting] = useState(false);
+  const [identifying, setIdentifying] = useState(false);
 
   const backLink = (
     <Link href="/unilibrary" className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary">
@@ -78,8 +80,13 @@ function MaterialViewContent({ material: m, preview }: { material: MaterialDetai
               notice.close();
               setReporting(true);
             }}
+            onHelp={() => {
+              notice.close();
+              setIdentifying(true);
+            }}
           />
         )}
+        {identifying && <HelpIdentifyDialog materialId={m._id} signedIn={hasActiveSession} onClose={() => setIdentifying(false)} />}
         {reporting && <ReportMaterialDialog materialId={m._id} signedIn={hasActiveSession} onClose={() => setReporting(false)} />}
 
         <header className="space-y-2">
@@ -117,7 +124,10 @@ function MaterialViewContent({ material: m, preview }: { material: MaterialDetai
                   : "nobody has said what this PDF is yet."}
               </p>
               <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                <button type="button" className="font-semibold underline" onClick={() => setReporting(true)}>
+                <button type="button" className="font-semibold underline" onClick={() => setIdentifying(true)}>
+                  Help identify it
+                </button>
+                <button type="button" className="underline" onClick={() => setReporting(true)}>
                   Report a problem
                 </button>
               </p>

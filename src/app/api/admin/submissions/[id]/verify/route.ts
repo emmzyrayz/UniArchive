@@ -1,10 +1,13 @@
 // PATCH /api/admin/submissions/[id]/verify
-// Body: { tier: 1 | 2, note?: string }
+// Body: { tier: 1 | 2, note?: string, suggestionId?: string }
 //
 // Tier 1 ("submission.verify_tier1"): submitted | in_review -> verified.
 //   Verifies the submission's Material (listed as unverified since it was
 //   submitted; created if it wasn't) from the submission and its Book, bumps the
 //   submitter's verifiedMaterialCount, logs a ContributionEvent and emails them.
+//   With suggestionId, the submission first takes the details of that
+//   reader's "Help identify" suggestion; it (and agreeing ones) are
+//   accepted, other pending suggestions declined (lib/materialSuggestions).
 // Tier 2 ("submission.verify_tier2"): endorses an already verified material.
 //   Never on the caller's own submission.
 import { NextResponse, type NextRequest } from "next/server";
@@ -31,6 +34,8 @@ import {
 import { sendSubmissionVerifiedEmail } from "@/utils/email";
 import { awardBadgesAfter } from "@/lib/badges";
 import { verifyMaterialRecord } from "@/lib/materialPublish";
+import { loadAcceptableSuggestion, settleSuggestions, submissionFieldsFrom } from "@/lib/materialSuggestions";
+import type { IMaterialSuggestion } from "@/lib/models/materialSuggestionModel";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -46,7 +51,7 @@ export async function PATCH(request: NextRequest, context: Context) {
     await enforceRateLimit(request, "admin", `admin-submissions:${session.userId}`);
     const { id } = await context.params;
 
-    const body = await readJson<{ tier: number; note: string }>(request);
+    const body = await readJson<{ tier: number; note: string; suggestionId: string }>(request);
     const tier = body?.tier ?? 1;
     if (tier !== 1 && tier !== 2) return fail(400, "tier must be 1 or 2.");
     const note = parseText(body?.note, "note");
@@ -57,7 +62,7 @@ export async function PATCH(request: NextRequest, context: Context) {
 
     const submission = await loadReviewableSubmission(id);
     return tier === 1
-      ? await verifyTier1(session, submission, note)
+      ? await verifyTier1(session, submission, note, body?.suggestionId)
       : await verifyTier2(session, submission, note);
   } catch (error) {
     return handleRouteError(error, "PATCH /api/admin/submissions/[id]/verify");
@@ -68,6 +73,7 @@ async function verifyTier1(
   session: SessionUser,
   submission: IMaterialSubmission,
   note: string | undefined,
+  suggestionId?: string,
 ) {
   if (!DECIDABLE_STATUSES.includes(submission.status)) {
     return fail(409, `This submission is already ${submission.status.replace("_", " ")}.`);
@@ -82,6 +88,19 @@ async function verifyTier1(
     .lean();
   if (!book) return fail(409, "The original document no longer exists, so it can't be verified.");
 
+  // A reader's suggested details, if the reviewer chose one
+  let suggestion: IMaterialSuggestion | null = null;
+  const details: { $set: Record<string, unknown>; $unset: Record<string, ""> } = { $set: {}, $unset: {} };
+  if (suggestionId !== undefined) {
+    const listed = await (await getMaterialModel()).findOne({ bookId: submission.bookId, status: "unverified" }).select("_id").lean();
+    if (!listed) return fail(409, "This PDF has no suggestions to use.");
+    suggestion = await loadAcceptableSuggestion(listed._id, suggestionId);
+    for (const [key, value] of Object.entries(submissionFieldsFrom(suggestion))) {
+      if (value === undefined) details.$unset[key] = "";
+      else details.$set[key] = value;
+    }
+  }
+
   // Claim the decision first so a concurrent verify/reject can't also win
   const now = new Date();
   const Submission = await getMaterialSubmissionModel();
@@ -89,13 +108,14 @@ async function verifyTier1(
     { _id: submission._id, status: { $in: DECIDABLE_STATUSES } },
     {
       $set: {
+        ...details.$set,
         status: "verified",
         verifiedBy: session.userId,
         verifiedAt: now,
         reviewedBy: session.userId,
         reviewedAt: now,
       },
-      $unset: { rejectionReason: "" },
+      $unset: { ...details.$unset, rejectionReason: "" },
       ...(note ? { $push: { reviewNotes: reviewNote(session, note) } } : {}),
     },
     { returnDocument: "after" },
@@ -130,6 +150,11 @@ async function verifyTier1(
     });
     throw error;
   }
+
+  // Readers' suggestions are settled: the one used is accepted and credited
+  await settleSuggestions(material._id, suggestion ?? undefined).catch((error) =>
+    console.error("verify: failed to settle suggestions:", error),
+  );
 
   const User = await getUserModel();
   await User.updateOne({ _id: verified.submittedBy }, { $inc: { verifiedMaterialCount: 1 } });

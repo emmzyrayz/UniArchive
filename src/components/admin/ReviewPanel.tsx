@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { FiExternalLink, FiX } from "react-icons/fi";
 import { StatusBadge } from "./ReviewModals";
+import { SuggestionsPanel } from "./SuggestionsPanel";
 import {
   canEndorse,
   categoryLabel,
@@ -36,6 +37,7 @@ export function ReviewPanel({
   onClose,
   onAction,
   onAddNote,
+  onVerifyWithSuggestion,
 }: {
   submission: AdminSubmissionDto;
   viewer: Viewer;
@@ -44,6 +46,8 @@ export function ReviewPanel({
   onClose: () => void;
   onAction: (action: PanelAction) => void;
   onAddNote: (note: string) => Promise<boolean>;
+  /** Verify using a reader's suggested details (opens the verify dialog) */
+  onVerifyWithSuggestion?: (suggestionId: string, summary: string) => void;
 }) {
   const [note, setNote] = useState("");
 
@@ -130,6 +134,19 @@ export function ReviewPanel({
             <Field label="Academic year" value={s.academicYear} />
             <Field label="Language" value={s.language} />
           </dl>
+
+          {s.unverifiedMaterialId && (
+            <SuggestionsPanel
+              materialId={s.unverifiedMaterialId}
+              actionLabel={s.status === "in_review" && viewer.canVerifyTier1 ? "Verify with these details" : undefined}
+              onUse={
+                s.status === "in_review" && viewer.canVerifyTier1 && onVerifyWithSuggestion
+                  ? (group, suggestionId) => onVerifyWithSuggestion(suggestionId, group.summary)
+                  : undefined
+              }
+              disabled={busy}
+            />
+          )}
 
           {s.tags.length > 0 && (
             <section>

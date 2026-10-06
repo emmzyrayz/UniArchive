@@ -164,6 +164,8 @@ export interface PlatformFileDto {
   publishedAt?: string;
   /** Gifts: what the student said the PDF is. */
   giftNote?: string;
+  /** Pending "Help identify" suggestions readers left on its unverified listing */
+  suggestionCount?: number;
 }
 
 /** A gift's prefill for the verify form (ids as strings). */

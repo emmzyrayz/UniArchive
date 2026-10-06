@@ -39,7 +39,9 @@ interface ListResponse {
 
 type Loaded = { key: string; data: ListResponse } | { key: string; error: string };
 
-type Dialog = { kind: "verify" | "endorse" | "reject"; id: string } | null;
+type Dialog =
+  | { kind: "verify" | "endorse" | "reject"; id: string; suggestion?: { id: string; summary: string } }
+  | null;
 
 const PAGE_SIZE = 20;
 
@@ -153,8 +155,8 @@ export function SubmissionsReview({
   const startReview = (id: string) =>
     run(id, () => reviewRequest(`${base(id)}/start-review`, "PATCH", {}));
 
-  const verify = async (id: string, tier: 1 | 2, note: string) => {
-    if (await run(id, () => reviewRequest(`${base(id)}/verify`, "PATCH", { tier, note: note || undefined }))) {
+  const verify = async (id: string, tier: 1 | 2, note: string, suggestionId?: string) => {
+    if (await run(id, () => reviewRequest(`${base(id)}/verify`, "PATCH", { tier, note: note || undefined, suggestionId }))) {
       setDialog(null);
     }
   };
@@ -318,6 +320,12 @@ export function SubmissionsReview({
                         <p className="truncate text-xs text-text-muted">
                           {s.courseCode ? `${s.courseCode} · ` : ""}
                           {s.submittedBy.name}
+                          {!!s.suggestionCount && (
+                            <span className="font-semibold text-primary">
+                              {" "}
+                              · 💡 {s.suggestionCount} suggestion{s.suggestionCount === 1 ? "" : "s"}
+                            </span>
+                          )}
                         </p>
                       </div>
                       <p className="text-sm text-text-secondary">
@@ -434,6 +442,10 @@ export function SubmissionsReview({
           onClose={closePanel}
           onAction={onPanelAction}
           onAddNote={(note) => addNote(openSubmission.id, note)}
+          onVerifyWithSuggestion={(suggestionId, summary) => {
+            setActionError(null);
+            setDialog({ kind: "verify", id: openSubmission.id, suggestion: { id: suggestionId, summary } });
+          }}
         />
       )}
 
@@ -446,7 +458,8 @@ export function SubmissionsReview({
             setDialog(null);
             setActionError(null);
           }}
-          onConfirm={(note) => void verify(dialog.id, dialog.kind === "verify" ? 1 : 2, note)}
+          suggestionSummary={dialog.suggestion?.summary}
+          onConfirm={(note) => void verify(dialog.id, dialog.kind === "verify" ? 1 : 2, note, dialog.suggestion?.id)}
         />
       )}
       {dialog && dialogSubmission && dialog.kind === "reject" && (

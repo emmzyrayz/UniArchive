@@ -13,6 +13,7 @@ import UniversityCombobox, {
 import { useInstitutionOptions } from "@/components/profile/useInstitutionOptions";
 import { CATEGORIES } from "@/lib/constants/materialCategories";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
+import type { SuggestionFieldsDto } from "@/types/unilibrary";
 
 export const LEVELS = ["100L", "200L", "300L", "400L", "500L", "PG"] as const;
 export const SEMESTERS = ["First", "Second"] as const;
@@ -83,6 +84,32 @@ export function validateAcademic(form: MaterialFormState): MaterialFormErrors {
     }
   }
   return errors;
+}
+
+/**
+ * A form filled from stored details (a reader's suggestion, or a material's
+ * current details). Levels are stored as "300" and shown as "300L".
+ */
+export function formFromSuggestion(f: SuggestionFieldsDto): MaterialFormState {
+  const ref = (id?: string, name?: string): Ref | null => (id && name ? { id, name } : null);
+  const university = ref(f.universityId, f.universityName);
+  const faculty = university ? ref(f.facultyId, f.facultyName) : null;
+  return {
+    ...EMPTY_MATERIAL_FORM,
+    title: f.title,
+    description: f.description,
+    category: f.category,
+    subcategory: f.subcategory ?? "",
+    tags: f.tags,
+    university,
+    faculty,
+    department: faculty ? ref(f.departmentId, f.departmentName) : null,
+    courseCode: f.courseCode ?? "",
+    courseName: f.courseName ?? "",
+    level: f.level ? (/^\d+$/.test(f.level) ? `${f.level}L` : f.level) : "",
+    semester: f.semester ?? "",
+    academicYear: f.academicYear ?? "",
+  };
 }
 
 /** The API fields for this form state (same shape for every material API). */

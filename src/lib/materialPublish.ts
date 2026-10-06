@@ -20,6 +20,8 @@ import type { IBook, IBookPlatform } from "@/lib/models/bookModel";
 import type { MaterialOutline } from "@/lib/outline";
 import { SUBMISSION_LEVELS, type IMaterialSubmission } from "@/lib/models/materialSubmissionModel";
 import { getMaterialModel, type IMaterial, type MaterialSource } from "@/lib/models/materialModel";
+import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
+import { getMaterialReportModel } from "@/lib/models/materialReportModel";
 
 export type PublishableBook = Pick<
   IBook,
@@ -203,5 +205,10 @@ export async function removeUnverifiedMaterial(bookId: Types.ObjectId): Promise<
     return "hidden";
   }
   await Material.deleteOne({ _id: material._id, status: "unverified" });
+  // Readers' suggestions and reports about it go with it
+  await Promise.all([
+    getMaterialSuggestionModel().then((S) => S.deleteMany({ materialId: material._id })),
+    getMaterialReportModel().then((R) => R.deleteMany({ materialId: material._id })),
+  ]);
   return "deleted";
 }

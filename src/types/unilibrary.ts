@@ -72,3 +72,47 @@ export interface MaterialsResponse {
   /** All matching materials, including unidentified PDFs (no category) */
   allCount?: number;
 }
+
+// --- Help identify (material suggestions) --------------------------------------
+
+/** Details for a PDF, as a reader suggests them (ids as strings). */
+export interface SuggestionFieldsDto {
+  title: string;
+  description: string;
+  category: string;
+  subcategory?: string;
+  tags: string[];
+  universityId?: string;
+  universityName?: string;
+  universityAbbr?: string;
+  facultyId?: string;
+  facultyName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  courseCode?: string;
+  courseName?: string;
+  level?: string;
+  semester?: string;
+  academicYear?: string;
+}
+
+export interface SuggestionGroupDto {
+  fingerprint: string;
+  /** "Past Question · MTH101 · UNIZIK · 100" */
+  summary: string;
+  count: number;
+  /** The newest suggestion's details in this group */
+  fields: SuggestionFieldsDto;
+  suggestions: { id: string; upid: string; createdAt: string; fields: SuggestionFieldsDto }[];
+}
+
+export interface MaterialSuggestionsResponse {
+  /** Your own suggestion, if you made one */
+  mine: (SuggestionFieldsDto & { status: "pending" | "accepted" | "declined"; updatedAt: string }) | null;
+  /** What the form starts from: your suggestion, or the material's current details */
+  prefill: SuggestionFieldsDto;
+  /** Pending suggestions from everyone */
+  count: number;
+  /** Staff only: pending suggestions grouped by agreement, biggest first */
+  groups?: SuggestionGroupDto[];
+}

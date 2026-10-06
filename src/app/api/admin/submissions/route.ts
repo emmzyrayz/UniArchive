@@ -13,6 +13,7 @@ import {
   REVIEWER_VISIBLE_STATUSES,
   loadUserSummaries,
   loadVerificationTiers,
+  loadPendingListings,
   toAdminSubmissionDto,
   type ReviewerVisibleStatus,
 } from "@/lib/adminSubmissions";
@@ -80,13 +81,14 @@ export async function GET(request: NextRequest) {
     >;
     for (const g of grouped) counts[g._id] = g.count;
 
-    const [users, tiers] = await Promise.all([
+    const [users, tiers, listings] = await Promise.all([
       loadUserSummaries(docs),
       loadVerificationTiers(docs),
+      loadPendingListings(docs),
     ]);
     return NextResponse.json(
       {
-        submissions: docs.map((d) => toAdminSubmissionDto(d, users, tiers)),
+        submissions: docs.map((d) => toAdminSubmissionDto(d, users, tiers, listings)),
         total,
         page,
         totalPages: Math.max(1, Math.ceil(total / limit)),

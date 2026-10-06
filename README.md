@@ -40,6 +40,9 @@ to 500L/600L, postgraduate) and course code.
   yet carry an **Unverified** badge (staff uploads nobody has described yet
   show as "Unidentified PDF"), stay out of Google until checked, and can
   be reported; three reports hide an unverified one until staff look.
+  Anyone signed in can **help identify** an unverified PDF (title, course,
+  school, level...); staff verify it with the details people agree on in
+  one click, and helpers earn the PDF Detective badge.
 - **Read in the browser**: a PDF reader with highlights, bookmarks, reading
   progress, dark mode, scroll or single-page modes, and offline saving.
   Very large PDFs on low-end phones get a "open it on a computer" fallback

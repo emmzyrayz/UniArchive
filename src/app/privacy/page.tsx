@@ -63,10 +63,11 @@ export default function PrivacyPage() {
               prevent abuse.
             </>,
             <>
-              <Term>Reports:</Term> if you report a UniLibrary material, we
-              keep the reason and any note with your account so our team can
-              follow up. They are in &ldquo;Download my data&rdquo; and deleted
-              with your account.
+              <Term>Reports and suggestions:</Term> if you report a UniLibrary
+              material or suggest the details of an unverified one, we keep it
+              with your account so our team can follow up (moderators see your
+              username next to a suggestion). They are in &ldquo;Download my
+              data&rdquo; and deleted with your account.
             </>,
             <>
               <Term>Surveys:</Term> when you answer a survey at{" "}

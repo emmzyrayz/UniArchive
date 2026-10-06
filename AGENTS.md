@@ -318,6 +318,23 @@ vars are documented in `.env.example`.
   limiter). Three reports hide an unverified PDF (`hiddenByReports`) until
   staff "Restore" it in /materials (`clearReports`); verified ones are
   only counted. Reports are in the data export and deleted in the purge.
+- "Help identify this PDF" (`HelpIdentifyDialog`, from the notice and the
+  Unverified callout): signed-in readers suggest the details of an
+  unverified material (`MaterialSuggestion`, one per user per material,
+  editable while pending), using the shared submission form fields and the
+  same validation (`parseSuggestion` in `lib/materialSuggestions.ts`;
+  `materialSuggest` limiter). `GET/POST /api/materials/[id]/suggestions`;
+  staff get `groups` by `fingerprint` (category, course code, school,
+  level). Staff use them in `SuggestionsPanel`: the review drawer's
+  "Verify with these details" sends `suggestionId` to tier-1 verify (the
+  submission takes the suggestion's details first); the platform verify
+  workspace's "Use these details" fills the form and publish sends
+  `suggestionId`. `settleSuggestions` accepts it and every agreeing one,
+  declines the rest (also on a plain verify), and awards "PDF Detective"
+  at `PDF_DETECTIVE_ACCEPTED` (5) accepted. Accepted suggestions aren't
+  ContributionEvents (those drive role progression). Queues show a 💡
+  count. Deleting an unverified listing deletes its suggestions and
+  reports; suggestions are in the data export and deleted in the purge.
 - Existing databases need `pnpm db:unverified-materials --apply` once
   (dry run without `--apply`): it swaps the plain unique `submissionId_1`
   index for the partial `submissionId_partial` (until then only one

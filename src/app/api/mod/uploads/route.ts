@@ -17,6 +17,8 @@ import { storageClient } from "@/lib/storage";
 import { newPdfJob } from "@/lib/pdfJobs";
 import { getBookModel, PLATFORM_STATUSES, type PlatformStatus } from "@/lib/models/bookModel";
 import { upsertUnverifiedFromPlatformBook } from "@/lib/materialPublish";
+import { getMaterialModel } from "@/lib/models/materialModel";
+import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
 import {
   PLATFORM_MAX_FILE_SIZE,
   isOwnPlatformKey,
@@ -159,10 +161,26 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    // Readers' suggestions on each file's unverified listing
+    const listed = await (await getMaterialModel())
+      .find({ bookId: { $in: docs.map((d) => d._id) }, status: "unverified" })
+      .select("_id bookId")
+      .lean();
+    const suggestionCounts = await (await getMaterialSuggestionModel()).aggregate<{ _id: unknown; count: number }>([
+      { $match: { materialId: { $in: listed.map((m) => m._id) }, status: "pending" } },
+      { $group: { _id: "$materialId", count: { $sum: 1 } } },
+    ]);
+    const countByMaterial = new Map(suggestionCounts.map((c) => [String(c._id), c.count]));
+    const countByBook = new Map(listed.map((m) => [String(m.bookId), countByMaterial.get(String(m._id)) ?? 0]));
+
     const now = new Date();
     return NextResponse.json(
       {
-        files: docs.map((d) => toPlatformFileDto(d, session.userId, now)),
+        files: docs.map((d) => {
+          const dto = toPlatformFileDto(d, session.userId, now);
+          const count = countByBook.get(String(d._id));
+          return count ? { ...dto, suggestionCount: count } : dto;
+        }),
         total,
         page,
         pageSize: PAGE_SIZE,

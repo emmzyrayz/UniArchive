@@ -12,6 +12,7 @@ import {
   type SubmissionStatus,
 } from "@/lib/models/materialSubmissionModel";
 import { getMaterialModel, type VerificationTier } from "@/lib/models/materialModel";
+import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
 import { decryptSensitiveData } from "@/lib/encryption";
 import type { SessionUser } from "@/lib/auth/session";
 
@@ -106,6 +107,9 @@ export interface AdminSubmissionDto {
   verifiedAt?: string;
   /** Tier of the published Material; only on verified submissions. */
   verificationTier?: VerificationTier;
+  /** While pending: its unverified UniLibrary listing and readers' pending suggestions */
+  unverifiedMaterialId?: string;
+  suggestionCount?: number;
   rejectionReason?: string;
   reviewNotes: { authorUpid: string; authorRole: string; note: string; createdAt: string }[];
 }
@@ -150,11 +154,46 @@ export async function loadVerificationTiers(
   );
 }
 
+export interface PendingListing {
+  materialId: string;
+  suggestionCount: number;
+}
+
+/**
+ * For pending submissions: the unverified Material listing each one, and how
+ * many "Help identify" suggestions readers left on it (keyed by submission id).
+ */
+export async function loadPendingListings(
+  submissions: Pick<IMaterialSubmission, "_id" | "status" | "bookId">[],
+): Promise<Map<string, PendingListing>> {
+  const pending = submissions.filter((s) => s.status === "submitted" || s.status === "in_review");
+  if (!pending.length) return new Map();
+  const Material = await getMaterialModel();
+  const materials = await Material.find({ bookId: { $in: pending.map((s) => s.bookId) }, status: "unverified" })
+    .select("_id bookId")
+    .lean();
+  const Suggestion = await getMaterialSuggestionModel();
+  const counts = await Suggestion.aggregate<{ _id: Types.ObjectId; count: number }>([
+    { $match: { materialId: { $in: materials.map((m) => m._id) }, status: "pending" } },
+    { $group: { _id: "$materialId", count: { $sum: 1 } } },
+  ]);
+  const countBy = new Map(counts.map((c) => [String(c._id), c.count]));
+  const byBook = new Map(materials.map((m) => [String(m.bookId), String(m._id)]));
+  const out = new Map<string, PendingListing>();
+  for (const s of pending) {
+    const materialId = byBook.get(String(s.bookId));
+    if (materialId) out.set(String(s._id), { materialId, suggestionCount: countBy.get(materialId) ?? 0 });
+  }
+  return out;
+}
+
 export function toAdminSubmissionDto(
   s: IMaterialSubmission,
   users: Map<string, UserSummary>,
   tiers: Map<string, VerificationTier> = new Map(),
+  listings: Map<string, PendingListing> = new Map(),
 ): AdminSubmissionDto {
+  const listing = listings.get(String(s._id));
   const submitter = users.get(s.submittedBy.toString());
   const reviewer = s.reviewedBy ? users.get(s.reviewedBy.toString()) : undefined;
   return {
@@ -193,6 +232,7 @@ export function toAdminSubmissionDto(
     reviewStartedAt: s.reviewStartedAt?.toISOString(),
     verifiedAt: s.verifiedAt?.toISOString(),
     verificationTier: tiers.get(String(s._id)),
+    ...(listing ? { unverifiedMaterialId: listing.materialId, suggestionCount: listing.suggestionCount } : {}),
     rejectionReason: s.rejectionReason,
     reviewNotes: (s.reviewNotes ?? []).map((n) => ({
       authorUpid: n.authorUpid,
@@ -207,11 +247,12 @@ export function toAdminSubmissionDto(
 export async function adminSubmissionResponse(
   submission: IMaterialSubmission,
 ): Promise<AdminSubmissionDto> {
-  const [users, tiers] = await Promise.all([
+  const [users, tiers, listings] = await Promise.all([
     loadUserSummaries([submission]),
     loadVerificationTiers([submission]),
+    loadPendingListings([submission]),
   ]);
-  return toAdminSubmissionDto(submission, users, tiers);
+  return toAdminSubmissionDto(submission, users, tiers, listings);
 }
 
 // ---------------------------------------------------------------------------

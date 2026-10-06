@@ -14,6 +14,13 @@ import { storageClient } from "@/lib/storage";
 import { pageImagePrefix } from "@/lib/pdfJobs";
 import { getBookModel } from "@/lib/models/bookModel";
 import { removeUnverifiedMaterial } from "@/lib/materialPublish";
+import { getMaterialModel } from "@/lib/models/materialModel";
+import type { Types } from "mongoose";
+
+async function unverifiedMaterialIdFor(bookId: Types.ObjectId): Promise<string | null> {
+  const m = await (await getMaterialModel()).findOne({ bookId, status: "unverified" }).select("_id").lean();
+  return m ? String(m._id) : null;
+}
 import {
   PLATFORM_READ_URL_SECONDS,
   claimedByOther,
@@ -48,6 +55,8 @@ export async function GET(request: NextRequest, context: Context) {
         fileUrl,
         draft: book.platform.draft ?? null,
         gift: toGiftDetailsDto(book),
+        // Its unverified UniLibrary listing, where readers leave suggestions
+        unverifiedMaterialId: await unverifiedMaterialIdFor(book._id),
       },
       { headers: { "Cache-Control": "no-store" } },
     );

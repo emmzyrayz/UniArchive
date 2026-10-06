@@ -25,6 +25,7 @@ import {
   materialBody,
   validateAcademic,
   validateBasics,
+  formFromSuggestion,
   type MaterialFormErrors,
   type MaterialFormState,
 } from "@/components/submit/materialFields";
@@ -32,6 +33,7 @@ import type { PdfDocument, PdfPaneHandle } from "@/components/pdf/PdfPane";
 import { OutlineEditor } from "./OutlineEditor";
 import { outlineKindFor, parseOutline, type OutlineEntry } from "@/lib/outline";
 import { extractPdfOutline, type OutlineSource } from "@/lib/pdfOutline";
+import { SuggestionsPanel } from "@/components/admin/SuggestionsPanel";
 
 // pdf.js only runs in the browser
 const PdfPane = dynamic(() => import("@/components/pdf/PdfPane"), {
@@ -46,6 +48,8 @@ interface FileDetail {
   fileUrl: string | null;
   draft: Record<string, unknown> | null;
   gift: GiftDetailsDto | null;
+  /** Its unverified UniLibrary listing, where readers suggest details */
+  unverifiedMaterialId?: string | null;
 }
 
 type Phase =
@@ -135,6 +139,8 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
   const [fileId, setFileId] = useState(initialId);
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [form, setForm] = useState<MaterialFormState>(EMPTY_MATERIAL_FORM);
+  // The readers' suggestion the form was filled from, accepted on publish
+  const [usedSuggestion, setUsedSuggestion] = useState<{ id: string; summary: string } | null>(null);
   const [outline, setOutline] = useState<OutlineEntry[]>([]);
   const [outlineError, setOutlineError] = useState<string | null>(null);
   const pdfDocRef = useRef<PdfDocument | null>(null);
@@ -169,6 +175,7 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
         return;
       }
       const initial = formFromDraft(res.data.draft, res.data.file, res.data.gift);
+      setUsedSuggestion(null);
       const initialOutline = outlineFromDraft(res.data.draft);
       setForm(initial);
       setOutline(initialOutline);
@@ -281,6 +288,7 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
         ...materialBody(form),
         ...(numPages ? { pageCount: numPages } : {}),
         ...(checkedOutline.value ? { outline: { entries: checkedOutline.value.entries } } : {}),
+        ...(usedSuggestion ? { suggestionId: usedSuggestion.id } : {}),
       }),
     });
     setBusy(null);
@@ -436,6 +444,29 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
               )}
               {phase.kind === "ready" && (
                 <>
+                  {detail?.unverifiedMaterialId && (
+                    <div className="rounded-xl border border-border p-3">
+                      <SuggestionsPanel
+                        materialId={detail.unverifiedMaterialId}
+                        actionLabel="Use these details"
+                        disabled={busy !== null}
+                        onUse={(group, suggestionId) => {
+                          setForm((f) => ({ ...formFromSuggestion(group.fields), tags: group.fields.tags.length ? group.fields.tags : f.tags }));
+                          setErrors({});
+                          setUsedSuggestion({ id: suggestionId, summary: group.summary });
+                          setMessage({ text: "Filled in from the readers' suggestion. Check it, then publish.", ok: true });
+                        }}
+                      />
+                      {usedSuggestion && (
+                        <p className="mt-2 text-xs text-text-secondary">
+                          Publishing will credit the readers who suggested <strong>{usedSuggestion.summary}</strong>.{" "}
+                          <button type="button" className="text-primary hover:underline" onClick={() => setUsedSuggestion(null)}>
+                            Don&apos;t credit them
+                          </button>
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <BasicsFields form={form} errors={errors} update={update} idPrefix="verify" />
                   <AcademicFields form={form} errors={errors} update={update} setForm={setForm} idPrefix="verify" />
                   {outlineKind ? (

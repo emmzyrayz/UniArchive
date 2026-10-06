@@ -9,6 +9,7 @@ export type BadgeId =
   | "five_verified"
   | "fifteen_verified"
   | "fifty_verified"
+  | "pdf_detective"
   // Quality
   | "endorsed"
   | "top_contributor"
@@ -28,6 +29,9 @@ export type BadgeId =
   | "verified_lecturer";
 
 export type BadgeRarity = "common" | "uncommon" | "rare" | "legendary";
+
+/** Accepted "Help identify" suggestions that earn the PDF Detective badge. */
+export const PDF_DETECTIVE_ACCEPTED = 5;
 
 export interface BadgeDefinition {
   id: BadgeId;
@@ -150,6 +154,14 @@ export const BADGE_DEFINITIONS: Record<BadgeId, BadgeDefinition> = {
     emoji: "🏫",
     category: "community",
     rarity: "legendary",
+  },
+  pdf_detective: {
+    id: "pdf_detective",
+    name: "PDF Detective",
+    description: `Helped identify ${PDF_DETECTIVE_ACCEPTED} PDFs in the UniLibrary`,
+    emoji: "🕵️",
+    category: "contribution",
+    rarity: "uncommon",
   },
   verified_student: {
     id: "verified_student",
