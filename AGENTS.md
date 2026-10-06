@@ -318,8 +318,13 @@ vars are documented in `.env.example`.
   limiter). Three reports hide an unverified PDF (`hiddenByReports`) until
   staff "Restore" it in /materials (`clearReports`); verified ones are
   only counted. Reports are in the data export and deleted in the purge.
-- "Help identify this PDF" (`HelpIdentifyDialog`, from the notice and the
-  Unverified callout): signed-in readers suggest the details of an
+- "Help identify this PDF" (`HelpIdentify`): a floating, non-blocking
+  panel on `/materials/[id]` and in the reader (`ReaderShell`), opened
+  from a launcher button (bottom left), the notice, the Unverified callout
+  or the reader banner, so people can read while they fill it in. It drags
+  by its header on computers, is a bottom sheet on phones, minimises to a
+  bar, and stays mounted when closed so typing isn't lost. Signed-in
+  readers suggest the details of an
   unverified material (`MaterialSuggestion`, one per user per material,
   editable while pending), using the shared submission form fields and the
   same validation (`parseSuggestion` in `lib/materialSuggestions.ts`;

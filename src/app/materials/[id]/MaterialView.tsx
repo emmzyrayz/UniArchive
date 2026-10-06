@@ -27,7 +27,7 @@ import { hasHigherOrEqualRole } from "@/types/roles";
 import { VerificationBadge } from "@/components/unilibrary/VerificationBadge";
 import { UnverifiedNotice, useUnverifiedNotice } from "@/components/unilibrary/UnverifiedNotice";
 import { ReportMaterialDialog } from "@/components/unilibrary/ReportMaterialDialog";
-import { HelpIdentifyDialog } from "@/components/unilibrary/HelpIdentifyDialog";
+import { HelpIdentify } from "@/components/unilibrary/HelpIdentify";
 
 type Tab = "pdf" | "questions" | "notes";
 
@@ -86,7 +86,9 @@ function MaterialViewContent({ material: m, preview }: { material: MaterialDetai
             }}
           />
         )}
-        {identifying && <HelpIdentifyDialog materialId={m._id} signedIn={hasActiveSession} onClose={() => setIdentifying(false)} />}
+        {unverified && (
+          <HelpIdentify materialId={m._id} signedIn={hasActiveSession} open={identifying} onOpenChange={setIdentifying} aboveBottomNav />
+        )}
         {reporting && <ReportMaterialDialog materialId={m._id} signedIn={hasActiveSession} onClose={() => setReporting(false)} />}
 
         <header className="space-y-2">
