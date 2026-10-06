@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FiArrowDown, FiArrowUp, FiCopy, FiPlus, FiTrash2, FiX } from "react-icons/fi";
+import { FiArrowDown, FiArrowUp, FiClipboard, FiCopy, FiPlus, FiTrash2, FiX } from "react-icons/fi";
 import type { AdminSurveyDto } from "@/lib/survey/surveys";
 import {
   LIMITS,
@@ -30,6 +30,7 @@ import { SurveyQuestions } from "@/components/survey/SurveyQuestions";
 import { timeAgo } from "../reviewShared";
 import { AdminPageShell, adminRequest, cardClass, dangerButton, inputClass, primaryButton, secondaryButton, selectClass } from "../adminUi";
 import { SURVEY_STATUS_STYLE } from "./SurveysAdmin";
+import { ImportQuestions } from "./ImportQuestions";
 
 const labelClass = "mb-1 block text-sm font-medium text-text-primary";
 const iconButton = "rounded-md p-1.5 text-text-muted hover:bg-surface hover:text-text-primary disabled:opacity-30";
@@ -315,6 +316,7 @@ export function SurveyBuilder({ id }: { id: string }) {
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [previewAnswers, setPreviewAnswers] = useState<Answers>({});
+  const [importing, setImporting] = useState(false);
 
   const apply = useCallback((s: AdminSurveyDto) => {
     setLoaded(s);
@@ -647,14 +649,32 @@ export function SurveyBuilder({ id }: { id: string }) {
               onRemove={() => setQuestionsDirty((qs) => qs.filter((x) => x.id !== q.id))}
             />
           ))}
-          <button
-            type="button"
-            className={`${secondaryButton} inline-flex w-full items-center justify-center gap-1.5 py-2.5`}
-            onClick={() => setQuestionsDirty((qs) => [...qs, blankQuestion()])}
-            disabled={working || questions.length >= LIMITS.questions}
-          >
-            <FiPlus aria-hidden /> Add question
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className={`${secondaryButton} inline-flex flex-1 items-center justify-center gap-1.5 py-2.5`}
+              onClick={() => setQuestionsDirty((qs) => [...qs, blankQuestion()])}
+              disabled={working || questions.length >= LIMITS.questions}
+            >
+              <FiPlus aria-hidden /> Add question
+            </button>
+            <button
+              type="button"
+              className={`${secondaryButton} inline-flex items-center justify-center gap-1.5 py-2.5`}
+              onClick={() => setImporting(true)}
+              disabled={working || questions.length >= LIMITS.questions}
+            >
+              <FiClipboard aria-hidden /> Paste questions
+            </button>
+          </div>
+          {importing && (
+            <ImportQuestions
+              existing={questions.length}
+              hasAnswers={hasAnswers}
+              onImport={(added) => setQuestionsDirty((qs) => [...qs, ...added])}
+              onClose={() => setImporting(false)}
+            />
+          )}
 
           <section className={`${cardClass} flex flex-wrap items-center gap-3`} aria-label="More actions">
             <button type="button" className={secondaryButton} onClick={duplicate} disabled={working}>

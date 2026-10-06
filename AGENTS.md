@@ -385,9 +385,11 @@ vars are documented in `.env.example`.
   them in the results without userId, name, email or IP hash.
 - README "Writing survey questions" is the brief for writing questions
   (types, limits, the JSON shape `cleanQuestions` accepts). Keep it in step
-  with `LIMITS` and `QUESTION_TYPES` in `lib/survey/questions.ts`. The
-  builder has no JSON import yet: questions are added one by one, or sent
-  as `questions` in `PATCH /api/admin/surveys/[id]`.
+  with `LIMITS` and `QUESTION_TYPES` in `lib/survey/questions.ts`. "Paste
+  questions" in the builder (`ImportQuestions`, `parseQuestionImport`)
+  takes that JSON, or an AI answer with ```json blocks, and appends it
+  (optional when the survey already has answers). The recommend score
+  only shows for 0-10 scales whose label mentions "recommend".
 
 ## SEO
 

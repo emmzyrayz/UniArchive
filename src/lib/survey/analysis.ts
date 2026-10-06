@@ -94,6 +94,7 @@ export function responseMatch(survey: Pick<ISurvey, "_id" | "questions">, f: Res
 // --- Summaries ----------------------------------------------------------------
 
 const round = (n: number) => Math.round(n * 100) / 100;
+const RECOMMEND = /recommend/i;
 
 function numericRows(q: SurveyQuestion, values: number[]): CountRow[] {
   if (q.type === "rating" || q.type === "scale") {
@@ -162,7 +163,9 @@ export function summarise(questions: SurveyQuestion[], responses: Pick<ISurveyRe
         max: nums.length ? sorted[sorted.length - 1] : null,
         rows: numericRows(q, nums),
       };
-      if (q.type === "scale" && (q.min ?? 0) === 0 && (q.max ?? 10) === 10 && nums.length) {
+      // The usual "would you recommend" breakdown: only for 0-10 questions
+      // that ask it (other 0-10 scales measure something else)
+      if (q.type === "scale" && (q.min ?? 0) === 0 && (q.max ?? 10) === 10 && RECOMMEND.test(q.label) && nums.length) {
         const promoters = nums.filter((n) => n >= 9).length;
         const detractors = nums.filter((n) => n <= 6).length;
         summary.nps = {

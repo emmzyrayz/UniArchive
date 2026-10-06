@@ -33,7 +33,7 @@ export type QuestionSummary =
       max: number | null;
       /** rating 1-5, scale min..max (every value), number: up to 10 ranges */
       rows: CountRow[];
-      /** 0-10 scales: the usual "would you recommend" breakdown */
+      /** 0-10 scales asking about recommending: the usual promoter breakdown */
       nps?: { promoters: number; passives: number; detractors: number; score: number };
     })
   | (BaseSummary & { kind: "text"; latest: string[] });

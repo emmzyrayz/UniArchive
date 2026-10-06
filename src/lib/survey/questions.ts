@@ -142,6 +142,45 @@ export function cleanQuestions(raw: unknown): { questions: SurveyQuestion[]; pro
   return { questions, problems };
 }
 
+/**
+ * Questions pasted into the builder as JSON (README "Writing survey
+ * questions"): an array, `{ "questions": [...] }`, or either inside
+ * ```json blocks (several blocks are joined), as AI tools tend to answer.
+ * Pasted ids are dropped so a copy never clashes with existing questions.
+ */
+export function parseQuestionImport(text: string): { questions: SurveyQuestion[]; problems: string[]; error?: string } {
+  const blocks = [...text.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)].map((m) => m[1]);
+  const items: unknown[] = [];
+  for (const block of blocks.length ? blocks : [text]) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(block.trim());
+    } catch {
+      return { questions: [], problems: [], error: "That isn't valid JSON. Paste the array of questions (or the ```json block) exactly as given." };
+    }
+    const list = Array.isArray(parsed) ? parsed : (parsed as { questions?: unknown })?.questions;
+    if (!Array.isArray(list)) return { questions: [], problems: [], error: "Expected a list of questions: [ { \"type\": ..., \"label\": ... } ]." };
+    items.push(...list);
+  }
+  if (items.length === 0) return { questions: [], problems: [], error: "No questions found." };
+  if (items.length > LIMITS.questions) {
+    return { questions: [], problems: [], error: `That's ${items.length} questions; a survey takes ${LIMITS.questions} at most. Split them into several surveys.` };
+  }
+  const unknownTypes = items.filter((q) => !QUESTION_TYPES.includes((q as { type?: QuestionType })?.type as QuestionType)).length;
+  const stripped = items.map((q) => {
+    if (!q || typeof q !== "object") return q;
+    const rest = { ...(q as Record<string, unknown>) };
+    delete rest.id;
+    if (Array.isArray(rest.options)) {
+      rest.options = rest.options.map((o) => (o && typeof o === "object" ? { label: (o as { label?: unknown }).label } : { label: o }));
+    }
+    return rest;
+  });
+  const { questions, problems } = cleanQuestions(stripped);
+  if (unknownTypes) problems.unshift(`${unknownTypes} question(s) had an unknown type and became short answers.`);
+  return { questions, problems };
+}
+
 // --- Answers ------------------------------------------------------------------
 
 /** What an answer looks like, per type. */

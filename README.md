@@ -90,8 +90,8 @@ questions; results can already be filtered by all of them.
 - Yes / No (`yes_no`).
 - Rating, 1-5 stars (`rating`).
 - Scale (`scale`): from 0 or 1 up to 3-10, with optional words under each
-  end (`minLabel`, `maxLabel`). 0-10 gets a "would you recommend" score in
-  the results.
+  end (`minLabel`, `maxLabel`). A 0-10 question that mentions
+  "recommend" also gets a "would you recommend" score in the results.
 - Number (`number`), with optional smallest and largest (`min`, `max`).
 
 **Limits and rules.** At most 50 questions per survey (keep real surveys
@@ -102,8 +102,9 @@ question can be required. Once people have answered, questions and
 options can be reworded and new optional questions added, but not removed
 or changed in type.
 
-**Format.** A survey's questions are stored as a JSON array like this (ids
-are added by the builder):
+**Format.** A survey's questions are a JSON array like this. Paste it
+(or an AI tool's whole answer with its ```json blocks) into **Paste
+questions** in the survey builder; ids are added for you:
 
 ```json
 [
