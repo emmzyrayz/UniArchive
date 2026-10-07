@@ -52,10 +52,17 @@ export default function PrivacyPage() {
             <>
               <Term>Google Drive imports:</Term> when you import PDFs from a
               Google Drive link, we read that shared folder or file and copy
-              the PDFs you choose into your library. We keep a record of each
-              import (the file&apos;s name, size and Drive id, and the result)
-              so the same file isn&apos;t imported twice; it is in
-              &ldquo;Download my data&rdquo; and deleted with your account.
+              the PDFs you choose into your library. When you pick files from
+              your own Drive, Google asks your permission for UniArchive to
+              open only the files you pick (the &ldquo;drive.file&rdquo;
+              access); we use that short-lived permission to copy those files
+              and don&apos;t keep it, and we never see or list the rest of your
+              Drive. We keep a record of each import (the file&apos;s name,
+              size and Drive id, and the result) so the same file isn&apos;t
+              imported twice; it is in &ldquo;Download my data&rdquo; and
+              deleted with your account. UniArchive&apos;s use of information
+              received from Google APIs adheres to the Google API Services
+              User Data Policy, including the Limited Use requirements.
             </>,
             <>
               <Term>Google sign-in:</Term> if you sign in with Google, we

@@ -1,15 +1,21 @@
 // components/drive/DriveImportDialog.tsx
-// "Import from Google Drive": paste a Drive link shared "Anyone with the
-// link", pick the PDFs (Select all), and they're imported one at a time
-// (two in parallel) through POST /api/drive/import, server to server, so
-// the person's data is only used to choose. target "library" adds them to
-// the person's library; "platform" (staff) to the upload queue.
+// "Import from Google Drive", two ways in:
+//  - From my Drive: Google's Picker (lib/drive/picker.ts), several PDFs at
+//    once, with a short-lived drive.file token that only opens what's picked
+//  - From a link: a folder or file shared "Anyone with the link", listed by
+//    POST /api/drive/scan, then Select all
+// The chosen PDFs are imported one at a time (two in parallel) through
+// POST /api/drive/import, server to server, so the person's data is only
+// used to choose. target "library" adds them to the person's library;
+// "platform" (staff) to the upload queue. Each tab shows only when its
+// Google keys are set (GET /api/drive/config).
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
 import { FiAlertCircle, FiCheckCircle, FiCopy, FiFolder, FiX } from "react-icons/fi";
 import { formatFileSize } from "@/assets/data/libraryData";
 import { parseDriveUrl } from "@/lib/drive/urls";
+import { pickDriveFiles, requestDriveToken, type PickerConfig } from "@/lib/drive/picker";
 
 const CONCURRENCY = 2;
 /** Most files one run imports (the daily limit for students is 100). */
@@ -24,7 +30,7 @@ interface ScanFile {
   importedBefore: boolean;
 }
 interface Scan {
-  kind: "folder" | "file";
+  kind: "folder" | "file" | "picked";
   name: string;
   truncated: boolean;
   files: ScanFile[];
@@ -73,7 +79,27 @@ export function DriveImportDialog({ target, onClose, onImported }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [items, setItems] = useState<Item[] | null>(null);
   const stopRef = useRef(false);
+  // The Picker's token, for importing what was picked (never stored)
+  const tokenRef = useRef<string | null>(null);
+  const [config, setConfig] = useState<{ picker: PickerConfig | null; links: boolean } | null>(null);
+  const [mode, setMode] = useState<"drive" | "link">("drive");
+  const [picking, setPicking] = useState(false);
   const running = items?.some((i) => i.status === "waiting" || i.status === "importing") ?? false;
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/drive/config", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : { picker: null, links: false }))
+      .then((c: { picker: PickerConfig | null; links: boolean }) => {
+        if (cancelled) return;
+        setConfig(c);
+        if (!c.picker) setMode("link");
+      })
+      .catch(() => !cancelled && setConfig({ picker: null, links: false }));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -82,8 +108,36 @@ export function DriveImportDialog({ target, onClose, onImported }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [running, onClose]);
 
+  const doPick = async () => {
+    if (!config?.picker) return;
+    setError(null);
+    setPicking(true);
+    try {
+      const token = await requestDriveToken(config.picker);
+      const picked = await pickDriveFiles(config.picker, token, MAX_PER_RUN);
+      if (!picked) return;
+      if (picked.length === 0) {
+        setError("Only PDFs can be imported. Pick PDF files.");
+        return;
+      }
+      tokenRef.current = token;
+      setScan({
+        kind: "picked",
+        name: "From your Google Drive",
+        truncated: false,
+        files: picked.map((f) => ({ ...f, folderPath: "", importedBefore: false })),
+      });
+      setSelected(new Set(picked.map((f) => f.id)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't open Google Drive.");
+    } finally {
+      setPicking(false);
+    }
+  };
+
   const doScan = async () => {
     setError(null);
+    tokenRef.current = null;
     if (!parseDriveUrl(url)) {
       setError("That isn't a Google Drive link. In Drive, use Share > Copy link, and paste it here.");
       return;
@@ -134,6 +188,7 @@ export function DriveImportDialog({ target, onClose, onImported }: Props) {
             target,
             fileId: file.id,
             ...(file.resourceKey && { resourceKey: file.resourceKey }),
+            ...(tokenRef.current && { accessToken: tokenRef.current }),
           });
           if (r.status === "imported") imported++;
           update(file.id, { status: r.status, message: r.message });
@@ -186,7 +241,51 @@ export function DriveImportDialog({ target, onClose, onImported }: Props) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          {!scan && (
+          {!scan && config && (config.picker || config.links) && (
+            <div role="tablist" className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-surface p-1">
+              {(["drive", "link"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === m}
+                  disabled={m === "drive" ? !config.picker : !config.links}
+                  onClick={() => {
+                    setMode(m);
+                    setError(null);
+                  }}
+                  className={`rounded-md px-3 py-2 text-sm font-medium disabled:opacity-40 ${
+                    mode === m ? "bg-surface-raised text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  {m === "drive" ? "From my Drive" : "From a link"}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!scan && config && !config.picker && !config.links && (
+            <p className="text-sm text-text-secondary">Importing from Google Drive isn&apos;t set up yet. Check back soon.</p>
+          )}
+
+          {!scan && config?.picker && mode === "drive" && (
+            <div className="space-y-3">
+              <p className="text-sm text-text-secondary">
+                Pick PDFs in Google Drive: open your study folder and select them (several at once). UniArchive can
+                only open the files you pick.
+              </p>
+              <button
+                type="button"
+                onClick={doPick}
+                disabled={picking}
+                className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {picking ? "Opening Google Drive…" : "Choose PDFs from Google Drive"}
+              </button>
+            </div>
+          )}
+
+          {!scan && config?.links && mode === "link" && (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -305,7 +404,7 @@ export function DriveImportDialog({ target, onClose, onImported }: Props) {
           {scan && !items && (
             <>
               <button type="button" onClick={() => { setScan(null); setError(null); }} className="rounded-lg px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary">
-                Another link
+                {scan.kind === "picked" ? "Pick again" : "Another link"}
               </button>
               <button
                 type="button"

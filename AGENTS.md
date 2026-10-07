@@ -378,8 +378,8 @@ vars are documented in `.env.example`.
 ## Google Drive import (v1.5, being built)
 
 Plan: README "Roadmap > v1.5". Built so far: the pipeline every source
-uses (part 1) and public link import (part 2). Still to come: the Picker
-(part 3) and the platform inbox (part 4).
+uses (part 1), public link import (part 2) and the Google Picker (part 3).
+Still to come: the platform inbox (part 4).
 - `lib/drive/urls.ts` (`parseDriveUrl`, pure, unit-tested): folder, file,
   `open?id=`, `uc?id=` links and bare ids; keeps `resourcekey`.
 - `lib/drive/api.ts`: fetch-based Drive v3 client (no googleapis), auth
@@ -423,6 +423,18 @@ uses (part 1) and public link import (part 2). Still to come: the Picker
   Select all, up to 100 a run -> imports two at a time with per-file
   status -> summary; "Stop after these"). On `/upload` (target library)
   and the staff upload page's actions (`BulkUploader`, target platform).
+- Picker (part 3): the dialog's "From my Drive" tab (`lib/drive/picker.ts`,
+  browser only) loads Google Identity Services and the Picker, asks for a
+  `drive.file` token (popup, `prompt: ""`; nothing stored), and opens the
+  Picker (PDFs, folders browsable, multi-select up to 100). Each picked
+  file goes to `POST /api/drive/import` with `accessToken`; the server uses
+  it for that file only (`isAccessToken` checks the shape; never logged or
+  stored; `DriveImport.via` = "picker"). `GET /api/drive/config` gives the
+  browser `{picker: {clientId, apiKey, appId} | null, links}` from
+  `GOOGLE_CLIENT_ID` (the sign-in client: its Authorized JavaScript
+  origins must include the site), `GOOGLE_PICKER_API_KEY` and
+  `GOOGLE_CLOUD_PROJECT_NUMBER`; each tab shows only when its keys are set.
+  The privacy page carries Google's "Limited Use" statement.
 
 ## UniLibrary: unverified PDFs
 

@@ -51,8 +51,9 @@ to 500L/600L, postgraduate) and course code.
   for now.
 - **Keep a personal library**: upload your own PDFs (up to 10 MB on the
   fast path, larger ones to cloud storage) and read them anywhere, or
-  import a Google Drive folder's PDFs from its share link (server to
-  server, so it doesn't use the student's data).
+  import PDFs from Google Drive (pick them from your own Drive, or paste
+  a shared folder's link; server to server, so it doesn't use the
+  student's data).
 - **Contribute**: submit materials to the UniLibrary (staff verify them in
   two tiers), gift a PDF to UniArchive, or type out past questions and
   notes beside the PDF in the conversion workspace (autosaves, works
@@ -319,7 +320,7 @@ Build order (one commit each, each tested and documented):
    `POST /api/drive/import` (one file per request, the browser runs the
    queue with progress), `DriveImportDialog` on the Library page and the
    staff upload page, daily limits.
-3. **Picker import**: Google Identity Services token (`drive.file`,
+3. **Picker import** (done 2026-10-08): Google Identity Services token (`drive.file`,
    short-lived, never stored) plus the Google Picker, in the same dialog.
 4. **Platform inbox**: admin page to connect UniArchive's Google account
    (separate OAuth client, refresh token encrypted), daily cron

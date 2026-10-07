@@ -21,6 +21,9 @@ function fail(status: number, message: string): never {
 
 export const isDriveId = (v: unknown): v is string => typeof v === "string" && ID.test(v);
 export const isResourceKey = (v: unknown): v is string => typeof v === "string" && KEY.test(v);
+/** A Google OAuth access token (opaque; "ya29." and friends). */
+export const isAccessToken = (v: unknown): v is string =>
+  typeof v === "string" && /^[A-Za-z0-9._~+/=-]{20,4096}$/.test(v);
 
 /** "library" (anyone who may upload) or "platform" (staff with material.ingest). */
 export async function authorizeTarget(
