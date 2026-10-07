@@ -20,7 +20,8 @@ export type Visibility = "private" | "shared" | "public";
 export type BookProcessingStatus = "none" | "pending" | "done" | "failed";
 export type BookStorageProvider = "cloudinary" | "backblaze";
 
-export const PLATFORM_SOURCES = ["mod_upload", "gift"] as const;
+// drive: staff Drive import; drive_inbox: shared with the UniArchive Gmail
+export const PLATFORM_SOURCES = ["mod_upload", "gift", "drive", "drive_inbox"] as const;
 export type PlatformSource = (typeof PLATFORM_SOURCES)[number];
 export const PLATFORM_STATUSES = ["pending", "published", "discarded"] as const;
 export type PlatformStatus = (typeof PLATFORM_STATUSES)[number];
@@ -89,6 +90,8 @@ export interface IBookPlatform {
   // form), and the library book it was copied from
   gift?: IGiftDetails;
   sourceBookId?: Types.ObjectId;
+  // Drive imports: the Drive file, and (inbox) who shared it (email encrypted)
+  drive?: { fileId: string; sharedByName?: string; sharedByEmail?: string };
 }
 
 export interface IBook {
@@ -208,6 +211,13 @@ const BookPlatformSchema = new Schema<IBookPlatform>(
     discardedAt: { type: Date },
     gift: { type: GiftDetailsSchema, default: undefined },
     sourceBookId: { type: Schema.Types.ObjectId, ref: "Book" },
+    drive: {
+      type: new Schema(
+        { fileId: { type: String, required: true }, sharedByName: String, sharedByEmail: String },
+        { _id: false },
+      ),
+      default: undefined,
+    },
   },
   { _id: false },
 );
@@ -302,6 +312,13 @@ BookSchema.index(
 BookSchema.index(
   { "platform.sourceBookId": 1 },
   { unique: true, partialFilterExpression: { "platform.sourceBookId": { $exists: true } } },
+);
+// Duplicate library books per owner (Drive imports), by SHA-256. Partial
+// indexes can't say "platform doesn't exist", so platform books with a
+// checksum are in it too (the query adds that condition).
+BookSchema.index(
+  { uploaderId: 1, checksum: 1 },
+  { partialFilterExpression: { checksum: { $exists: true } } },
 );
 // Duplicate platform uploads, by SHA-256 of the uploaded file
 BookSchema.index(

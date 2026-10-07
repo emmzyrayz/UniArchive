@@ -5,7 +5,6 @@ import { LIBRARY_BOOKS, getBookModel } from "@/lib/models/bookModel";
 import { requireAuth, requirePermission } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
 import { storageClient } from "@/lib/storage";
-import { newPdfJob } from "@/lib/pdfJobs";
 import {
   BOOK_ALLOWED_MIME_TYPES,
   BOOK_MAX_FILE_SIZE,
@@ -17,7 +16,7 @@ import {
   type SubmissionStatus,
 } from "@/lib/models/materialSubmissionModel";
 import { resolveBookAcademic, type BookAcademicBody } from "@/lib/submissions";
-import { awardBadgesAfter } from "@/lib/badges";
+import { createLibraryBook } from "@/lib/bookCreate";
 
 const MAX_LIMIT = 50;
 
@@ -140,27 +139,19 @@ export async function POST(request: NextRequest) {
 
     const academic = await resolveBookAcademic(body);
 
-    const Book = await getBookModel();
-    const doc = await Book.create({
-      ...academic,
+    const doc = await createLibraryBook({
+      owner: session,
       title,
-      description: description || undefined,
+      description,
       tags,
-      storageKey,
-      fileUrl: storageClient.getPublicUrl(storageKey),
+      academic,
+      stored: { provider: "backblaze", key: storageKey },
       fileSize: size,
       mimeType: contentType,
       pageCount,
       checksum,
-      uploaderId: session.userId,
-      ownerUpid: session.upid,
-      status: "pending",
-      visibility: "private",
-      // Page images, so devices that can't run pdf.js can read it (never compressed)
-      pdfJob: newPdfJob(false),
     });
 
-    awardBadgesAfter(session.userId, "book_uploaded");
     return NextResponse.json(
       { book: toBookDto(doc.toObject() as BookDoc) },
       { status: 201 },

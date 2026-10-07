@@ -33,6 +33,7 @@ import { getSurveyModel, type ISurvey } from "@/lib/models/surveyModel";
 import { getSurveyResponseModel, type ISurveyResponse } from "@/lib/models/surveyResponseModel";
 import { answerText } from "@/lib/survey/questions";
 import { getMaterialReportModel } from "@/lib/models/materialReportModel";
+import { getDriveImportModel } from "@/lib/models/driveImportModel";
 import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
 import { decryptSensitiveData } from "@/lib/encryption";
 import { BADGE_DEFINITIONS, type BadgeId } from "@/lib/constants/badges";
@@ -142,6 +143,11 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
 
   const surveyResponses = await exportSurveyResponses(id);
   const materialReports = await (await getMaterialReportModel()).find({ userId: id }).select("materialId reason note createdAt").lean();
+  // Their own Google Drive imports (the inbox ledger holds no one's user id but staff's)
+  const driveImports = await (await getDriveImportModel())
+    .find({ importedBy: id })
+    .select("target via driveFileId name size status message bookId createdAt")
+    .lean();
   const pdfSuggestions = await (await getMaterialSuggestionModel()).find({ userId: id }).select("materialId fields status createdAt updatedAt").lean();
 
   const account = {
@@ -197,6 +203,7 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     schoolSuggestions: scrub(suggestions),
     surveyResponses,
     materialReports: scrub(materialReports),
+    driveImports: scrub(driveImports),
     helpIdentifySuggestions: scrub(pdfSuggestions),
     contributionHistory: scrub(contributions),
     messagesFromTheUniArchiveTeam: scrub(messages),

@@ -14,9 +14,8 @@ import { requirePermission } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { storageClient } from "@/lib/storage";
-import { newPdfJob } from "@/lib/pdfJobs";
+import { createPlatformBook, platformDuplicate } from "@/lib/bookCreate";
 import { getBookModel, PLATFORM_STATUSES, type PlatformStatus } from "@/lib/models/bookModel";
-import { upsertUnverifiedFromPlatformBook } from "@/lib/materialPublish";
 import { getMaterialModel } from "@/lib/models/materialModel";
 import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
 import {
@@ -79,46 +78,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Uploaded file is not an accepted PDF." }, { status: 400 });
     }
 
-    const Book = await getBookModel();
     // Checked again here: two tabs could have signed the same file at once
-    const duplicate = await Book.exists({
-      checksum,
-      platform: { $exists: true },
-      "platform.status": { $ne: "discarded" },
-    });
-    if (duplicate) {
+    if (await platformDuplicate(checksum)) {
       await storageClient.deleteFile(storageKey).catch(() => undefined);
       return NextResponse.json({ message: "This PDF is already in the queue." }, { status: 409 });
     }
 
-    const title = fileName.replace(/\.pdf$/i, "").replace(/[_]+/g, " ").trim().slice(0, 300) || "Untitled PDF";
-    const doc = await Book.create({
-      title,
-      fileUrl: storageClient.getPublicUrl(storageKey),
-      storageKey,
-      storageProvider: "backblaze",
-      fileSize: size,
-      pageCount,
-      mimeType: "application/pdf",
-      checksum,
-      uploaderId: session.userId,
-      ownerUpid: session.upid,
-      status: "pending",
-      visibility: "private",
-      // Compression and page images by the PDF worker
-      pdfJob: newPdfJob(true),
-      platform: {
-        source: "mod_upload",
-        status: "pending",
-        uploadedBy: session.userId,
-        uploadedByUpid: session.upid,
-        originalFileName: fileName,
-        originalSize: Math.max(originalSize, size),
-      },
-    });
-
     // Listed in the UniLibrary at once as an unidentified PDF
-    await upsertUnverifiedFromPlatformBook(doc.toObject() as PlatformBookDoc);
+    const doc = await createPlatformBook({
+      uploader: session,
+      source: "mod_upload",
+      fileName,
+      storageKey,
+      fileSize: size,
+      originalSize,
+      pageCount,
+      checksum,
+    });
 
     return NextResponse.json(
       { file: toPlatformFileDto(doc.toObject() as PlatformBookDoc, session.userId) },

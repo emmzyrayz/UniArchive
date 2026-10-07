@@ -375,6 +375,40 @@ vars are documented in `.env.example`.
   uploads with trailing checksums aren't decoded by every S3-compatible
   store). The root tsconfig excludes `services/`.
 
+## Google Drive import (v1.5, being built)
+
+Plan: README "Roadmap > v1.5". Built so far (commit 1, no routes or UI
+yet): the pipeline every source will use.
+- `lib/drive/urls.ts` (`parseDriveUrl`, pure, unit-tested): folder, file,
+  `open?id=`, `uc?id=` links and bare ids; keeps `resourcekey`.
+- `lib/drive/api.ts`: fetch-based Drive v3 client (no googleapis), auth
+  `{apiKey}` (public links) or `{accessToken}` (Picker / inbox);
+  `getMeta` (shortcuts resolved), `listPdfs` (breadth first, 3 levels,
+  500 files), `download` (`alt=media`, resource-key header). Errors are
+  `DriveError` with messages people can act on (private link, flagged
+  file, rate limit). `DRIVE_API_URL` points tests at a fake.
+- `lib/drive/importFile.ts` (`importDriveFile(target, ref, auth, via)`):
+  PDF of at most 500 MB -> ledger skip (`DriveImport`: same Drive file +
+  md5 for this owner, its book still there, no download) -> download,
+  `%PDF-` check, SHA-256 -> duplicate by checksum (`libraryDuplicate`:
+  the owner's books; `platformDuplicate`: the queue) -> store -> Book.
+  Up to `BUFFER_MAX_BYTES` (50 MB) in memory with a pdf-lib page count;
+  bigger files stream to Backblaze (`storageClient.uploadStream`,
+  `@aws-sdk/lib-storage` multipart, hashed by a Transform on the way) and
+  are deleted again if they turn out to be duplicates or not PDFs.
+  Library: Cloudinary up to 10 MB (`uploadPdfFromServer`), falling back
+  to Backblaze if Cloudinary refuses; academic details from the owner's
+  profile. Platform: `platform/<uid>/` (staff, source `drive`) or
+  `platform/inbox/` (source `drive_inbox`, sharer's name and encrypted
+  email on `platform.drive`). Never throws for a bad file: returns
+  imported / duplicate / failed and logs a `DriveImport` row.
+- `lib/bookCreate.ts` (`createLibraryBook`, `createPlatformBook`) builds
+  every Book: `POST /api/books`, `/api/upload/finalize` and
+  `/api/mod/uploads` use it too. Library books now get `checksum` when
+  known (index `{uploaderId, checksum}`; a partial index can't say
+  "platform doesn't exist", so it covers any book with a checksum).
+- `DriveImport` rows are in the data export and deleted in the purge.
+
 ## UniLibrary: unverified PDFs
 
 - Every PDF is listed as soon as it exists, not only once staff verify it:
@@ -610,7 +644,8 @@ admin), full admin panel (`/admin`), SEO
   draft merging, broadcast templates (escaping, links, digest), Lagos
   months, field encryption and preference links, school email matching,
   the material lifecycle (unverified -> verified -> removed), broadcast
-  recipients, digest numbers and Brevo list tidying. Not covered: API
+  recipients, digest numbers, Brevo list tidying, Drive links and the
+  Drive import pipeline (fake Drive, mocked storage). Not covered: API
   routes and pages (still exercised by hand or scripted runs against
   `pnpm start`), React components.
 - CI (`.github/workflows/ci.yml`): typecheck, lint and tests on every push

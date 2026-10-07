@@ -75,6 +75,29 @@ export function createSignedPdfUpload(publicId: string): CloudinarySignedUpload 
   };
 }
 
+/**
+ * Uploads a PDF from the server (Drive imports; browsers upload directly
+ * with createSignedPdfUpload). Same storage settings as a browser upload.
+ */
+export function uploadPdfFromServer(bytes: Uint8Array, publicId: string): Promise<CloudinaryPdfInfo> {
+  return new Promise((resolve, reject) => {
+    const stream = client().uploader.upload_stream(
+      { public_id: publicId, type: "authenticated", resource_type: "image", allowed_formats: ["pdf"], pages: true },
+      (error, result) => {
+        if (error || !result) return reject(error ?? new Error("Cloudinary upload failed"));
+        resolve({
+          publicId: result.public_id,
+          secureUrl: result.secure_url,
+          bytes: result.bytes ?? bytes.byteLength,
+          format: result.format ?? "pdf",
+          pageCount: (result as { pages?: number }).pages ?? 1,
+        });
+      },
+    );
+    stream.end(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+  });
+}
+
 export interface CloudinaryPdfInfo {
   publicId: string;
   secureUrl: string;

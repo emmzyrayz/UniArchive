@@ -301,7 +301,7 @@ are imported by picking them again. The platform inbox does use
 `drive.readonly`, but only for UniArchive's own account.
 
 Build order (one commit each, each tested and documented):
-1. **Core pipeline**: Drive URL parser (`lib/drive/urls.ts`), a small
+1. **Core pipeline** (done 2026-10-08): Drive URL parser (`lib/drive/urls.ts`), a small
    fetch-based Drive v3 client (`lib/drive/api.ts`, `DRIVE_API_URL` for
    tests), and one import pipeline for every source
    (`lib/drive/importFile.ts`): check it's a PDF of at most 500 MB, skip

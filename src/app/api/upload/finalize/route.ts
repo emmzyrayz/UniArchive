@@ -5,13 +5,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
 import { enforceRateLimit } from "@/lib/rateLimitRedis";
-import { getBookModel } from "@/lib/models/bookModel";
 import { getCloudinaryPdf } from "@/lib/cloudinary";
 import { CLOUDINARY_MAX_SIZE } from "@/lib/storageRouter";
 import { isOwnCloudinaryId } from "@/lib/uploads";
 import { toBookDto, type BookDoc } from "@/lib/dto/book";
 import { resolveBookAcademic, type BookAcademicBody } from "@/lib/submissions";
-import { awardBadgesAfter } from "@/lib/badges";
+import { createLibraryBook } from "@/lib/bookCreate";
 
 interface FinalizeBody extends BookAcademicBody {
   publicId: string;
@@ -76,26 +75,17 @@ export async function POST(request: NextRequest) {
 
     const academic = await resolveBookAcademic(body);
 
-    const Book = await getBookModel();
-    const doc = await Book.create({
-      ...academic,
+    const doc = await createLibraryBook({
+      owner: session,
       title,
-      description: description || undefined,
+      description,
       tags,
-      storageKey: publicId,
-      storageProvider: "cloudinary",
-      cloudinaryPublicId: publicId,
-      fileUrl: pdf.secureUrl,
+      academic,
+      stored: { provider: "cloudinary", publicId, secureUrl: pdf.secureUrl },
       fileSize: pdf.bytes,
-      mimeType: "application/pdf",
       pageCount: pdf.pageCount,
-      uploaderId: session.userId,
-      ownerUpid: session.upid,
-      status: "pending",
-      visibility: "private",
     });
 
-    awardBadgesAfter(session.userId, "book_uploaded");
     return NextResponse.json(
       { book: toBookDto(doc.toObject() as BookDoc) },
       { status: 201 },

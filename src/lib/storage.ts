@@ -15,6 +15,8 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Upload } from "@aws-sdk/lib-storage";
+import type { Readable } from "node:stream";
 
 export interface UploadResult {
   success: boolean;
@@ -220,6 +222,25 @@ export class StorageClient {
           ContentType: contentType,
         }),
       );
+      return { success: true, fileUrl: this.getPublicUrl(key), fileName: key };
+    } catch (error) {
+      return { success: false, error: errorMessage(error, "Upload failed") };
+    }
+  }
+
+  /**
+   * Server-side upload of a stream of unknown length (a Drive download),
+   * in 8 MB multipart chunks, so a large file never sits whole in memory.
+   */
+  async uploadStream(body: Readable, key: string, contentType = "application/pdf"): Promise<UploadResult> {
+    try {
+      const { client, config } = this.s3;
+      await new Upload({
+        client,
+        params: { Bucket: config.bucketName, Key: key, Body: body, ContentType: contentType },
+        partSize: 8 * 1024 * 1024,
+        queueSize: 2,
+      }).done();
       return { success: true, fileUrl: this.getPublicUrl(key), fileName: key };
     } catch (error) {
       return { success: false, error: errorMessage(error, "Upload failed") };
