@@ -50,7 +50,9 @@ to 500L/600L, postgraduate) and course code.
   Very large PDFs on low-end phones get a "open it on a computer" fallback
   for now.
 - **Keep a personal library**: upload your own PDFs (up to 10 MB on the
-  fast path, larger ones to cloud storage) and read them anywhere.
+  fast path, larger ones to cloud storage) and read them anywhere, or
+  import a Google Drive folder's PDFs from its share link (server to
+  server, so it doesn't use the student's data).
 - **Contribute**: submit materials to the UniLibrary (staff verify them in
   two tiers), gift a PDF to UniArchive, or type out past questions and
   notes beside the PDF in the conversion workspace (autosaves, works
@@ -313,7 +315,7 @@ Build order (one commit each, each tested and documented):
    imports to Backblaze. Book creation moves into `lib/bookCreate.ts`,
    shared with today's upload routes, so the records are identical.
    Library books get a checksum (dedupe index per owner).
-2. **Public link import**: `POST /api/drive/scan` and
+2. **Public link import** (done 2026-10-08): `POST /api/drive/scan` and
    `POST /api/drive/import` (one file per request, the browser runs the
    queue with progress), `DriveImportDialog` on the Library page and the
    staff upload page, daily limits.

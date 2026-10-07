@@ -377,8 +377,9 @@ vars are documented in `.env.example`.
 
 ## Google Drive import (v1.5, being built)
 
-Plan: README "Roadmap > v1.5". Built so far (commit 1, no routes or UI
-yet): the pipeline every source will use.
+Plan: README "Roadmap > v1.5". Built so far: the pipeline every source
+uses (part 1) and public link import (part 2). Still to come: the Picker
+(part 3) and the platform inbox (part 4).
 - `lib/drive/urls.ts` (`parseDriveUrl`, pure, unit-tested): folder, file,
   `open?id=`, `uc?id=` links and bare ids; keeps `resourcekey`.
 - `lib/drive/api.ts`: fetch-based Drive v3 client (no googleapis), auth
@@ -408,6 +409,20 @@ yet): the pipeline every source will use.
   known (index `{uploaderId, checksum}`; a partial index can't say
   "platform doesn't exist", so it covers any book with a checksum).
 - `DriveImport` rows are in the data export and deleted in the purge.
+- Public link import (part 2): `POST /api/drive/scan {url, target}` reads
+  a link shared "Anyone with the link" with the server key
+  `GOOGLE_DRIVE_API_KEY` (503 until set) and lists its PDFs, marking ones
+  this owner imported before; `POST /api/drive/import {target, fileId,
+  resourceKey?}` imports one file (`maxDuration` 300) and answers 200 with
+  imported / duplicate / failed. Target `library` needs `upload`;
+  `platform` needs `material.ingest` (source `drive`). Shared checks in
+  `lib/drive/routeAccess.ts`: limiters `driveScan` (30/h),
+  `driveImport` (100/day, students), `driveImportStaff` (1000/day), and
+  2 GB a day of library imports per student (summed from `DriveImport`).
+- UI: `components/drive/DriveImportDialog` (paste link -> checklist with
+  Select all, up to 100 a run -> imports two at a time with per-file
+  status -> summary; "Stop after these"). On `/upload` (target library)
+  and the staff upload page's actions (`BulkUploader`, target platform).
 
 ## UniLibrary: unverified PDFs
 

@@ -104,8 +104,8 @@ export const roadmap: RoadmapPhase[] = [
       {
         title: "Import from Google Drive",
         description:
-          "Bring PDFs in straight from Google Drive: pick files from your Drive, paste a shared folder link, or share them with UniArchive's Gmail.",
-        status: "planned",
+          "Bring PDFs in straight from Google Drive: paste a shared folder link (live), pick files from your own Drive, or share them with UniArchive's Gmail (coming).",
+        status: "in-progress",
       },
       {
         title: "Surveys and email updates",

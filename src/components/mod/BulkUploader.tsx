@@ -14,6 +14,7 @@ import { useStaffArea } from "@/components/admin/staffArea";
 import { formatFileSize } from "@/assets/data/libraryData";
 import { putFileWithProgress } from "@/utils/uploadBook";
 import type { PdfPrepRequest, PdfPrepResponse } from "@/workers/pdfPrep.worker";
+import { DriveImportDialog } from "@/components/drive/DriveImportDialog";
 
 const CONCURRENCY = 2;
 const MAX_FILES_PER_BATCH = 100;
@@ -106,6 +107,7 @@ export function BulkUploader() {
   const [items, setItems] = useState<Item[]>([]);
   const [dragging, setDragging] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [driveOpen, setDriveOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const runningRef = useRef(new Set<string>());
   const prep = usePrepWorkers();
@@ -227,11 +229,27 @@ export function BulkUploader() {
       title="Upload materials"
       subtitle="PDFs go to the platform queue. Fill in each one's details in the verify workspace to publish it as UniArchive's."
       actions={
-        <Link href={`${base}/materials/queue`} className="rounded-lg border border-border px-3 py-2 text-sm text-text-primary hover:bg-surface">
-          Open queue
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setDriveOpen(true)}
+            className="rounded-lg border border-border px-3 py-2 text-sm text-text-primary hover:bg-surface"
+          >
+            Import from Google Drive
+          </button>
+          <Link href={`${base}/materials/queue`} className="rounded-lg border border-border px-3 py-2 text-sm text-text-primary hover:bg-surface">
+            Open queue
+          </Link>
+        </div>
       }
     >
+      {driveOpen && (
+        <DriveImportDialog
+          target="platform"
+          onClose={() => setDriveOpen(false)}
+          onImported={(n) => n > 0 && setNotice(`${n} PDF${n === 1 ? "" : "s"} imported from Google Drive into the queue.`)}
+        />
+      )}
       <div className="space-y-4">
         <div
           role="button"

@@ -28,6 +28,7 @@ import { CLOUDINARY_MAX_SIZE } from "@/lib/storageRouter";
 import { BOOK_MAX_FILE_SIZE, bookKeyPrefix, cloudinaryBookPrefix } from "@/lib/uploads";
 import { platformKeyPrefix } from "@/lib/platformUploads";
 import { resolveBookAcademic } from "@/lib/submissions";
+import { PROFILE_LEVELS } from "@/lib/constants/profile";
 import { encryptSensitiveData } from "@/lib/encryption";
 import { createLibraryBook, createPlatformBook, libraryDuplicate, platformDuplicate } from "@/lib/bookCreate";
 
@@ -96,7 +97,8 @@ async function profileAcademic(userId: string) {
       universityId: u?.universityId ? String(u.universityId) : undefined,
       facultyId: u?.facultyId ? String(u.facultyId) : undefined,
       departmentId: u?.departmentId ? String(u.departmentId) : undefined,
-      level: u?.level,
+      // Older accounts may hold free-text levels the books API won't accept
+      level: u?.level && (PROFILE_LEVELS as readonly string[]).includes(u.level) ? u.level : undefined,
     });
   } catch {
     // A stale profile reference: import without academic details

@@ -40,6 +40,13 @@ const limiters = {
   contact: make(3, "1 h", "rl:contact"),
   // Gifting PDFs to UniArchive: each one copies a file into platform storage
   gift: make(10, "24 h", "rl:gift"),
+  // Google Drive import: reading a shared link's folder, per user
+  driveScan: make(30, "1 h", "rl:drive-scan"),
+  // Files imported from Drive into a personal library, per student (bytes
+  // are capped separately in lib/drive/routeAccess.ts)
+  driveImport: make(100, "24 h", "rl:drive-import"),
+  // Files staff import from Drive into the platform queue, per staff member
+  driveImportStaff: make(1000, "24 h", "rl:drive-import-staff"),
   // Institution suggest — moderate
   suggest: make(3, "24 h", "rl:suggest"),
   // Admin routes — generous

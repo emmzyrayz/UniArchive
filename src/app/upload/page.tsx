@@ -13,6 +13,8 @@ import { queueUpload } from "@/utils/uploadQueue";
 import { uploadBook } from "@/utils/uploadBook";
 import { compressPdf, type CompressionResult } from "@/lib/compressPdf";
 import { formatFileSize } from "@/assets/data/libraryData";
+import { DriveImportDialog } from "@/components/drive/DriveImportDialog";
+import Link from "next/link";
 import {
   AcademicInfoSection,
   type AcademicInfo,
@@ -52,6 +54,9 @@ export default function UploadPage() {
   const { hasActiveSession, isLoading, userProfile } = useUser();
 
   const [file, setFile] = useState<File | null>(null);
+  // Google Drive import (DriveImportDialog)
+  const [driveOpen, setDriveOpen] = useState(false);
+  const [driveImported, setDriveImported] = useState(0);
   const [formData, setFormData] = useState<UploadFormState>({
     title: "",
     description: "",
@@ -215,7 +220,34 @@ export default function UploadPage() {
           <p className="text-sm text-text-secondary mt-1">
             Add a PDF to your personal library.
           </p>
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface-raised p-4">
+            <p className="min-w-0 flex-1 text-sm text-text-secondary">
+              Study materials in Google Drive? Import a shared folder&apos;s PDFs at once.
+            </p>
+            <button
+              type="button"
+              onClick={() => setDriveOpen(true)}
+              className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-text-primary hover:bg-surface"
+            >
+              Import from Google Drive
+            </button>
+          </div>
+          {driveImported > 0 && (
+            <p role="status" className="mt-3 rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400">
+              {driveImported} PDF{driveImported === 1 ? "" : "s"} imported from Google Drive.{" "}
+              <Link href="/home" className="font-semibold underline">
+                Open your library
+              </Link>
+            </p>
+          )}
         </div>
+        {driveOpen && (
+          <DriveImportDialog
+            target="library"
+            onClose={() => setDriveOpen(false)}
+            onImported={(n) => setDriveImported((total) => total + n)}
+          />
+        )}
 
         <form
           onSubmit={handleSubmit}

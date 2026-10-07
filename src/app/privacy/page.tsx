@@ -50,6 +50,14 @@ export default function PrivacyPage() {
               profile photo.
             </>,
             <>
+              <Term>Google Drive imports:</Term> when you import PDFs from a
+              Google Drive link, we read that shared folder or file and copy
+              the PDFs you choose into your library. We keep a record of each
+              import (the file&apos;s name, size and Drive id, and the result)
+              so the same file isn&apos;t imported twice; it is in
+              &ldquo;Download my data&rdquo; and deleted with your account.
+            </>,
+            <>
               <Term>Google sign-in:</Term> if you sign in with Google, we
               receive your name, email address, profile photo and a Google
               account identifier. We never receive your Google password or
