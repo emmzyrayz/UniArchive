@@ -6,8 +6,14 @@
 // schoolEmailToken (optional) is a challenge verified through
 // /api/auth/school-email/*: its school email is stored on the account and
 // earns the verified_student badge once the main email is verified.
+// The school: universityId (a catalog university, stored as the profile's
+// university), or schoolUnlisted + school (a typed name, which the profile
+// asks about after signup). A bare school name from older app versions is
+// matched to the catalog by name, or kept as typed if it's on the old list.
 import { NextResponse, type NextRequest } from "next/server";
-import type { Types } from "mongoose";
+import { isValidObjectId, type Types } from "mongoose";
+import { getUniversityModel } from "@/lib/models/university/universityModel";
+import { escapeRegex } from "@/lib/escapeRegex";
 import { getUserModel } from "@/lib/models/userModel";
 import { encryptSensitiveData, hashForSearch } from "@/lib/encryption";
 import { asTrimmedString, EMAIL_REGEX, getClientIp, handleRouteError, readJson } from "@/lib/api";
@@ -25,7 +31,38 @@ import { getSchoolEmailChallengeModel } from "@/lib/models/schoolEmailChallengeM
 import universitiesData from "@/assets/data/schoolData";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
-const KNOWN_SCHOOLS = new Set(universitiesData.universities.map((u) => u.name));
+// Older app versions send a name from this list
+const LEGACY_SCHOOLS = new Set(universitiesData.universities.map((u) => u.name));
+// Same rule as school suggestions (api/institutions/suggest)
+const SCHOOL_NAME = /^[\p{L}\p{N}\s.,'’&()\-/]{3,150}$/u;
+
+type CatalogSchool = { _id: Types.ObjectId; name: string; abbreviation: string };
+
+/** The account's school: a catalog university, a typed name, or null if invalid. */
+async function resolveSchool(
+  body: Partial<RegisterBody> | null,
+): Promise<{ name: string; university?: CatalogSchool } | null> {
+  const University = await getUniversityModel();
+  const fields = "name abbreviation";
+  if (typeof body?.universityId === "string" && body.universityId) {
+    if (!isValidObjectId(body.universityId)) return null;
+    const university = await University.findOne({ _id: body.universityId, isActive: true })
+      .select(fields)
+      .lean<CatalogSchool>();
+    return university ? { name: university.name, university } : null;
+  }
+  const name = asTrimmedString(body?.school, 200);
+  if (!name) return null;
+  if (body?.schoolUnlisted === true) return SCHOOL_NAME.test(name) ? { name } : null;
+  const university = await University.findOne({
+    name: { $regex: "^" + escapeRegex(name) + "$", $options: "i" },
+    isActive: true,
+  })
+    .select(fields)
+    .lean<CatalogSchool>();
+  if (university) return { name: university.name, university };
+  return LEGACY_SCHOOLS.has(name) ? { name } : null;
+}
 
 const conflict = () =>
   NextResponse.json(
@@ -40,6 +77,8 @@ interface RegisterBody {
   lastName: string;
   username: string;
   school: string;
+  universityId: string;
+  schoolUnlisted: boolean;
   schoolEmailToken: string;
 }
 
@@ -62,7 +101,8 @@ export async function POST(request: NextRequest) {
     const firstName = asTrimmedString(body?.firstName, 60);
     const lastName = asTrimmedString(body?.lastName, 60);
     const username = asTrimmedString(body?.username, 20);
-    const school = asTrimmedString(body?.school, 200);
+    const resolved = await resolveSchool(body);
+    const school = resolved?.name ?? "";
     const schoolEmailToken =
       typeof body?.schoolEmailToken === "string" ? body.schoolEmailToken : "";
 
@@ -74,7 +114,7 @@ export async function POST(request: NextRequest) {
     if (!lastName) errors.lastName = "Last name is required.";
     if (!USERNAME_REGEX.test(username))
       errors.username = "3-20 characters, letters/numbers/underscore only.";
-    if (!KNOWN_SCHOOLS.has(school)) errors.school = "Select your institution.";
+    if (!resolved) errors.school = "Select your institution, or type it if it isn't listed.";
 
     if (Object.keys(errors).length > 0) {
       return NextResponse.json(
@@ -148,6 +188,11 @@ export async function POST(request: NextRequest) {
       emailHash,
       password, // hashed by the pre-save hook (bcrypt, 12 rounds)
       school,
+      ...(resolved?.university && {
+        universityId: resolved.university._id,
+        universityName: resolved.university.name,
+        universityAbbr: resolved.university.abbreviation,
+      }),
       role: "student",
       uuid: User.generateUUID(),
       upid,

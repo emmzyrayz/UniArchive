@@ -16,12 +16,21 @@ import { StepSchoolEmail } from "./steps/stepSchoolEmail";
 import { StepPassword } from "./steps/stepPassword";
 import { errorMessage, postJson, signInWithGoogle } from "@/lib/authClient";
 
+/** A catalog university (with id) or a school the user typed (name only). */
+export type SchoolChoice = { id: string; name: string; abbreviation?: string; website?: string } | { name: string };
+
 export interface SignUpFormData {
   email: string;
   firstName: string;
   lastName: string;
   username: string;
+  // The school: a catalog university (id, abbreviation and website for the
+  // school-email check) or, when it isn't listed, the name the user typed
   school: string;
+  universityId: string;
+  schoolAbbreviation: string;
+  schoolWebsite: string;
+  schoolUnlisted: boolean;
   schoolEmail: string;
   schoolEmailOtp: string;
   // From /api/auth/school-email/send; proves the address once verified
@@ -41,7 +50,7 @@ const STEP_META: Record<StepKey, string> = {
 
 const FLOW: StepKey[] = ["email", "profile", "schoolEmail", "password"];
 
-const PROFILE_FIELDS = ["firstName", "lastName", "username", "school"];
+const PROFILE_FIELDS = ["firstName", "lastName", "username", "school", "universityId"];
 
 const initialFormData: SignUpFormData = {
   email: "",
@@ -49,6 +58,10 @@ const initialFormData: SignUpFormData = {
   lastName: "",
   username: "",
   school: "",
+  universityId: "",
+  schoolAbbreviation: "",
+  schoolWebsite: "",
+  schoolUnlisted: false,
   schoolEmail: "",
   schoolEmailOtp: "",
   schoolEmailToken: "",
@@ -85,8 +98,20 @@ export default function SignUpWizard() {
   };
 
   const updateField = (field: keyof SignUpFormData, value: string) => {
-    if (field === "school" && value !== formData.school) resetSchoolEmail();
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  /** A catalog university, or a typed name when it isn't listed (null clears it). */
+  const setSchool = (school: SchoolChoice | null) => {
+    const next = {
+      school: school?.name ?? "",
+      universityId: school && "id" in school ? school.id : "",
+      schoolAbbreviation: school && "id" in school ? school.abbreviation ?? "" : "",
+      schoolWebsite: school && "id" in school ? school.website ?? "" : "",
+      schoolUnlisted: !!school && !("id" in school),
+    };
+    if (next.school !== formData.school || next.universityId !== formData.universityId) resetSchoolEmail();
+    setFormData((prev) => ({ ...prev, ...next }));
   };
 
   const goNext = () => {
@@ -116,6 +141,7 @@ export default function SignUpWizard() {
       lastName: formData.lastName,
       username: formData.username,
       school: formData.school,
+      ...(formData.universityId ? { universityId: formData.universityId } : { schoolUnlisted: formData.schoolUnlisted }),
       ...(verifiedFields.has("schoolEmail") && { schoolEmailToken: formData.schoolEmailToken }),
     });
 
@@ -179,7 +205,14 @@ export default function SignUpWizard() {
             firstName={formData.firstName}
             lastName={formData.lastName}
             username={formData.username}
-            school={formData.school}
+            school={
+              formData.universityId
+                ? { id: formData.universityId, name: formData.school }
+                : formData.schoolUnlisted
+                  ? { name: formData.school }
+                  : null
+            }
+            onSchoolChange={setSchool}
             onChange={updateField}
             onNext={goNext}
             onBack={goBack}
@@ -189,7 +222,13 @@ export default function SignUpWizard() {
         return (
           <StepSchoolEmail
             value={formData.schoolEmail}
-            school={formData.school}
+            school={
+              formData.universityId
+                ? { id: formData.universityId, name: formData.school, abbreviation: formData.schoolAbbreviation, website: formData.schoolWebsite }
+                : formData.school
+                  ? { name: formData.school }
+                  : null
+            }
             otp={formData.schoolEmailOtp}
             challengeToken={formData.schoolEmailToken}
             verified={verifiedFields.has("schoolEmail")}

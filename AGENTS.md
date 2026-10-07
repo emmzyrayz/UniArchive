@@ -191,10 +191,20 @@ vars are documented in `.env.example`.
   data needs a step in both the export and the purge.
 - Field encryption: emails and phones are AES-encrypted, looked up by
   `emailHash` / `phoneHash` (`src/lib/encryption.ts`).
+- Signup's school comes from the university catalog (`UniversityCombobox`
+  on the Profile step, `GET /api/institutions/universities`), so schools
+  approved from suggestions and surveys can be picked at once; register
+  stores `universityId`/`universityName`/`universityAbbr` with `school`.
+  "My school isn't listed" sends `schoolUnlisted` + the typed name (kept
+  as `school`; profile completion then asks for it as a school
+  suggestion). A bare name from an older cached app version is matched to
+  the catalog by name, or accepted if it's on the old `schoolData` list.
 - School email (optional signup step): the address must belong to the
   school picked on the Profile step. `lib/schoolEmail.ts` (shared by client
-  and server) gives each school "keys" from `schoolData` (abbreviation and
-  website domain) and accepts a domain where one part is a key followed by
+  and server) gives each school "keys" from its catalog abbreviation and
+  website plus the matching `schoolData` entry's (by name or abbreviation;
+  most catalog schools were seeded without a website, `schoolData` now
+  only supplies those) and accepts a domain where one part is a key followed by
   `edu.ng` or the rest of the school's website domain, with anything before
   it (`stu.unizik.edu.ng`, `student.oauife.edu.ng`). There is no fixed list of
   patterns; fix a school that doesn't match by correcting its entry in

@@ -226,10 +226,6 @@ Unordered; pick by what matters most at the time.
   Profile nudge.
 - **Tidy Brevo lists**: each broadcast leaves a list in Brevo's "UniArchive
   broadcasts" folder; delete old ones now and then (by hand or a script).
-- **Signup from the catalog**: the signup school dropdown still reads the
-  static `schoolData.ts`, while approved school suggestions (including
-  ones from surveys) land in the university catalog. Moving signup to the
-  catalog also touches register validation and the school-email matcher.
 - **Automated tests**: there's no test suite yet; changes are checked with
   typecheck, lint, build, and manual and scripted runs against throwaway
   databases.

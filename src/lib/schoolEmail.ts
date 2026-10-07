@@ -1,7 +1,13 @@
 // src/lib/schoolEmail.ts
-// Does a school email belong to the school picked at signup? Used by the
-// signup wizard (instant feedback) and the school-email APIs (the check that
+// Does a school email belong to a school? Used by the signup wizard and
+// Settings (instant feedback) and the school-email APIs (the check that
 // counts), so it must stay safe to import on the client.
+//
+// Schools come from the university catalog ({ name, abbreviation, website });
+// the static schoolData list only adds what the catalog may lack (most
+// catalog entries were seeded without a website), matched by name or
+// abbreviation. A bare name still works for accounts from before signup
+// used the catalog.
 //
 // There is no fixed list of email patterns: schools use many shapes
 // (unn.edu.ng, stu.unizik.edu.ng, student.oauife.edu.ng, stu.cu.edu.ng).
@@ -57,10 +63,34 @@ function addSchoolInfo(keys: SchoolKeys, info: { abbreviation?: string; website?
   }
 }
 
+// schoolData entries by lower-case name and abbreviation
+const LIST_BY_NAME = new Map<string, { abbreviation?: string; website?: string }>();
+const LIST_BY_ABBREVIATION = new Map<string, { abbreviation?: string; website?: string }>();
 for (const u of universitiesData.universities) {
   const keys = KEYS_BY_SCHOOL.get(u.name) ?? new Map<string, Set<string>>();
   addSchoolInfo(keys, u);
   KEYS_BY_SCHOOL.set(u.name, keys);
+  LIST_BY_NAME.set(u.name.trim().toLowerCase(), u);
+  if (u.abbreviation) LIST_BY_ABBREVIATION.set(u.abbreviation.trim().toLowerCase(), u);
+}
+
+/** A school as the catalog describes it. */
+export interface SchoolInfo {
+  name: string;
+  abbreviation?: string;
+  website?: string;
+}
+
+/** Keys for a school: its own abbreviation and website plus the matching schoolData entry's. */
+function keysFor(school: string | SchoolInfo): SchoolKeys {
+  const info: SchoolInfo = typeof school === "string" ? { name: school } : school;
+  const keys: SchoolKeys = new Map();
+  addSchoolInfo(keys, info);
+  const listed =
+    LIST_BY_NAME.get(info.name.trim().toLowerCase()) ??
+    (info.abbreviation ? LIST_BY_ABBREVIATION.get(info.abbreviation.trim().toLowerCase()) : undefined);
+  if (listed) addSchoolInfo(keys, listed);
+  return keys;
 }
 
 const SCHOOL_EMAIL_REGEX = /^[^\s@]+@([a-z0-9-]+\.)+[a-z]{2,}$/;
@@ -70,32 +100,20 @@ export function normaliseSchoolEmail(value: string): string {
 }
 
 /** The keys an email domain is matched against (exported for tests/scripts). */
-export function schoolKeys(school: string): string[] {
-  return [...(KEYS_BY_SCHOOL.get(school)?.keys() ?? [])];
+export function schoolKeys(school: string | SchoolInfo): string[] {
+  return [...keysFor(school).keys()];
 }
 
 export type SchoolEmailCheck =
   | { ok: true; email: string }
   | { ok: false; reason: "invalid" | "unknown_school" | "mismatch" };
 
-/**
- * Checks that `value` is an email address at `school` (by name). A school
- * that isn't in schoolData (e.g. one only in the university catalog, as set
- * on the profile page) can pass its own abbreviation and website instead.
- */
-export function checkSchoolEmail(
-  value: string,
-  school: string,
-  fallback?: { abbreviation?: string; website?: string },
-): SchoolEmailCheck {
+/** Checks that `value` is an email address at `school` (a catalog school, or a name). */
+export function checkSchoolEmail(value: string, school: string | SchoolInfo): SchoolEmailCheck {
   const email = normaliseSchoolEmail(value);
   if (email.length > 254 || !SCHOOL_EMAIL_REGEX.test(email)) return { ok: false, reason: "invalid" };
-  let keys = KEYS_BY_SCHOOL.get(school);
-  if ((!keys || keys.size === 0) && fallback) {
-    keys = new Map();
-    addSchoolInfo(keys, fallback);
-  }
-  if (!keys || keys.size === 0) return { ok: false, reason: "unknown_school" };
+  const keys = keysFor(school);
+  if (keys.size === 0) return { ok: false, reason: "unknown_school" };
   const domainParts = email.slice(email.lastIndexOf("@") + 1).split(".");
   const matches = domainParts.some((part, i) =>
     keys.get(part)?.has(domainParts.slice(i + 1).join(".")),

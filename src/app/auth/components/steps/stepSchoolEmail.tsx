@@ -16,7 +16,8 @@ import { checkSchoolEmail, schoolEmailError } from "@/lib/schoolEmail";
 
 interface StepSchoolEmailProps {
   value: string;
-  school: string;
+  /** A catalog university (id), or the name of one that isn't listed */
+  school: { id?: string; name: string; abbreviation?: string; website?: string } | null;
   otp: string;
   // Set once a code was sent; verified once the code was accepted
   challengeToken: string;
@@ -51,11 +52,20 @@ export function StepSchoolEmail({
   const [info, setInfo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const codeSent = !!challengeToken && !verified;
+  const schoolName = school?.name ?? "";
 
   const sendCode = async () => {
+    if (!school) {
+      setError("Pick your institution on the Profile step first.");
+      return;
+    }
     const check = checkSchoolEmail(value, school);
     if (!check.ok) {
-      setError(schoolEmailError(check, school));
+      setError(
+        check.reason === "unknown_school" && !school.id
+          ? "We can't check emails for a school we don't list yet. Skip this for now and add it from Settings once your school is added."
+          : schoolEmailError(check, schoolName),
+      );
       return;
     }
     setError("");
@@ -64,7 +74,7 @@ export function StepSchoolEmail({
     try {
       const result = await postJson<{ challengeToken?: string }>("/api/auth/school-email/send", {
         schoolEmail: check.email,
-        school,
+        ...(school.id ? { universityId: school.id } : { school: schoolName }),
       });
       if (result.ok && result.data.challengeToken) {
         onOtpChange("");
@@ -114,7 +124,7 @@ export function StepSchoolEmail({
           School email (optional)
         </h2>
         <p className="text-sm text-text-secondary">
-          Confirm an email from {school || "your school"} to get a Verified
+          Confirm an email from {schoolName || "your school"} to get a Verified
           Student badge on your profile. Some institutions don&apos;t issue
           school emails, so feel free to skip this.
         </p>

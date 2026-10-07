@@ -10,6 +10,7 @@ export interface UniversityOption {
   name: string;
   abbreviation: string;
   state?: string;
+  website?: string;
 }
 
 interface Props {

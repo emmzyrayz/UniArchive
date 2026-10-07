@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { USERS_DATA } from "@/assets/data/blogData";
-import universitiesData from "@/assets/data/schoolData";
 import type { UserRole } from "@/types/roles";
 import { can } from "@/lib/auth/permissions";
 import {
@@ -76,7 +75,7 @@ const mockStudentUser: User = {
   bio: "Computer Science student at UNIZIK. Loves algorithms and data structures.",
 joinedAt: "2024-01-15T08:00:00Z",
   role: "student",
-  school: universitiesData.universities[0].name, // Abia State University, Uturu
+  school: "Abia State University, Uturu",
   faculty: "Engineering",
   department: "Computer Science",
   uuid: `uuid-${studentData.id}`,
@@ -95,7 +94,7 @@ const mockAdminUser: User = {
   bio: "Computer Science student at UNIZIK. Loves algorithms and data structures.",
 joinedAt: "2024-01-15T08:00:00Z",
   role: "webmaster",
-  school: universitiesData.universities[0].name,
+  school: "Abia State University, Uturu",
   faculty: "Administration",
   department: "IT",
   uuid: `uuid-${adminData.id}`,

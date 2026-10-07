@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     const universities = await University.find(filter)
-      .select("name abbreviation state city type ownership usid")
+      .select("name abbreviation state city type ownership usid website")
       .sort({ name: 1 })
       .limit(limit)
       .lean();

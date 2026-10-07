@@ -1,8 +1,8 @@
 // src/lib/userSchoolEmail.ts
 // Adding or changing a school email from Settings (signed in), after signup.
-// The school is the one on the user's profile: the signup school name, or
-// the catalog university set on the profile page (checked against that
-// university's own abbreviation and website when it isn't in schoolData).
+// The school is the catalog university on the user's profile (set at
+// signup or on the profile page); accounts from before that hold only a
+// school name, which is looked up in the catalog by name.
 // Verifying stores the address like signup does and awards the
 // verified_student badge.
 import { Types } from "mongoose";
@@ -12,13 +12,12 @@ import { getSchoolEmailChallengeModel } from "@/lib/models/schoolEmailChallengeM
 import { decryptSensitiveData } from "@/lib/encryption";
 import { maskEmailAddress } from "@/lib/auth/tokens";
 import { awardBadgesAfter } from "@/lib/badges";
-import { checkSchoolEmail, schoolEmailError } from "@/lib/schoolEmail";
+import { escapeRegex } from "@/lib/escapeRegex";
+import { checkSchoolEmail, schoolEmailError, type SchoolInfo } from "@/lib/schoolEmail";
 import { SchoolEmailError, startSchoolEmailChallenge, verifySchoolEmailChallenge } from "@/lib/schoolEmailChallenge";
 
-interface ProfileSchool {
-  name: string;
-  fallback?: { abbreviation?: string; website?: string };
-}
+type UniFields = { name: string; abbreviation?: string; website?: string };
+const toInfo = (u: UniFields): SchoolInfo => ({ name: u.name, abbreviation: u.abbreviation, website: u.website });
 
 type UserSchoolFields = {
   _id: Types.ObjectId;
@@ -39,17 +38,19 @@ async function loadUser(userId: string): Promise<UserSchoolFields> {
 }
 
 /** The school on the profile, or null if none is set yet. */
-async function profileSchool(user: UserSchoolFields): Promise<ProfileSchool | null> {
-  // The catalog university (profile page) is the current one when set
+async function profileSchool(user: UserSchoolFields): Promise<SchoolInfo | null> {
+  const University = await getUniversityModel();
   if (user.universityId) {
-    const University = await getUniversityModel();
-    const uni = await University.findById(user.universityId)
-      .select("name abbreviation website")
-      .lean<{ name: string; abbreviation?: string; website?: string }>();
-    if (uni) return { name: uni.name, fallback: { abbreviation: uni.abbreviation, website: uni.website } };
+    const uni = await University.findById(user.universityId).select("name abbreviation website").lean<UniFields>();
+    if (uni) return toInfo(uni);
   }
   const name = user.universityName || user.school;
-  return name ? { name } : null;
+  if (!name) return null;
+  // An older account: its school name, from the catalog when it's there
+  const uni = await University.findOne({ name: { $regex: `^${escapeRegex(name)}$`, $options: "i" }, isActive: true })
+    .select("name abbreviation website")
+    .lean<UniFields>();
+  return uni ? toInfo(uni) : { name };
 }
 
 export interface SchoolEmailStatus {
@@ -81,7 +82,7 @@ export async function sendSettingsSchoolEmailCode(userId: string, value: string)
   const user = await loadUser(userId);
   const school = await profileSchool(user);
   if (!school) throw new SchoolEmailError("Set your school on your profile first.", 409);
-  const check = checkSchoolEmail(value, school.name, school.fallback);
+  const check = checkSchoolEmail(value, school);
   if (!check.ok) {
     // Profile schools come from the catalog, so "unknown school" means we
     // have nothing to match against
