@@ -46,8 +46,8 @@ export const roadmap: RoadmapPhase[] = [
       {
         title: "Install it and read offline",
         description:
-          "Install UniArchive from your browser and save PDFs to read without data. Smaller PDFs work offline today; large ones are coming.",
-        status: "in-progress",
+          "Install UniArchive from your browser and save any PDF to read without data, stored encrypted on your device. Very old phones can save smaller PDFs; large ones there wait for the app.",
+        status: "done",
       },
       {
         title: "Notes on highlights and night mode",

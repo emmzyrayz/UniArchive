@@ -73,8 +73,9 @@ submissions, school suggestions and reports, upload platform materials,
 and send email announcements and newsletters. There is no mobile app, no
 paid tier and no advertising.
 
-**Not there yet**: offline saving and low-end-phone page images for large
-PDFs (needs a paid background worker). Where it goes next is under [Roadmap](#roadmap).
+**Not there yet**: old phones whose browser can't run the PDF viewer
+can't open large PDFs (they're told to use a computer) until the paid
+page-image worker or the phone app arrives. Where it goes next is under [Roadmap](#roadmap).
 
 ## Writing survey questions
 
@@ -226,19 +227,21 @@ that stack.
    contributor's stats.
 
 **Built, switched off**
-- **PDF worker** (`services/pdf-worker`): page images so low-end devices can
-  read Backblaze PDFs, plus compression for platform files. It needs a paid
-  Render background worker (~$7/month). Until then those devices get a
-  friendly "open it on a PC or laptop" message. Jobs still queue up and will
+- **PDF worker** (`services/pdf-worker`): page images so old browsers that
+  can't run the PDF viewer can read Backblaze PDFs, plus compression for
+  platform files. It needs a paid Render background worker (~$7/month).
+  Until then those browsers get a friendly "open it on a PC or laptop"
+  message. Modern browsers don't need it, offline included: they save and
+  render the whole PDF themselves. Jobs still queue up and will
   be processed once it's on. To enable it, follow "Deploying on Render" in
   `services/pdf-worker/README.md`.
 
 ### v1: left before v2
 
-Product gaps (small, worth closing first):
-- **Offline for large PDFs.** Only Cloudinary PDFs (≤10 MB) can be saved
-  offline; Backblaze ones need page images from the PDF worker (paid
-  Render worker, ~$7/month). A cost decision, not code.
+Product gaps: none left (notes on highlights, night mode and offline
+saving of large PDFs shipped 2026-10-07). Large PDFs on old phones wait
+for the phone app (or the paid PDF worker); they're told to use a
+computer meanwhile.
 
 Production chores (owner):
 - Run `pnpm db:word-counts --apply` (dry run first; not yet run).

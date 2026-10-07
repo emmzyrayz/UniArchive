@@ -126,3 +126,16 @@ export function getPdfCacheLimit(): number {
   const ram = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
   return ram !== undefined && ram > 6 ? 100 : 50;
 }
+
+/**
+ * The largest PDF this device may save offline (savePdfOffline). Reading a
+ * saved PDF loads it whole, so the cap follows the device's RAM
+ * (navigator.deviceMemory: Chrome and Android; unknown elsewhere).
+ */
+export function offlinePdfMaxBytes(ram?: number): number {
+  const MB = 1024 * 1024;
+  if (ram === undefined) return 150 * MB;
+  if (ram <= 2) return 60 * MB;
+  if (ram <= 4) return 150 * MB;
+  return 300 * MB;
+}

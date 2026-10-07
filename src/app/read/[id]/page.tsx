@@ -11,7 +11,7 @@ import { EdgeNavOverlay } from "@/components/reader/EdgeNavOverlay";
 import { PdfUnsupported } from "@/components/reader/PdfUnsupported";
 import { OfflineSaveButton } from "@/components/reader/OfflineSaveButton";
 import { canRunModernPdf } from "@/lib/deviceCapability";
-import { getCachedPageCount } from "@/lib/offlineCache";
+import { getCachedPageCount, getSavedPdf } from "@/lib/offlineCache";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useReaderNight } from "@/hooks/useReaderNight";
 
@@ -59,6 +59,28 @@ function useSavedOffline(bookId: string, check: boolean): boolean | null {
   return check && saved?.bookId === bookId ? saved.value : null;
 }
 
+/**
+ * The PDF this device saved for offline reading (offlineCache), decrypted:
+ * undefined while looking, null when there's none. Only checked when `check`.
+ */
+function useSavedPdf(bookId: string, check: boolean): Blob | null | undefined {
+  const [saved, setSaved] = useState<{ bookId: string; file: Blob | null } | null>(null);
+
+  useEffect(() => {
+    if (!check) return;
+    let cancelled = false;
+    getSavedPdf(bookId).then((file) => {
+      if (!cancelled) setSaved({ bookId, file });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bookId, check]);
+
+  if (!check) return null;
+  return saved?.bookId === bookId ? saved.file : undefined;
+}
+
 export default function ReadPage() {
   // Fetched once by the layout, which already handles 401/404/errors
   const book = useReaderBook();
@@ -76,6 +98,10 @@ export default function ReadPage() {
   // Offline, a saved book with page images reads from its encrypted copies.
   // Otherwise pdf.js tries the PDF the service worker may have cached.
   const savedOffline = useSavedOffline(book.id, !online && hasImages);
+  // Backblaze books on browsers that run pdf.js can be saved whole and are
+  // then read from this device, online or not (no data used)
+  const pdfSaveMode = modernPdf === true && !hasImages;
+  const savedPdf = useSavedPdf(book.id, pdfSaveMode);
 
   // Old browser + no page images: nothing to read, and the page-turn overlay
   // would swallow clicks on the card's buttons
@@ -83,6 +109,8 @@ export default function ReadPage() {
 
   let reader;
   if (modernPdf === null) reader = pageSkeleton();
+  else if (pdfSaveMode && savedPdf === undefined) reader = pageSkeleton();
+  else if (pdfSaveMode && savedPdf) reader = <PdfCanvas book={book} file={savedPdf} />;
   else if (!online && hasImages && savedOffline === null) reader = pageSkeleton();
   else if (savedOffline) reader = <ImageReader book={book} cacheOnly />;
   else if (modernPdf) reader = <PdfCanvas book={book} />;
@@ -105,7 +133,8 @@ export default function ReadPage() {
           </>
         )}
       </div>
-      {hasImages && <OfflineSaveButton book={book} numPages={numPages} />}
+      {hasImages && <OfflineSaveButton book={book} numPages={numPages} mode="images" />}
+      {pdfSaveMode && <OfflineSaveButton book={book} numPages={numPages} mode="pdf" />}
     </div>
   );
 }

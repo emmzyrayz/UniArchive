@@ -291,6 +291,22 @@ vars are documented in `.env.example`.
   PDF pages. The toolbar hides the always-disabled download icon on phones
   to make room.
 
+- Offline (`lib/offlineCache.ts`, IndexedDB `uniarchive-offline` v2,
+  AES-GCM under a non-extractable per-browser key): Cloudinary books save
+  their page images (`mode="images"`, any browser). Backblaze books on
+  browsers that run pdf.js save the whole PDF instead (`mode="pdf"`,
+  `savePdfOffline`): streamed from the signed URL and encrypted in 4 MB
+  chunks so it never sits whole in memory, after a storage-space check;
+  capped by RAM (`offlinePdfMaxBytes`: 60 MB at 2 GB or less, 150 MB at
+  4 GB or unknown, 300 MB above; bigger files get no button). The device
+  renders it with pdf.js, so the paid PDF worker isn't needed for this. A
+  saved PDF is then read from the device (`PdfCanvas file=`) online or
+  offline, and by `OfflineReader` when the service worker serves
+  `/offline`. "✓ Offline" offers to remove the copy (`removeCachedBook`
+  drops both kinds). Old browsers that can't run pdf.js still can't open
+  Backblaze PDFs (`PdfUnsupported`: use a computer) until the PDF worker
+  or the phone app.
+
 ## Platform materials (staff uploads, credited to UniArchive)
 
 - A platform file is a `Book` with a `platform` sub-document (status
@@ -337,9 +353,11 @@ vars are documented in `.env.example`.
 - **PDF worker status: intentionally disabled for now.** It needs a paid
   Render background worker (~$7/month), which isn't available yet, so it
   isn't deployed and `PDF_WORKER_SECRET` isn't set (the internal routes
-  answer 503). Until then, a low-end device that opens a Backblaze PDF sees
-  a friendly fallback (`PdfUnsupported`: open it on a PC or laptop; a
-  download button only for the reader's own files) instead of page images.
+  answer 503). Until then, an old browser that can't run pdf.js and opens
+  a Backblaze PDF sees a friendly fallback (`PdfUnsupported`: open it on a
+  PC or laptop; a download button only for the reader's own files) instead
+  of page images. Browsers that run pdf.js don't need it, offline included
+  (they save the whole PDF; see Reader).
   New Backblaze uploads still get `pdfJob`s queued; they're harmless and get
   processed once the worker is on. To re-enable, follow "Deploying on
   Render" in `services/pdf-worker/README.md`.

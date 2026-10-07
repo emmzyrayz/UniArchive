@@ -26,7 +26,14 @@ type FetchCheckState =
   | { status: "ok" }
   | { status: "error"; message: string };
 
-export function PdfCanvas({ book }: { book: Book }) {
+export function PdfCanvas({
+  book,
+  file,
+}: {
+  book: Book;
+  /** A copy saved on this device (offlineCache); read instead of book.fileUrl */
+  file?: Blob;
+}) {
   const { currentPage, numPages, zoom, viewMode, setNumPages, goToPage, setZoom } =
     useReader();
   // On a narrow screen the default zoom makes pages wider than the screen:
@@ -46,9 +53,10 @@ export function PdfCanvas({ book }: { book: Book }) {
   const initialLoad = ready ? config.initial : 5;
   const loadIncrement = ready ? config.increment : 5;
 
-  const [fetchCheck, setFetchCheck] = useState<FetchCheckState>({
-    status: "checking",
-  });
+  // A saved copy needs no check: it's already here
+  const [fetchCheck, setFetchCheck] = useState<FetchCheckState>(
+    file ? { status: "ok" } : { status: "checking" },
+  );
   const [loadedUpTo, setLoadedUpTo] = useState<number>(initialLoad);
   const [prevFileUrl, setPrevFileUrl] = useState(book.fileUrl);
 
@@ -65,6 +73,7 @@ export function PdfCanvas({ book }: { book: Book }) {
 
   // Preflight check
   useEffect(() => {
+    if (file) return;
     let cancelled = false;
     async function checkFile() {
       try {
@@ -92,7 +101,7 @@ export function PdfCanvas({ book }: { book: Book }) {
     return () => {
       cancelled = true;
     };
-  }, [book.fileUrl]);
+  }, [book.fileUrl, file]);
 
   // Jump ahead if sidebar nav requests a page beyond loaded range
   if (viewMode === "scroll" && numPages && currentPage > loadedUpTo) {
@@ -182,7 +191,7 @@ export function PdfCanvas({ book }: { book: Book }) {
 
   return (
     <Document
-      file={book.fileUrl}
+      file={file ?? book.fileUrl}
       onLoadSuccess={({ numPages }) => {
         setNumPages(numPages);
         setLoadedUpTo(Math.min(initialLoad, numPages));

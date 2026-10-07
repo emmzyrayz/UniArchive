@@ -53,7 +53,7 @@ export const faqCategories: FAQCategory[] = [
       {
         question: "Does UniArchive work offline?",
         answer:
-          "Partly. Install UniArchive from your browser, then use 💾 Save offline in the reader to keep a PDF on your device; smaller PDFs work offline today and larger ones are coming. Typing out past questions also keeps working offline and syncs when you're back online.",
+          "Yes. Install UniArchive from your browser, then use 💾 Save offline in the reader to keep a PDF on your device, encrypted; it then opens without data. Very large files may be too big for phones with little memory, and very old phones can only save smaller PDFs for now. Typing out past questions also keeps working offline and syncs when you're back online.",
       },
       {
         question: "Can I highlight or take notes on my PDFs?",
