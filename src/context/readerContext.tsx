@@ -17,7 +17,9 @@ import {
   DEFAULT_HIGHLIGHT_COLOR,
   MAX_BOOKMARKS,
   MAX_HIGHLIGHTS,
+  MAX_NOTE_LENGTH,
 } from "@/lib/constants/annotations";
+import { mergeById, onePerPage, sameContent, threeWayMerge } from "@/lib/annotationMerge";
 
 /** Smallest zoom: below "fit to width" on a small phone (an A4 page fits 360px at ~0.55) */
 export const MIN_ZOOM = 0.3;
@@ -38,39 +40,6 @@ function getIsMobile(): boolean {
 // Not crypto.randomUUID: it needs a secure context and newer browsers
 const makeId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-/** Server items first, then anything added locally before the load finished. */
-function mergeById<T extends { id: string }>(server: T[], local: T[]): T[] {
-  const ids = new Set(server.map((item) => item.id));
-  return [...server, ...local.filter((item) => !ids.has(item.id))];
-}
-
-/**
- * Merges this tab's list with another tab's saved list, relative to `base`
- * (the last copy both agreed on). Additions from either side are kept;
- * a deletion on either side sticks. A plain union would resurrect items the
- * other tab deleted.
- */
-function threeWayMerge<T extends { id: string }>(base: T[], local: T[], remote: T[]): T[] {
-  const baseIds = new Set(base.map((i) => i.id));
-  const localIds = new Set(local.map((i) => i.id));
-  const remoteIds = new Set(remote.map((i) => i.id));
-  return [
-    // Theirs, minus what this tab deleted
-    ...remote.filter((i) => !(baseIds.has(i.id) && !localIds.has(i.id))),
-    // This tab's new items (ones in base but gone remotely were deleted there)
-    ...local.filter((i) => !remoteIds.has(i.id) && !baseIds.has(i.id)),
-  ];
-}
-
-/** One bookmark per page, as the toggle assumes; the first one wins. */
-function onePerPage(bookmarks: Bookmark[]): Bookmark[] {
-  const seen = new Set<number>();
-  return bookmarks.filter((b) => !seen.has(b.pageNumber) && !!seen.add(b.pageNumber));
-}
-
-const sameIds = (a: { id: string }[], b: { id: string }[]) =>
-  a.length === b.length && a.every((item) => b.some((other) => other.id === item.id));
 
 type NewHighlight = Omit<Highlight, "id" | "createdAt" | "color"> & { color?: string };
 
@@ -95,8 +64,14 @@ interface ReaderContextType {
   toggleSidebar: () => void;
   toggleHighlightMode: () => void;
   setActiveHighlightColor: (color: string) => void;
-  addHighlight: (h: NewHighlight) => void;
+  /** Adds a highlight; its id, or null at the per-book limit. */
+  addHighlight: (h: NewHighlight) => string | null;
   removeHighlight: (id: string) => void;
+  /** Sets (or, when blank, clears) a highlight's note. */
+  setHighlightNote: (id: string, note: string) => void;
+  /** Asks the sidebar to open on this highlight's note (seq makes repeats count). */
+  noteRequest: { id: string; seq: number } | null;
+  showHighlightNote: (id: string) => void;
   toggleBookmark: (pageNumber: number) => void;
   isPageBookmarked: (pageNumber: number) => boolean;
   requestViewModeChange: (mode: ViewMode) => void;
@@ -195,7 +170,7 @@ function useAnnotationSync(
       };
       sync.base = { highlights: remote.highlights, bookmarks: remote.bookmarks };
       sync.version = remote.syncVersion;
-      if (!sameIds(merged.highlights, remote.highlights) || !sameIds(merged.bookmarks, remote.bookmarks)) {
+      if (!sameContent(merged.highlights, remote.highlights) || !sameContent(merged.bookmarks, remote.bookmarks)) {
         sync.dirty = true;
         // Once the merged state has rendered into latestRef
         clearTimeout(retryTimer);
@@ -492,25 +467,43 @@ export function ReaderProvider({
 
   const addHighlight = useCallback(
     ({ color, ...h }: NewHighlight) => {
+      if (highlights.length >= MAX_HIGHLIGHTS) {
+        console.warn(`Highlight limit reached (${MAX_HIGHLIGHTS} per book)`);
+        return null;
+      }
+      const id = makeId("hl");
       markDirty();
-      setHighlights((prev) => {
-        if (prev.length >= MAX_HIGHLIGHTS) {
-          console.warn(`Highlight limit reached (${MAX_HIGHLIGHTS} per book)`);
-          return prev;
-        }
-        return [
-          ...prev,
-          {
-            ...h,
-            id: makeId("hl"),
-            color: color ?? DEFAULT_HIGHLIGHT_COLOR,
-            createdAt: new Date().toISOString(),
-          },
-        ];
-      });
+      setHighlights((prev) =>
+        prev.length >= MAX_HIGHLIGHTS
+          ? prev
+          : [...prev, { ...h, id, color: color ?? DEFAULT_HIGHLIGHT_COLOR, createdAt: new Date().toISOString() }],
+      );
+      return id;
+    },
+    [highlights.length, markDirty],
+  );
+
+  const setHighlightNote = useCallback(
+    (id: string, note: string) => {
+      const text = note.trim().slice(0, MAX_NOTE_LENGTH);
+      markDirty();
+      setHighlights((prev) =>
+        prev.map((h) => {
+          if (h.id !== id) return h;
+          const { note: _old, ...rest } = h;
+          void _old;
+          return text ? { ...rest, note: text } : rest;
+        }),
+      );
     },
     [markDirty],
   );
+
+  const [noteRequest, setNoteRequest] = useState<{ id: string; seq: number } | null>(null);
+  const showHighlightNote = useCallback((id: string) => {
+    setNoteRequest((prev) => ({ id, seq: (prev?.seq ?? 0) + 1 }));
+    setSidebarOpen(true);
+  }, []);
 
   const removeHighlight = useCallback(
     (id: string) => {
@@ -602,6 +595,9 @@ export function ReaderProvider({
         setActiveHighlightColor,
         addHighlight,
         removeHighlight,
+        setHighlightNote,
+        noteRequest,
+        showHighlightNote,
         toggleBookmark,
         isPageBookmarked,
         requestViewModeChange,

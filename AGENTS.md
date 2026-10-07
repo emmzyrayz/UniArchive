@@ -268,6 +268,21 @@ vars are documented in `.env.example`.
   `useStaffArea().base`; never hard-code `/admin` in them.
 - APIs stay under `/api/admin/*` and check fine-grained permissions.
 
+## Reader (/read/[id])
+
+- Highlights are boxes in % of the page (`HighlighterLayer`), drawn with
+  pointer events so mouse, pen and touch all work (in highlight mode the
+  page doesn't scroll under a finger). Each can carry a note (up to
+  `MAX_NOTE_LENGTH`): the sidebar's Highlights tab lists them in page
+  order with Add/Edit note and Delete; a 📝 marker on a highlight with a
+  note (or "+ Note" for a few seconds after making one) opens it there
+  (`showHighlightNote` / `noteRequest` in `readerContext`).
+- Annotations sync to `/api/books/[id]/annotations` (full state, 409 on a
+  stale `syncVersion`). Two tabs merge with `threeWayMerge`
+  (`lib/annotationMerge.ts`, unit-tested): additions from both sides,
+  deletions stick, and an item both still have keeps this tab's version
+  when only this tab changed it (a note), else theirs.
+
 ## Platform materials (staff uploads, credited to UniArchive)
 
 - A platform file is a `Book` with a `platform` sub-document (status
@@ -592,9 +607,8 @@ this Next.js + MongoDB codebase.
 
 - `/settings` has no UI-only controls left (profile editing links to
   `/profile/edit`).
-- Highlights store a `note` (`annotationModel.ts`) that the reader can't
-  write or show yet, and PDF pages have no dark mode (the site theme
-  doesn't reach the page canvas). Both are on README "v1: left before v2".
+- PDF pages have no dark mode (the site theme doesn't reach the page
+  canvas). On README "v1: left before v2".
 - No automated tests for API routes, pages or components yet: those are
   checked against a running app (see Workflow rules), with scripted runs
   against a throwaway MongoDB, never the `.env.local` DB. For Backblaze, run `s3rver` with a self-signed cert (the storage client

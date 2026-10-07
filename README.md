@@ -43,8 +43,8 @@ to 500L/600L, postgraduate) and course code.
   Anyone signed in can **help identify** an unverified PDF (title, course,
   school, level...); staff verify it with the details people agree on in
   one click, and helpers earn the PDF Detective badge.
-- **Read in the browser**: a PDF reader with highlights, bookmarks, reading
-  progress, scroll or single-page modes, a lightweight mode for low-end
+- **Read in the browser**: a PDF reader with highlights (with your own
+  notes, on a computer or a phone), bookmarks, reading progress, scroll or single-page modes, a lightweight mode for low-end
   phones, a watermark with the reader's id, and offline saving.
   Very large PDFs on low-end phones get a "open it on a computer" fallback
   for now.
@@ -73,8 +73,7 @@ and send email announcements and newsletters. There is no mobile app, no
 paid tier and no advertising.
 
 **Not there yet**: offline saving and low-end-phone page images for large
-PDFs (needs a paid background worker), notes on highlights, a dark mode
-for PDF pages. Where it goes next is under [Roadmap](#roadmap).
+PDFs (needs a paid background worker), a dark mode for PDF pages. Where it goes next is under [Roadmap](#roadmap).
 
 ## Writing survey questions
 
@@ -236,9 +235,6 @@ that stack.
 ### v1: left before v2
 
 Product gaps (small, worth closing first):
-- **Notes on highlights.** Highlights already store a `note` field
-  (`annotationModel.ts`); the reader has no way to write or show it. The
-  old public roadmap promised "notes and highlights".
 - **Dark mode for PDF pages.** The site has a dark theme, but PDF pages
   stay white. A reader toggle (invert the page canvas, keep images
   readable) closes it. v2's "exclusive reader themes" build on it.
