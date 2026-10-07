@@ -246,9 +246,10 @@ computer meanwhile.
 Production chores (owner):
 - Run `pnpm db:word-counts --apply` (dry run first; not yet run).
 - Confirm `pnpm db:text-index --apply` was run (outline search).
-- Send a first real broadcast to a small audience (e.g. role = dev): the
-  sender `updates@` is verified in Brevo, the first-name greeting fills
-  in, and the unsubscribe link reaches the webhook.
+- ~~Send a first real broadcast to a small audience~~ (sent 2026-10-07).
+  Still worth confirming from it: the sender `updates@` shows without a
+  spoofing warning, the first-name greeting fills in, and an unsubscribe
+  click turns off both kinds in that user's Settings (the webhook).
 - `pnpm brevo:tidy-lists` (dry run), then delete one old list and check its
   campaign's stats survive before the weekly cron does the rest.
 - Vercel: `CRON_SECRET` set, `NEXT_PUBLIC_APP_URL` on the apex domain,
