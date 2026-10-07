@@ -72,8 +72,7 @@ and send email announcements and newsletters. There is no mobile app, no
 paid tier and no advertising.
 
 **Not there yet**: an automated test suite, page images for large PDFs on
-low-end phones (needs a paid background worker), signup reading the full
-school catalog, monthly digest emails.
+low-end phones (needs a paid background worker).
 
 ## Writing survey questions
 
@@ -173,7 +172,9 @@ content, and what would make them come back.
   a Verified Student badge. Added or changed later from Settings too.
 - Mail system (October 2026): ZeptoMail for one-to-one mail (account
   emails, and admins writing to a user at `/admin/mail`); Brevo for
-  broadcasts at `/admin/mail/broadcasts` (seven templates, stacking
+  broadcasts at `/admin/mail/broadcasts` (nine templates, including a
+  monthly digest that fills in the month's numbers and a profile nudge
+  aimed at incomplete profiles; stacking
   audiences, live preview and count, test copy, send now or schedule,
   cancel, stats). Users choose announcements (default on) and the
   newsletter (opt-in) in Settings or from a link in every broadcast, and
@@ -222,8 +223,6 @@ content, and what would make them come back.
 
 Unordered; pick by what matters most at the time.
 
-- **More broadcast templates**: Monthly digest (with automatic stats) and
-  Profile nudge.
 - **Tidy Brevo lists**: each broadcast leaves a list in Brevo's "UniArchive
   broadcasts" folder; delete old ones now and then (by hand or a script).
 - **Automated tests**: there's no test suite yet; changes are checked with

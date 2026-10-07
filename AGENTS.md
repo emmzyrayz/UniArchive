@@ -110,7 +110,19 @@ vars are documented in `.env.example`.
     The HTML carries Brevo merge tags (`{{ contact.FIRSTNAME|default:"there" }}`,
     `{{ contact.PREFS_URL }}`, `{{ unsubscribe }}`), filled by
     `personalize()` for previews and tests. To add a template: one entry in
-    `BROADCAST_TEMPLATES` and one case in `renderBody`.
+    `BROADCAST_TEMPLATES` and one case in `renderBody`. A template may set
+    `audience` (the criteria a new draft starts with: "Profile nudge"
+    starts at incomplete profiles).
+  - "Monthly digest" (newsletter): the editor's "Fill in the numbers"
+    (`DigestNumbers`, a month picker) calls
+    `GET /api/admin/broadcasts/digest-stats?month=YYYY-MM`
+    (`lib/broadcast/digestStats.ts`, Lagos calendar month): newly verified
+    materials, PDFs shared, typed questions and notes, PDFs identified,
+    new verified members, schools with new materials and the library size
+    (zero lines left out), plus the month's 4 most-viewed newly verified
+    materials. It only fills the fields; the admin edits them before
+    sending. Stat lines starting with a number render as big numbers
+    (`statGrid`).
   - `lib/broadcast/audience.ts`: criteria stack (school, department, level,
     role, contributors, verified students, incomplete profile, inactive
     7-90 days from `LoginEvent` + session activity, joined between); none =
@@ -362,7 +374,7 @@ vars are documented in `.env.example`.
   (dry run without `--apply`): it swaps the plain unique `submissionId_1`
   index for the partial `submissionId_partial` (until then only one
   unidentified upload can be listed), marks old materials verified and
-  lists PDFs already waiting. **Not yet run on production.**
+  lists PDFs already waiting. Run on production 2026-10-07.
 
 ## Conversion workspace (typing out materials)
 

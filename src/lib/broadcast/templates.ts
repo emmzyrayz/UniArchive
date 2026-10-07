@@ -54,7 +54,9 @@ export type BroadcastTemplateId =
   | "new_materials"
   | "exam_season"
   | "contributor_call"
-  | "survey_invite";
+  | "survey_invite"
+  | "monthly_digest"
+  | "profile_nudge";
 
 export interface TemplateDef {
   id: BroadcastTemplateId;
@@ -64,6 +66,8 @@ export interface TemplateDef {
   /** The kind of bulk email; "choose" lets the author pick (custom message) */
   kind: EmailKind | "choose";
   fields: FieldDef[];
+  /** Audience criteria a new draft starts with (e.g. incomplete profiles) */
+  audience?: { incompleteProfileOnly?: boolean };
 }
 
 export interface RenderedBroadcast {
@@ -221,6 +225,67 @@ export const BROADCAST_TEMPLATES: TemplateDef[] = [
         initial: "Upload past questions and lecture notes\nType out past questions so they're searchable\nGift a PDF to UniArchive from your library",
       },
       ...CTA("Start contributing", absoluteUrl("/upload")),
+      SUBJECT,
+    ],
+  },
+  {
+    id: "monthly_digest",
+    label: "Monthly digest",
+    emoji: "📊",
+    description: "The month on UniArchive: numbers, standout materials and what's next. The numbers fill in from the database.",
+    kind: "newsletter",
+    fields: [
+      { name: "headline", label: "Headline", type: "text", required: true, max: 120, initial: "Your month on UniArchive" },
+      { name: "month", label: "Month", type: "text", required: true, max: 40, placeholder: "October 2026" },
+      {
+        name: "intro",
+        label: "Introduction",
+        type: "textarea",
+        required: true,
+        max: 2000,
+        initial: "Here's what students added and read on UniArchive this month. Thank you for building it with us.",
+      },
+      {
+        name: "stats",
+        label: "Numbers (one per line)",
+        type: "lines",
+        max: 8,
+        help: 'Start a line with the number ("152 new materials in the UniLibrary") to show it big. "Fill in the numbers" writes them for you.',
+      },
+      { name: "materials", label: "Standout materials (optional)", type: "materials", max: 6 },
+      { name: "outro", label: "What's next (optional)", type: "textarea", max: 1500 },
+      ...CTA("Open the UniLibrary", absoluteUrl("/unilibrary")),
+      SUBJECT,
+    ],
+  },
+  {
+    id: "profile_nudge",
+    label: "Profile nudge",
+    emoji: "👤",
+    description: 'Ask people to finish their profile. Starts with the "incomplete profile" audience.',
+    kind: "announcements",
+    audience: { incompleteProfileOnly: true },
+    fields: [
+      { name: "headline", label: "Headline", type: "text", required: true, max: 120, initial: "Finish your profile to get more from UniArchive" },
+      {
+        name: "intro",
+        label: "Introduction",
+        type: "textarea",
+        required: true,
+        max: 2000,
+        initial:
+          "Your UniArchive profile isn't complete yet. It takes two minutes, and it's how we show you past questions and notes for your own school, department and level.",
+      },
+      {
+        name: "steps",
+        label: "What to add (one per line)",
+        type: "lines",
+        max: 8,
+        initial:
+          "Your faculty, department and level, so the UniLibrary shows your courses first\nA profile photo and a short bio\nYour school email, for the Verified Student badge",
+      },
+      { name: "outro", label: "Closing note (optional)", type: "textarea", max: 1000 },
+      ...CTA("Complete my profile", absoluteUrl("/profile/edit")),
       SUBJECT,
     ],
   },
@@ -388,6 +453,23 @@ function detailRows(rows: [string, string][]): string {
     .join("")}</table>`;
 }
 
+/**
+ * Stat lines as big numbers: "152 new materials" shows 152 large with its
+ * label below; a line that doesn't start with a number is a plain cell.
+ */
+function statGrid(lines: string[]): string {
+  if (lines.length === 0) return "";
+  const cells = lines.map((line) => {
+    const m = /^([\d.,]+[+%kKmM]?)\s+(.+)$/.exec(line.trim());
+    return m
+      ? `<td style="padding: 10px; text-align: center; vertical-align: top; width: 50%;"><div style="font-size: 26px; font-weight: bold; color: ${BRAND};">${escapeHtml(m[1])}</div><div style="font-size: 13px; color: #555; margin-top: 2px;">${escapeHtml(m[2])}</div></td>`
+      : `<td style="padding: 10px; text-align: center; vertical-align: top; width: 50%; font-size: 14px; color: #333;">${escapeHtml(line)}</td>`;
+  });
+  const rows = [];
+  for (let i = 0; i < cells.length; i += 2) rows.push(`<tr>${cells[i]}${cells[i + 1] ?? "<td></td>"}</tr>`);
+  return `<table role="presentation" style="width: 100%; border-collapse: separate; border-spacing: 0 8px; margin: 16px 0; background: #f8f9ff; border-radius: 10px;">${rows.join("")}</table>`;
+}
+
 function button(f: TemplateFields): string {
   const label = str(f, "ctaLabel");
   const url = str(f, "ctaUrl");
@@ -535,6 +617,42 @@ function renderBody(template: TemplateDef, f: TemplateFields): Body {
           tips.length ? `Tips:\n${textList(tips)}` : "",
           textButton(f),
         ],
+      };
+    }
+    case "monthly_digest": {
+      const headline = str(f, "headline");
+      const month = str(f, "month");
+      const stats = list(f, "stats");
+      const refs = Array.isArray(f.materials) ? (f.materials as MaterialRef[]) : [];
+      return {
+        subject: month ? `${headline}: ${month}` : headline,
+        heading: month ? `Monthly digest · ${month}` : "Monthly digest",
+        html: `${banner("📊", "Monthly digest", month || headline, "#eef2ff", "#3730a3")}${heading(headline)}${plainTextToHtml(str(f, "intro"))}${statGrid(stats)}${
+          refs.length ? `<p style="margin: 20px 0 4px;"><strong>Standout materials</strong></p>${materialCards(refs)}` : ""
+        }${str(f, "outro") ? plainTextToHtml(str(f, "outro")) : ""}${button(f)}`,
+        text: [
+          month ? `${headline} (${month})` : headline,
+          "",
+          str(f, "intro"),
+          stats.length ? textList(stats) : "",
+          refs.length
+            ? `Standout materials:\n${refs.map((m) => `- ${m.title}${m.courseCode ? ` (${m.courseCode})` : ""}: ${absoluteUrl(`/materials/${m.id}`)}`).join("\n")}`
+            : "",
+          str(f, "outro"),
+          textButton(f),
+        ],
+      };
+    }
+    case "profile_nudge": {
+      const headline = str(f, "headline");
+      const steps = list(f, "steps");
+      return {
+        subject: headline,
+        heading: "Your profile",
+        html: `${heading(headline)}${plainTextToHtml(str(f, "intro"))}${
+          steps.length ? `<p style="margin-bottom: 4px;"><strong>What to add</strong></p>${bulletList(steps)}` : ""
+        }${str(f, "outro") ? plainTextToHtml(str(f, "outro")) : ""}${button(f)}`,
+        text: [headline, "", str(f, "intro"), steps.length ? `What to add:\n${textList(steps)}` : "", str(f, "outro"), textButton(f)],
       };
     }
     case "survey_invite": {

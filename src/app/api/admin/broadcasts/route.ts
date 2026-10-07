@@ -63,7 +63,8 @@ export async function POST(request: NextRequest) {
       name: input?.name,
       kind: input?.kind,
       fields: input?.fields ?? initialFields(template),
-      audience: input?.audience ?? EMPTY_AUDIENCE,
+      // A template may start with its own audience (profile nudge: incomplete profiles)
+      audience: input?.audience ?? { ...EMPTY_AUDIENCE, ...template.audience },
     });
     if (!draft) return fail(400, "Pick a template.");
 

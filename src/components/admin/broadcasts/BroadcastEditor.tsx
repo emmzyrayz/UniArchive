@@ -15,6 +15,7 @@ import { timeAgo } from "../reviewShared";
 import { Modal, ModalActions } from "../ReviewModals";
 import { AdminPageShell, adminRequest, cardClass, dangerButton, inputClass, primaryButton, secondaryButton } from "../adminUi";
 import { TemplateFieldsForm } from "./TemplateFieldsForm";
+import { DigestNumbers } from "./DigestNumbers";
 import { AudiencePicker } from "./AudiencePicker";
 import { DuplicateButton, SendPanel, StatusPanel } from "./SendPanels";
 
@@ -239,6 +240,7 @@ export function BroadcastEditor({ id }: { id: string }) {
               ) : (
                 <p className="text-xs text-text-muted">Goes out as: {KIND_LABEL[kind]}</p>
               )}
+              {template.id === "monthly_digest" && editable && <DigestNumbers fields={fields} onChange={edit(setFields)} />}
               <TemplateFieldsForm template={template} fields={fields} onChange={edit(setFields)} />
             </div>
             <div className={cardClass}>
