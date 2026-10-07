@@ -183,7 +183,13 @@ export async function POST(request: NextRequest, context: Context) {
 /** The oldest pending file in the same queue that nobody else is working on. */
 async function nextPendingId(session: SessionUser, current: PlatformBookDoc): Promise<string | null> {
   const scope =
-    current.platform.source === "gift" ? "gifts" : isAdminRole(session.role) ? "all" : "mine";
+    current.platform.source === "gift"
+      ? "gifts"
+      : current.platform.source === "drive_inbox"
+        ? "inbox"
+        : isAdminRole(session.role)
+          ? "all"
+          : "mine";
   const filter = queueFilter(session, scope, "pending");
   if (!filter) return null;
   const now = new Date();

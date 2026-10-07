@@ -243,7 +243,8 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
     return () => clearInterval(timer);
   }, [dirty, busy]);
 
-  const scope = detail?.file.source === "gift" ? "gifts" : isAdmin ? "all" : "mine";
+  const source = detail?.file.source;
+  const scope = source === "gift" ? "gifts" : source === "drive_inbox" ? "inbox" : isAdmin ? "all" : "mine";
 
   /** The next pending file nobody else is working on, or null. */
   const findNext = async (): Promise<string | null> => {
@@ -403,6 +404,8 @@ export function VerifyWorkspace({ initialId, isAdmin }: { initialId: string; isA
                     {(numPages || detail.file.pageCount) && ` · ${numPages || detail.file.pageCount} pages`}
                     {` · uploaded by @${detail.file.uploadedByUpid}`}
                     {detail.file.source === "gift" && " · gifted"}
+                    {detail.file.source === "drive_inbox" &&
+                      ` · shared with UniArchive${detail.file.sharedByName ? ` by ${detail.file.sharedByName}` : ""}`}
                   </p>
                   {detail.gift && (
                     <p className="mt-2 rounded-md border border-border bg-surface px-3 py-2 text-xs text-text-secondary">

@@ -54,6 +54,7 @@ export default function TermsPage() {
         <LegalList
           items={[
             "You keep ownership of the content you upload.",
+            "Importing from Google Drive, or sharing files with UniArchive's Google account, counts as uploading: only share files you have the right to share.",
             "By uploading, you give UniArchive a licence to store, display and distribute that content on the platform.",
             "We may remove content that breaks these terms.",
           ]}

@@ -69,6 +69,9 @@ to 500L/600L, postgraduate) and course code.
   that earns the Verified Student badge, email preferences, download all
   your data, delete your account.
 - **Have a say**: surveys anyone can answer at `/surveys`.
+- **Share without an account**: share PDFs or folders with UniArchive's
+  Gmail in Google Drive; they're imported for our team to check and
+  publish.
 
 **How it runs.** A web app (installable as a PWA) at uniarchive.com.ng,
 built and run by one developer. Staff (moderators and admins) review
@@ -269,12 +272,13 @@ Engineering (optional for v1):
   (unit tests plus database tests on an in-memory MongoDB, run by CI on
   every push); routes, pages and components are still checked by hand.
 
-### v1.5 (next, before v2): Google Drive import
+### v1.5 (shipped 2026-10-08): Google Drive import
 
 Many students keep study material in Google Drive and pass the share link
 around. UniArchive takes those PDFs in directly, server to server, so a
 student's data is spent only on choosing files, not on moving them. Planned
-2026-10-07; to build before v2.
+2026-10-07, shipped 2026-10-08. Live once the owner adds the Google keys
+(below); until then each part says it isn't set up.
 
 Four ways in:
 1. **Public Drive link** (students and staff): paste an "anyone with the
@@ -322,7 +326,7 @@ Build order (one commit each, each tested and documented):
    staff upload page, daily limits.
 3. **Picker import** (done 2026-10-08): Google Identity Services token (`drive.file`,
    short-lived, never stored) plus the Google Picker, in the same dialog.
-4. **Platform inbox**: admin page to connect UniArchive's Google account
+4. **Platform inbox** (done 2026-10-08): admin page to connect UniArchive's Google account
    (separate OAuth client, refresh token encrypted), daily cron
    `/api/cron/drive-inbox` plus "Check now", queue badge and sharer.
    Admin-only permission.

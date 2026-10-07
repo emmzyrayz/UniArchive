@@ -23,6 +23,8 @@ export interface AdminViewer {
   canBroadcast: boolean;
   /** "survey.manage": surveys and their results */
   canSurveys: boolean;
+  /** "material.drive_inbox": the platform Google Drive inbox */
+  canDriveInbox?: boolean;
 }
 
 function StatCard({ label, value, href }: { label: string; value?: number; href?: string }) {
@@ -95,6 +97,7 @@ export function AdminDashboard({ viewer }: { viewer: AdminViewer }) {
       count: (counts?.pendingPlatformUploads ?? 0) + (counts?.pendingGifts ?? 0) || undefined,
       show: viewer.canIngest,
     },
+    { label: "Google Drive inbox", href: `${base}/materials/drive-inbox`, show: !!viewer.canDriveInbox },
     { label: "Materials", href: `${base}/materials`, show: true },
     { label: "Reported comments", href: `${base}/comments`, count: counts?.reportedComments, show: true },
     { label: "Institutions", href: `${base}/institutions`, show: viewer.canManageInstitutions },

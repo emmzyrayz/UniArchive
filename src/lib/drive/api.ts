@@ -190,6 +190,29 @@ export async function listPdfs(
   return { files, truncated };
 }
 
+/**
+ * PDFs and folders shared with the signed-in account ("Shared with me"),
+ * newest first (the platform inbox). Up to `max` items.
+ */
+export async function listSharedWithMe(auth: DriveAuth, max = 2000): Promise<DriveFile[]> {
+  const out: DriveFile[] = [];
+  let pageToken: string | undefined;
+  do {
+    const res = await request("/files", auth, {
+      q: `sharedWithMe = true and trashed = false and (mimeType = 'application/pdf' or mimeType = '${FOLDER_MIME}' or mimeType = 'application/octet-stream')`,
+      fields: `nextPageToken,files(${FILE_FIELDS})`,
+      pageSize: "1000",
+      orderBy: "sharedWithMeTime desc",
+      includeItemsFromAllDrives: "true",
+      ...(pageToken && { pageToken }),
+    });
+    const page = (await res.json()) as { files?: RawFile[]; nextPageToken?: string };
+    out.push(...(page.files ?? []).map(toFile));
+    pageToken = page.nextPageToken;
+  } while (pageToken && out.length < max);
+  return out.slice(0, max);
+}
+
 /** The file's bytes as a stream (alt=media). Large files take a while. */
 export async function download(id: string, auth: DriveAuth, resourceKey?: string): Promise<Response> {
   return request(`/files/${encodeURIComponent(id)}`, auth, { alt: "media" }, [{ id, key: resourceKey }], 10 * 60_000);

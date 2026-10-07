@@ -375,11 +375,11 @@ vars are documented in `.env.example`.
   uploads with trailing checksums aren't decoded by every S3-compatible
   store). The root tsconfig excludes `services/`.
 
-## Google Drive import (v1.5, being built)
+## Google Drive import (v1.5)
 
-Plan: README "Roadmap > v1.5". Built so far: the pipeline every source
-uses (part 1), public link import (part 2) and the Google Picker (part 3).
-Still to come: the platform inbox (part 4).
+Shipped 2026-10-08 in four parts (README "Roadmap > v1.5"): the pipeline
+every source uses, public link import, the Google Picker, and the
+platform inbox.
 - `lib/drive/urls.ts` (`parseDriveUrl`, pure, unit-tested): folder, file,
   `open?id=`, `uc?id=` links and bare ids; keeps `resourcekey`.
 - `lib/drive/api.ts`: fetch-based Drive v3 client (no googleapis), auth
@@ -435,6 +435,33 @@ Still to come: the platform inbox (part 4).
   origins must include the site), `GOOGLE_PICKER_API_KEY` and
   `GOOGLE_CLOUD_PROJECT_NUMBER`; each tab shows only when its keys are set.
   The privacy page carries Google's "Limited Use" statement.
+- Platform inbox (part 4, `lib/drive/inbox.ts`): people share PDFs or
+  folders with UniArchive's Google account; they land in the queue's
+  "Drive inbox" tab (source `drive_inbox`, `platform/inbox/` keys, the
+  sharer's name and encrypted email on `platform.drive`, no credit). Any
+  staff member (`material.ingest`) can see and work on them (`canWorkOn`,
+  scope `inbox`); staff Drive imports (source `drive`) sit with their
+  uploader's own uploads. `/admin/materials/drive-inbox` (permission
+  `material.drive_inbox`: com_admin, dev; dashboard tile) connects the
+  account: `GET /api/admin/drive-inbox/connect` (one-time state in a
+  10-minute httpOnly cookie, `drive.readonly` + offline, prompt consent,
+  login hint) -> Google -> `/callback` (state checked, code traded,
+  refresh token required, Drive scope required, the account must equal
+  `PLATFORM_DRIVE_EMAIL`) -> refresh token encrypted in the singleton
+  `PlatformDriveConnection`. A separate OAuth client from sign-in
+  (`DRIVE_INBOX_CLIENT_ID`/`_SECRET`, published, not "Testing": testing
+  refresh tokens expire after 7 days); redirect URI
+  `<NEXT_PUBLIC_APP_URL>/api/admin/drive-inbox/callback`.
+  `runInboxCheck(budgetMs)`: a lease on the connection (one run at a
+  time), refreshes the access token, lists "shared with me" PDFs and
+  shared folders (3 levels), skips what the ledger has (same md5) or what
+  failed 3 times, imports until the 4-minute budget, and stores
+  `lastCheck`; `invalid_grant` marks it broken ("connect again"). Run by
+  the daily Vercel Cron `/api/cron/drive-inbox` (04:00 UTC, Bearer
+  `CRON_SECRET`) and "Check now" (`POST /api/admin/drive-inbox/check`).
+  `DELETE /api/admin/drive-inbox` revokes the token at Google and forgets
+  it. `DRIVE_OAUTH_TOKEN_URL` / `DRIVE_OAUTH_REVOKE_URL` point tests at a
+  fake.
 
 ## UniLibrary: unverified PDFs
 
@@ -671,8 +698,9 @@ admin), full admin panel (`/admin`), SEO
   draft merging, broadcast templates (escaping, links, digest), Lagos
   months, field encryption and preference links, school email matching,
   the material lifecycle (unverified -> verified -> removed), broadcast
-  recipients, digest numbers, Brevo list tidying, Drive links and the
-  Drive import pipeline (fake Drive, mocked storage). Not covered: API
+  recipients, digest numbers, Brevo list tidying, Drive links, the
+  Drive import pipeline and the Drive inbox (fake Google, mocked
+  storage), queue access rules. Not covered: API
   routes and pages (still exercised by hand or scripted runs against
   `pnpm start`), React components.
 - CI (`.github/workflows/ci.yml`): typecheck, lint and tests on every push

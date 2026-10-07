@@ -10,8 +10,10 @@ import { requireStaffPage } from "./guard";
 
 export async function QueuePage({ area }: { area: StaffArea }) {
   const session = await requireStaffPage(area, "materials/queue", "material.ingest");
-  const scopes: ("mine" | "all" | "gifts")[] = ["mine"];
+  const scopes: ("mine" | "all" | "gifts" | "inbox")[] = ["mine"];
   if (isAdminRole(session.role)) scopes.push("all");
   if (can(session.role, "material.review_gifts")) scopes.push("gifts");
+  // PDFs shared with UniArchive's Gmail: a pool for all staff
+  scopes.push("inbox");
   return <PlatformQueue scopes={scopes} />;
 }

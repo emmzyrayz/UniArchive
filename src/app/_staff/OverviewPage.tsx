@@ -19,6 +19,7 @@ export async function OverviewPage({ area }: { area: StaffArea }) {
         canMail: area === "admin" && can(session.role, "mail.send_user"),
         canBroadcast: area === "admin" && can(session.role, "mail.broadcast"),
         canSurveys: area === "admin" && can(session.role, "survey.manage"),
+        canDriveInbox: area === "admin" && can(session.role, "material.drive_inbox"),
       }}
     />
   );

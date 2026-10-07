@@ -60,7 +60,11 @@ export default function PrivacyPage() {
               Drive. We keep a record of each import (the file&apos;s name,
               size and Drive id, and the result) so the same file isn&apos;t
               imported twice; it is in &ldquo;Download my data&rdquo; and
-              deleted with your account. UniArchive&apos;s use of information
+              deleted with your account. If you share files with
+              UniArchive&apos;s Google account instead, we import the PDFs into
+              our review queue and keep your name and email (encrypted) with
+              them so our team knows who shared them; nothing else in your
+              Drive is read. UniArchive&apos;s use of information
               received from Google APIs adheres to the Google API Services
               User Data Policy, including the Limited Use requirements.
             </>,

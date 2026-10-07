@@ -55,18 +55,24 @@ export function isOwnPlatformKey(storageKey: string, userId: string): boolean {
 // --- Who may do what --------------------------------------------------------------
 
 /**
- * Gifts need "material.review_gifts" (admins). A staff upload can be worked
- * on by whoever uploaded it, and by any admin.
+ * Gifts need "material.review_gifts" (admins). Drive inbox files (shared
+ * with UniArchive's Gmail) are a pool any staff member works on. A staff
+ * upload (or staff Drive import) can be worked on by whoever uploaded it,
+ * and by any admin.
  */
 export function canWorkOn(
   session: SessionUser,
   platform: Pick<IBookPlatform, "source" | "uploadedBy">,
 ): boolean {
   if (platform.source === "gift") return can(session.role, "material.review_gifts");
+  if (platform.source === "drive_inbox") return can(session.role, "material.ingest");
   return String(platform.uploadedBy) === session.userId || isAdminRole(session.role);
 }
 
-export type QueueScope = "mine" | "all" | "gifts";
+/** Sources that count as a staff member's own uploads */
+const STAFF_SOURCES = { $in: ["mod_upload", "drive"] };
+
+export type QueueScope = "mine" | "all" | "gifts" | "inbox";
 
 /** The Mongo filter for a queue tab, or null when the viewer can't see it. */
 export function queueFilter(
@@ -80,10 +86,13 @@ export function queueFilter(
       ? { ...base, "platform.source": "gift" }
       : null;
   }
-  if (scope === "all") {
-    return isAdminRole(session.role) ? { ...base, "platform.source": "mod_upload" } : null;
+  if (scope === "inbox") {
+    return can(session.role, "material.ingest") ? { ...base, "platform.source": "drive_inbox" } : null;
   }
-  return { ...base, "platform.source": "mod_upload", "platform.uploadedBy": session.userId };
+  if (scope === "all") {
+    return isAdminRole(session.role) ? { ...base, "platform.source": STAFF_SOURCES } : null;
+  }
+  return { ...base, "platform.source": STAFF_SOURCES, "platform.uploadedBy": session.userId };
 }
 
 export type PlatformBookDoc = IBook & { _id: Types.ObjectId; platform: IBookPlatform };
@@ -164,6 +173,8 @@ export interface PlatformFileDto {
   publishedAt?: string;
   /** Gifts: what the student said the PDF is. */
   giftNote?: string;
+  /** Drive inbox: who shared it with UniArchive (name only) */
+  sharedByName?: string;
   /** Pending "Help identify" suggestions readers left on its unverified listing */
   suggestionCount?: number;
 }
@@ -218,5 +229,6 @@ export function toPlatformFileDto(book: PlatformBookDoc, viewerId: string, now =
     ...(p.materialId ? { materialId: String(p.materialId) } : {}),
     ...(p.publishedAt ? { publishedAt: new Date(p.publishedAt).toISOString() } : {}),
     ...(p.gift ? { giftNote: p.gift.note } : {}),
+    ...(p.drive?.sharedByName ? { sharedByName: p.drive.sharedByName } : {}),
   };
 }

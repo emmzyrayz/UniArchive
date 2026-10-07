@@ -21,7 +21,7 @@ import { useStaffArea } from "@/components/admin/staffArea";
 import { formatFileSize } from "@/assets/data/libraryData";
 import type { PlatformFileDto } from "@/lib/platformUploads";
 
-type Scope = "mine" | "all" | "gifts";
+type Scope = "mine" | "all" | "gifts" | "inbox";
 type Status = "pending" | "published" | "discarded";
 
 interface QueueResponse {
@@ -36,6 +36,7 @@ const SCOPE_LABELS: Record<Scope, string> = {
   mine: "My uploads",
   all: "All staff uploads",
   gifts: "Gifts",
+  inbox: "Drive inbox",
 };
 
 const STATUS_TABS: { id: Status; label: string }[] = [
@@ -115,7 +116,9 @@ export function PlatformQueue({ scopes }: { scopes: Scope[] }) {
           status === "pending"
             ? scope === "gifts"
               ? "No gifted PDFs are waiting."
-              : "Nothing is waiting. Upload some PDFs to get started."
+              : scope === "inbox"
+                ? "Nothing new shared with UniArchive's Google Drive."
+                : "Nothing is waiting. Upload some PDFs to get started."
             : `No ${status} files.`
         }
       >
@@ -135,8 +138,9 @@ export function PlatformQueue({ scopes }: { scopes: Scope[] }) {
                     </span>
                   )}
                   {f.originalSize > f.fileSize && ` (was ${formatFileSize(f.originalSize)})`}
-                  {f.pageCount ? ` · ${f.pageCount} pages` : ""} · {f.source === "gift" ? "gifted" : "uploaded"} by @
-                  {f.uploadedByUpid} {timeAgo(f.createdAt)}
+                  {f.pageCount ? ` · ${f.pageCount} pages` : ""} · {f.source === "drive_inbox"
+                    ? `shared with UniArchive${f.sharedByName ? ` by ${f.sharedByName}` : ""} ${timeAgo(f.createdAt)}`
+                    : `${f.source === "gift" ? "gifted" : f.source === "drive" ? "imported from Drive" : "uploaded"} by @${f.uploadedByUpid} ${timeAgo(f.createdAt)}`}
                 </p>
                 {f.giftNote && (
                   <p className="mt-1 line-clamp-2 text-xs text-text-secondary">&ldquo;{f.giftNote}&rdquo;</p>

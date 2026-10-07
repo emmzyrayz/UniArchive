@@ -31,7 +31,8 @@ type Action =
   | "mail.send_user" // write to one user from /admin/mail (ZeptoMail)
   | "mail.broadcast" // compose and send bulk email (Brevo)
   // Surveys
-  | "survey.manage"; // build surveys and see their responses
+  | "survey.manage" // build surveys and see their responses
+  | "material.drive_inbox"; // connect and run the Google Drive inbox (PDFs shared with UniArchive's Gmail)
 
 const PERMISSIONS: Record<UserRole, Action[]> = {
   student: ["download", "comment", "upload"],
@@ -107,6 +108,7 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "mail.send_user",
     "mail.broadcast",
     "survey.manage",
+    "material.drive_inbox",
   ],
   webmaster: [
     "download",
@@ -157,6 +159,7 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "mail.send_user",
     "mail.broadcast",
     "survey.manage",
+    "material.drive_inbox",
   ],
 };
 

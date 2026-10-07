@@ -4,11 +4,12 @@
 //   Records a platform PDF after the browser has uploaded it to Backblaze
 //   (see ./presign). Size and type come from the bucket, not the client.
 //
-// GET ?scope=mine|all|gifts&status=pending|published|discarded&page=
+// GET ?scope=mine|all|gifts|inbox&status=pending|published|discarded&page=
 //   A page of the queue, oldest first for pending files (newest first
 //   otherwise), plus pending counts for each tab the viewer can see.
 //   mine: the viewer's own uploads; all: every staff upload (admins);
-//   gifts: PDFs students gifted (admins with "material.review_gifts").
+//   gifts: PDFs students gifted (admins with "material.review_gifts");
+//   inbox: PDFs shared with UniArchive's Gmail (lib/drive/inbox.ts, all staff).
 import { NextResponse, type NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth/session";
 import { asTrimmedString, handleRouteError, readJson } from "@/lib/api";
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-const SCOPES: QueueScope[] = ["mine", "all", "gifts"];
+const SCOPES: QueueScope[] = ["mine", "all", "gifts", "inbox"];
 
 export async function GET(request: NextRequest) {
   try {
