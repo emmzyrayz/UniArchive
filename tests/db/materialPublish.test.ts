@@ -98,6 +98,7 @@ describe("material lifecycle", () => {
 
   it("removes a rejected PDF with its suggestions, but only hides one people engaged with", async () => {
     const Suggestion = await getMaterialSuggestionModel();
+    await Suggestion.init();
     const plain = submission();
     await upsertUnverifiedFromSubmission(plain, book);
     const m = await Material.findOne({ bookId: plain.bookId }).lean();

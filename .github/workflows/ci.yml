@@ -30,6 +30,8 @@ jobs:
           path: ~/.cache/mongodb-binaries
           key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: mongodb-binaries-${{ runner.os }}-
+      # Route types and next-env.d.ts (gitignored) come from Next itself
+      - run: pnpm exec next typegen
       - run: npx tsc --noEmit -p .
       - run: pnpm lint
       - run: pnpm test

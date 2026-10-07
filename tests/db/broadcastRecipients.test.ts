@@ -33,7 +33,8 @@ const users = [
 ];
 
 beforeAll(async () => {
-  const User = await getUserModel();
+  const [User, LoginEvent] = await Promise.all([getUserModel(), getLoginEventModel()]);
+  await Promise.all([User.init(), LoginEvent.init()]);
   await User.collection.insertMany(
     users.map((u, i) => ({
       _id: new Types.ObjectId(),
@@ -48,7 +49,6 @@ beforeAll(async () => {
     })),
   );
   const gozie = await User.collection.findOne({ upid: "gozie" });
-  const LoginEvent = await getLoginEventModel();
   await LoginEvent.collection.insertOne({ userId: gozie!._id, createdAt: new Date(), method: "password" });
 });
 

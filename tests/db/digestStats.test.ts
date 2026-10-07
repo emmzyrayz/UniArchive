@@ -19,7 +19,16 @@ beforeAll(async () => {
     ids[title] = new Types.ObjectId();
     return { _id: ids[title], title, category: "EXAMS", isActive: true, viewCount: 0, createdAt: SEP(5), ...extra };
   };
-  const Material = await getMaterialModel();
+  const [Material, Question, Note, Suggestion, User] = await Promise.all([
+    getMaterialModel(),
+    getTypedQuestionModel(),
+    getContentDocumentModel(),
+    getMaterialSuggestionModel(),
+    getUserModel(),
+  ]);
+  // Build the unique indexes first, so a seed that breaks one fails every
+  // run instead of only when the index build wins the race
+  await Promise.all([Material, Question, Note, Suggestion, User].map((M) => M.init()));
   await Material.collection.insertMany([
     mat("Top read", { status: "verified", tier1VerifiedAt: SEP(10), viewCount: 500, courseCode: "MTH101", universityAbbr: "UNN", universityId: UNI1 }),
     mat("Second", { status: "verified", tier1VerifiedAt: SEP(11), viewCount: 300, universityName: "Testland University", universityId: UNI2 }),
@@ -33,17 +42,15 @@ beforeAll(async () => {
     mat("Edge out", { status: "verified", tier1VerifiedAt: new Date("2026-09-30T23:30:00Z"), createdAt: new Date("2026-09-30T23:30:00Z"), viewCount: 8000 }),
     mat("Old (no status field)", { tier1VerifiedAt: new Date("2026-03-01"), createdAt: new Date("2026-03-01"), viewCount: 7000 }),
   ]);
-  const Question = await getTypedQuestionModel();
-  await Question.collection.insertMany([SEP(1), SEP(2), SEP(3), new Date("2026-10-02")].map((createdAt) => ({ createdAt })));
-  const Note = await getContentDocumentModel();
+  await Question.collection.insertMany(
+    [SEP(1), SEP(2), SEP(3), new Date("2026-10-02")].map((createdAt, i) => ({ materialId: ids["Top read"], questionNumber: i + 1, createdAt })),
+  );
   await Note.collection.insertMany([{ isActive: true, createdAt: SEP(3) }, { isActive: false, createdAt: SEP(3) }]);
-  const Suggestion = await getMaterialSuggestionModel();
   await Suggestion.collection.insertMany([
-    { materialId: ids.Unverified, status: "accepted", decidedAt: SEP(20) },
-    { materialId: ids.Unverified, status: "accepted", decidedAt: SEP(20) },
-    { materialId: ids.Second, status: "declined", decidedAt: SEP(20) },
+    { materialId: ids.Unverified, userId: new Types.ObjectId(), status: "accepted", decidedAt: SEP(20) },
+    { materialId: ids.Unverified, userId: new Types.ObjectId(), status: "accepted", decidedAt: SEP(20) },
+    { materialId: ids.Second, userId: new Types.ObjectId(), status: "declined", decidedAt: SEP(20) },
   ]);
-  const User = await getUserModel();
   await User.collection.insertMany([
     { upid: "u1", emailHash: "h1", uuid: "uuid1", isVerified: true, createdAt: SEP(9) },
     { upid: "u2", emailHash: "h2", uuid: "uuid2", isVerified: false, createdAt: SEP(9) },

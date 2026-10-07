@@ -81,7 +81,9 @@ afterAll(() => {
 beforeEach(async () => {
   lists = new Map();
   deletes.length = 0;
-  await (await getBroadcastModel()).deleteMany({});
+  const Broadcast = await getBroadcastModel();
+  await Broadcast.init();
+  await Broadcast.deleteMany({});
 });
 
 describe("tidyBroadcastLists", () => {

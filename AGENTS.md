@@ -555,8 +555,11 @@ admin), full admin panel (`/admin`), SEO
   refuses any URI that isn't that server (`tests/db/setup.ts`). It never
   reads `.env.local`: the config sets fixed test secrets
   (`ENCRYPTION_KEY`, `JWT_SECRET`, `HASH_SALT`, `NEXT_PUBLIC_APP_URL`).
-- Seed with `Model.collection.insertMany` to skip schema validation; users
-  need unique `emailHash` and `uuid`. Stub external APIs in-process with
+- Seed with `Model.collection.insertMany` to skip schema validation, but
+  call `await Model.init()` first so the unique indexes exist: otherwise a
+  seed that breaks one (users need unique `emailHash` and `uuid`;
+  suggestions a `userId`; typed questions a `questionNumber`) only fails
+  when the background index build wins the race. Stub external APIs in-process with
   `vi.stubGlobal("fetch", ...)` (see `tests/db/tidyLists.test.ts` for a
   fake Brevo).
 - Covered so far: survey questions/answers, outlines, route access,
