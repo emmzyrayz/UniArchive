@@ -92,3 +92,10 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .badge-shimmer { animation: none; background-image: none; }
 }
+/* Reader night mode (useReaderNight): darkens the page image only.
+   Highlights, note markers and the watermark are separate layers and keep
+   their colours; hue-rotate puts photos' colours back after the invert. */
+.reader-night .react-pdf__Page__canvas,
+.reader-night .reader-page-image {
+  filter: invert(0.9) hue-rotate(180deg);
+}

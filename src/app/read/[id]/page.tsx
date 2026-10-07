@@ -13,6 +13,7 @@ import { OfflineSaveButton } from "@/components/reader/OfflineSaveButton";
 import { canRunModernPdf } from "@/lib/deviceCapability";
 import { getCachedPageCount } from "@/lib/offlineCache";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useReaderNight } from "@/hooks/useReaderNight";
 
 const pageSkeleton = () => (
   <div className="w-[600px] max-w-full h-[800px] bg-neutral-800 animate-pulse rounded" />
@@ -64,6 +65,7 @@ export default function ReadPage() {
   const { userProfile } = useUser();
   const { numPages } = useReader();
   const modernPdf = useModernPdfSupport();
+  const [night] = useReaderNight();
 
   const watermarkLabel =
     userProfile?.upid ?? userProfile?.fullName ?? "UniArchive";
@@ -92,7 +94,7 @@ export default function ReadPage() {
     // centres it otherwise (flex centring would cut off its left edge)
     <div className="overflow-x-auto py-8 px-4">
       <div
-        className="relative mx-auto w-fit shadow-2xl select-none"
+        className={`relative mx-auto w-fit shadow-2xl select-none ${night ? "reader-night" : ""}`}
         style={{ userSelect: "none" }}
       >
         {reader}

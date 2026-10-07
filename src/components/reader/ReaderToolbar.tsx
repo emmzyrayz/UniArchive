@@ -7,6 +7,7 @@ import { MIN_ZOOM, useReader } from "@/context/readerContext";
 import { useDeviceCapability } from "@/hooks/useDeviceCapability";
 import { canRunModernPdf } from "@/lib/deviceCapability";
 import { HIGHLIGHT_COLORS } from "@/lib/constants/annotations";
+import { useReaderNight } from "@/hooks/useReaderNight";
 import type { Book } from "@/types/library";
 
 const noopSubscribe = () => () => {};
@@ -65,6 +66,7 @@ export function ReaderToolbar({ book }: { book: Book }) {
   const imageMode =
     modernPdf === false && (book.storageProvider === "cloudinary" || !!book.hasPageImages);
   const bookmarked = isPageBookmarked(currentPage);
+  const [night, toggleNight] = useReaderNight();
 
   // Only hide scroll mode once capability is assessed — avoids layout shift
   const canUseScrollMode = !ready || capability !== "low";
@@ -221,6 +223,20 @@ export function ReaderToolbar({ book }: { book: Book }) {
             </svg>
           </button>
 
+          {/* Night mode for the pages */}
+          <button
+            type="button"
+            onClick={toggleNight}
+            className={`p-2 rounded-md ${night ? "bg-neutral-800 text-amber-300" : "text-neutral-300 hover:bg-neutral-800"}`}
+            aria-label={night ? "Turn off night mode" : "Night mode: darken the pages"}
+            title={night ? "Turn off night mode" : "Night mode: darken the pages"}
+            aria-pressed={night}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill={night ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+              <path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" />
+            </svg>
+          </button>
+
           {/* Page list sidebar */}
           <button
             type="button"
@@ -269,7 +285,8 @@ export function ReaderToolbar({ book }: { book: Book }) {
             type="button"
             disabled
             title="Downloading is disabled for protected materials"
-            className="p-2 rounded-md text-neutral-600 cursor-not-allowed"
+            // Always disabled: not worth the room on a phone's toolbar
+            className="hidden sm:block p-2 rounded-md text-neutral-600 cursor-not-allowed"
             aria-label="Download disabled"
           >
             <svg

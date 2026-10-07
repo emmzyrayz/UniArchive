@@ -283,6 +283,14 @@ vars are documented in `.env.example`.
   deletions stick, and an item both still have keeps this tab's version
   when only this tab changed it (a note), else theirs.
 
+- Night mode (`useReaderNight`, the toolbar's moon): a per-device setting
+  in localStorage (`ua_reader_night`) that adds `reader-night` to the page
+  container; `globals.css` inverts only the page canvas / page image
+  (`invert(0.9) hue-rotate(180deg)`), so highlights, note markers and the
+  watermark keep their colours. The site's own dark theme doesn't reach
+  PDF pages. The toolbar hides the always-disabled download icon on phones
+  to make room.
+
 ## Platform materials (staff uploads, credited to UniArchive)
 
 - A platform file is a `Book` with a `platform` sub-document (status
@@ -607,8 +615,6 @@ this Next.js + MongoDB codebase.
 
 - `/settings` has no UI-only controls left (profile editing links to
   `/profile/edit`).
-- PDF pages have no dark mode (the site theme doesn't reach the page
-  canvas). On README "v1: left before v2".
 - No automated tests for API routes, pages or components yet: those are
   checked against a running app (see Workflow rules), with scripted runs
   against a throwaway MongoDB, never the `.env.local` DB. For Backblaze, run `s3rver` with a self-signed cert (the storage client

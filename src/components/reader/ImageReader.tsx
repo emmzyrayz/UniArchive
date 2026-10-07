@@ -114,7 +114,7 @@ export function ImageReader({
       src={page.src}
       alt={`Page ${currentPage} of ${book.title}`}
       style={width}
-      className="block h-auto bg-white"
+      className="reader-page-image block h-auto bg-white"
       draggable={false}
     />
   );

@@ -50,9 +50,9 @@ export const roadmap: RoadmapPhase[] = [
         status: "in-progress",
       },
       {
-        title: "Notes on highlights and a dark reading mode",
-        description: "Write a note on anything you highlight, and read at night without the glare.",
-        status: "planned",
+        title: "Notes on highlights and night mode",
+        description: "Write a note on anything you highlight, and darken the pages to read at night without the glare.",
+        status: "done",
       },
     ],
   },

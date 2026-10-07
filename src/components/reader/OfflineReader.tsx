@@ -9,6 +9,7 @@ import Link from "next/link";
 import { ReaderShell } from "@/components/reader/ReaderShell";
 import { ImageReader } from "@/components/reader/ImageReader";
 import { getCachedPageCount } from "@/lib/offlineCache";
+import { useReaderNight } from "@/hooks/useReaderNight";
 import type { Book } from "@/types/library";
 
 type OfflineBookState =
@@ -18,6 +19,7 @@ type OfflineBookState =
 
 export function OfflineReader({ bookId }: { bookId: string }) {
   const [state, setState] = useState<OfflineBookState>({ status: "checking" });
+  const [night] = useReaderNight();
 
   useEffect(() => {
     let cancelled = false;
@@ -75,7 +77,7 @@ export function OfflineReader({ bookId }: { bookId: string }) {
     <ReaderShell book={state.book}>
       {/* Scrolls sideways when zoomed wider than the screen (see read/[id]/page.tsx) */}
       <div className="overflow-x-auto py-8 px-4">
-        <div className="relative mx-auto w-fit shadow-2xl select-none">
+        <div className={`relative mx-auto w-fit shadow-2xl select-none ${night ? "reader-night" : ""}`}>
           <ImageReader book={state.book} cacheOnly />
         </div>
       </div>
