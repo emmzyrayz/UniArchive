@@ -27,7 +27,10 @@ Repo: https://github.com/emmzyrayz/UniArchive, deploys from `main` on Vercel.
   tested (e.g. a real Google sign-in) instead of implying it was.
 - **Keep the docs current** in the same commit: AGENTS.md for how things
   work, README.md for the product overview ("What UniArchive is", read by
-  people and other AI tools) and the roadmap.
+  people and other AI tools) and the roadmap. When a roadmap item ships or
+  changes, update both README "Roadmap" (detailed: v1 shipped, what's left
+  of v1, v2, later) and the public `/about` roadmap (`src/types/roadmap.ts`,
+  plain language, statuses done / in-progress / planned).
 - **Then commit and push to `main`.** Conventional-commit style messages
   (`feat:`, `fix:`, `chore(seo):` ...), one logical change per commit.
 - Never write test data to the database in `.env.local` (it is the real
@@ -573,10 +576,25 @@ admin), full admin panel (`/admin`), SEO
   to main and every pull request (Node 24). The build isn't run there: it
   needs a database for the sitemap, and Vercel builds every deploy.
 
+## Roadmap
+
+README "Roadmap" is the plan of record: v1 (the web platform, Phases 1-2)
+is live, with a short "left before v2" list; v2 is Archive Scouts
+(gamified micro-tasks, Archive Credits, streaks, cosmetic rewards) and a
+Flutter phone app; later is a full learning platform (OCR, courses,
+practice, assignments, study rooms). Each v2/later item lists what it
+needs first (e.g. a notification centre and a credit ledger before
+Scouts; token auth and a versioned `/api/v1` before the app). Earlier
+planning documents assumed FastAPI + PostgreSQL; that was superseded by
+this Next.js + MongoDB codebase.
+
 ## Known gaps
 
 - `/settings` has no UI-only controls left (profile editing links to
   `/profile/edit`).
+- Highlights store a `note` (`annotationModel.ts`) that the reader can't
+  write or show yet, and PDF pages have no dark mode (the site theme
+  doesn't reach the page canvas). Both are on README "v1: left before v2".
 - No automated tests for API routes, pages or components yet: those are
   checked against a running app (see Workflow rules), with scripted runs
   against a throwaway MongoDB, never the `.env.local` DB. For Backblaze, run `s3rver` with a self-signed cert (the storage client

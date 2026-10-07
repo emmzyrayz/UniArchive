@@ -60,9 +60,17 @@ export function RoadmapTracker() {
             transition={{ duration: 0.4, delay: phaseIndex * 0.1 }}
             className="rounded-xl border border-border bg-surface-raised overflow-hidden"
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h3 className="font-semibold text-text-primary">{phase.title}</h3>
-              <span className="text-sm text-text-secondary">{percent}%</span>
+            <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-border">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-semibold text-text-primary">{phase.title}</h3>
+                  <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-text-secondary">
+                    {phase.stage}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-text-secondary">{phase.summary}</p>
+              </div>
+              <span className="shrink-0 text-sm text-text-secondary">{percent}%</span>
             </div>
             <ul className="divide-y divide-border">
               {phase.items.map((item) => {
@@ -76,7 +84,7 @@ export function RoadmapTracker() {
                       className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${config.dot}`}
                       aria-hidden
                     />
-                    <div className="flex-1">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-medium text-text-primary text-sm">
                           {item.title}

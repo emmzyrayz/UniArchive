@@ -11,7 +11,7 @@ by contributors so they're searchable.
   is going**; architecture, conventions and how things work live in
   [AGENTS.md](AGENTS.md).
 
-Last updated: 2026-10-06.
+Last updated: 2026-10-07.
 
 ---
 
@@ -44,7 +44,8 @@ to 500L/600L, postgraduate) and course code.
   school, level...); staff verify it with the details people agree on in
   one click, and helpers earn the PDF Detective badge.
 - **Read in the browser**: a PDF reader with highlights, bookmarks, reading
-  progress, dark mode, scroll or single-page modes, and offline saving.
+  progress, scroll or single-page modes, a lightweight mode for low-end
+  phones, a watermark with the reader's id, and offline saving.
   Very large PDFs on low-end phones get a "open it on a computer" fallback
   for now.
 - **Keep a personal library**: upload your own PDFs (up to 10 MB on the
@@ -71,9 +72,9 @@ submissions, school suggestions and reports, upload platform materials,
 and send email announcements and newsletters. There is no mobile app, no
 paid tier and no advertising.
 
-**Not there yet**: page images for large PDFs on low-end phones (needs a
-paid background worker); automated tests cover the core logic
-(`pnpm test`), not yet the API routes and pages.
+**Not there yet**: offline saving and low-end-phone page images for large
+PDFs (needs a paid background worker), notes on highlights, a dark mode
+for PDF pages. Where it goes next is under [Roadmap](#roadmap).
 
 ## Writing survey questions
 
@@ -148,7 +149,20 @@ for their course or school, device and data limits, reading habits,
 willingness to contribute or type out materials, trust in verified
 content, and what would make them come back.
 
-## Shipped
+## Roadmap
+
+Three stages. **v1** is the web platform (Phases 1 and 2), live at
+uniarchive.com.ng. **v2** adds Archive Scouts (Phase 3) and a phone app
+(Phase 4); its exact scope is settled in v2 planning. **Later** turns
+UniArchive into a full learning platform (Phase 5). The public, plain
+language version is the roadmap on `/about` (`src/types/roadmap.ts`);
+keep the two in step.
+
+Earlier planning documents assumed FastAPI + PostgreSQL. UniArchive is
+built on Next.js + MongoDB (see AGENTS.md), and the plans below assume
+that stack.
+
+### v1: shipped
 
 **Foundation (rebuilt September 2026)**
 - Accounts: email/password with new-device email codes, Google sign-in
@@ -211,8 +225,7 @@ content, and what would make them come back.
    multiple tabs or devices; dashboard Conversions tab with each
    contributor's stats.
 
-## Built, switched off
-
+**Built, switched off**
 - **PDF worker** (`services/pdf-worker`): page images so low-end devices can
   read Backblaze PDFs, plus compression for platform files. It needs a paid
   Render background worker (~$7/month). Until then those devices get a
@@ -220,13 +233,111 @@ content, and what would make them come back.
   be processed once it's on. To enable it, follow "Deploying on Render" in
   `services/pdf-worker/README.md`.
 
-## Backlog
+### v1: left before v2
 
-Unordered; pick by what matters most at the time.
+Product gaps (small, worth closing first):
+- **Notes on highlights.** Highlights already store a `note` field
+  (`annotationModel.ts`); the reader has no way to write or show it. The
+  old public roadmap promised "notes and highlights".
+- **Dark mode for PDF pages.** The site has a dark theme, but PDF pages
+  stay white. A reader toggle (invert the page canvas, keep images
+  readable) closes it. v2's "exclusive reader themes" build on it.
+- **Offline for large PDFs.** Only Cloudinary PDFs (≤10 MB) can be saved
+  offline; Backblaze ones need page images from the PDF worker (paid
+  Render worker, ~$7/month). A cost decision, not code.
 
+Production chores (owner):
+- Run `pnpm db:word-counts --apply` (dry run first; not yet run).
+- Confirm `pnpm db:text-index --apply` was run (outline search).
+- Send a first real broadcast to a small audience (e.g. role = dev): the
+  sender `updates@` is verified in Brevo, the first-name greeting fills
+  in, and the unsubscribe link reaches the webhook.
+- `pnpm brevo:tidy-lists` (dry run), then delete one old list and check its
+  campaign's stats survive before the weekly cron does the rest.
+- Vercel: `CRON_SECRET` set, `NEXT_PUBLIC_APP_URL` on the apex domain,
+  `EMAIL_USER`/`EMAIL_PASS` removed; Google OAuth redirect URI and the
+  Brevo webhook URL on the apex domain; sitemap submitted in Search
+  Console.
+- A browser pass of features only tested through their APIs: surveys
+  (builder, public form, results), the Help identify panel and the staff
+  suggestions panel, the digest's "Fill in the numbers".
+
+Engineering (optional for v1):
 - **Tests for API routes and pages**: `pnpm test` covers the core logic
   (unit tests plus database tests on an in-memory MongoDB, run by CI on
   every push); routes, pages and components are still checked by hand.
+
+### v2 (next): Archive Scouts
+
+Make keeping the library accurate feel like a game instead of work, with
+no cash payouts.
+- **Scout tasks**: bite-sized jobs from the existing queues: is this PDF
+  readable, are these details right (today's Help identify), spot-check a
+  typed answer, type one page. Each task is small enough for a phone and a
+  few minutes.
+- **Archive Credits (AC) and XP** per task, scaled by how much the result
+  was needed and whether it held up (agreed with others, accepted by
+  staff).
+- **Daily streaks** with multipliers for days in a row.
+- **Rewards**: animated profile frames and avatar rings, gradient names
+  and badges in comments and profiles, exclusive reader themes (OLED black
+  and others, on top of v1's dark mode), department leaderboards and
+  Campus Pioneer banners.
+
+Builds on: badges and `awardBadgesAfter`, `ContributionEvent` (role
+progression), `MaterialSuggestion` (agreement by fingerprint),
+"Materials that need typing", two-tier verification.
+
+Needs first:
+- An in-app notification centre (credits earned, streak at risk, a
+  suggestion accepted). Today everything is email.
+- Anti-farming rules: credits only for results that are confirmed
+  (consensus or staff), daily caps, no credit for your own uploads,
+  reversal when work is rejected later.
+- A ledger (append-only credit transactions) rather than a counter, so
+  balances can be audited and corrected.
+- Decide whether credits ever affect roles (today roles come from
+  `ContributionEvent`s) or stay cosmetic.
+
+### v2 (next): the phone app
+
+A Flutter app, Android first, for slow campus networks (50-100 KB/s) and
+low-end phones.
+- The app shell, PDF engine and an encrypted local library stay on the
+  phone (SQLite vault with keys in `flutter_secure_storage`, native PDF
+  rendering); launches fetch small JSON deltas.
+- Offline reading, typing and checking, with a background sync queue (the
+  web's draft sync and `Idempotency-Key` rules carry over).
+
+Needs first, on the web side:
+- Token auth for the app (today's sign-in is cookies plus a short JWT):
+  long-lived device tokens with revocation, tied to the existing sessions
+  list and `tokenVersion`.
+- A versioned, documented API (`/api/v1`) with "changes since" endpoints
+  for library, progress, highlights and drafts.
+- Push notifications (FCM), shared with the notification centre.
+- Internal tooling idea: a generator that reads the web API into a JSON
+  blueprint and fills a reusable Flutter shell (a Claude skill), so the
+  app tracks the web without hand-copying every endpoint.
+
+### Later: a full learning platform
+
+- **Search inside scanned PDFs (OCR)**: a background job on the PDF
+  worker (Tesseract, or a paid service such as AWS Textract) writing
+  page text to the search index; math to LaTeX is harder and can come
+  after.
+- **Course pages**: a real course catalog (today a course is only a code
+  on each material), syllabus tracking, modules and progress.
+- **Practice**: quizzes, flashcards and self-tests. Typed past questions
+  already store options and correct answers, so multiple-choice practice
+  can start from them.
+- **Assignments**: submission portals for verified lecturers and course
+  reps.
+- **Study together**: shared libraries, study groups, department channels
+  and direct messages, with reporting and moderation from day one.
+- **Live study rooms**: group audio (WebRTC) and a shared whiteboard. Vercel
+  functions can't hold open connections, so this needs a realtime service
+  (a hosted one such as LiveKit or Ably, or our own server).
 
 ## Running it locally
 

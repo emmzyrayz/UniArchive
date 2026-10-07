@@ -1,4 +1,7 @@
 // types/roadmap.ts
+// The public roadmap on /about (RoadmapTracker). Plain language for
+// students; the detailed version (versions, scope, prerequisites) is the
+// "Roadmap" section of README.md. Keep the two in step.
 export type RoadmapStatus = "done" | "in-progress" | "planned";
 
 export interface RoadmapItem {
@@ -10,70 +13,191 @@ export interface RoadmapItem {
 export interface RoadmapPhase {
   id: string;
   title: string;
+  /** "Live", "Next", "Later" */
+  stage: string;
+  summary: string;
   items: RoadmapItem[];
 }
 
 export const roadmap: RoadmapPhase[] = [
   {
-    id: "mvp",
-    title: "Phase 1 — Personal Library (Current)",
+    id: "read",
+    title: "Phase 1: Your library and reader",
+    stage: "Live",
+    summary: "Keep your own PDFs and read them comfortably, even on a low-end phone.",
     items: [
       {
-        title: "Account & auth system",
-        description: "Sign up, sign in, email verification, password reset",
+        title: "Accounts and security",
+        description:
+          "Email or Google sign-in, codes for new devices, sign-in history, and your email and phone number encrypted.",
         status: "done",
       },
       {
-        title: "PDF upload & storage",
-        description: "Upload and organize your own study materials",
-        status: "in-progress",
+        title: "Personal PDF library",
+        description: "Upload your own PDFs and read them on any device.",
+        status: "done",
       },
       {
         title: "In-browser reader",
-        description: "Read your PDFs directly, no downloads needed",
+        description:
+          "Highlights, bookmarks, reading progress, page or scroll view, and a lightweight mode for low-end phones.",
+        status: "done",
+      },
+      {
+        title: "Install it and read offline",
+        description:
+          "Install UniArchive from your browser and save PDFs to read without data. Smaller PDFs work offline today; large ones are coming.",
         status: "in-progress",
       },
       {
-        title: "PWA offline support",
-        description: "Access your library even with patchy internet",
+        title: "Notes on highlights and a dark reading mode",
+        description: "Write a note on anything you highlight, and read at night without the glare.",
         status: "planned",
       },
     ],
   },
   {
-    id: "smart-library",
-    title: "Phase 2 — Smart Library",
+    id: "unilibrary",
+    title: "Phase 2: The UniLibrary",
+    stage: "Live",
+    summary: "Past questions, notes and textbooks for every school, shared and checked by students.",
     items: [
       {
-        title: "OCR & searchable text",
-        description: "Search inside scanned PDFs, not just titles",
-        status: "planned",
-      },
-      {
-        title: "Reading progress & bookmarks",
-        description: "Pick up exactly where you left off",
-        status: "planned",
-      },
-      {
-        title: "Notes & highlights",
-        description: "Annotate directly on your documents",
-        status: "planned",
-      },
-    ],
-  },
-  {
-    id: "social",
-    title: "Phase 3 — Study Together",
-    items: [
-      {
-        title: "Friend invites & shared libraries",
-        description: "Share your collection with people you trust",
-        status: "planned",
-      },
-      {
-        title: "Live group study rooms",
+        title: "Browse by school and course",
         description:
-          "Audio chat with a shared live whiteboard while reading together",
+          "Free, no account needed: filter by university, faculty, department, level, course and type, newest or trending.",
+        status: "done",
+      },
+      {
+        title: "Search and material pages",
+        description:
+          "Search titles, course codes and tables of contents. Every material has its own page you can find on Google.",
+        status: "done",
+      },
+      {
+        title: "Share and verify materials",
+        description:
+          "Submit materials or gift a PDF; our team checks them. New PDFs show at once with an Unverified badge until they're checked.",
+        status: "done",
+      },
+      {
+        title: "Help identify PDFs",
+        description: "Tell us what an unidentified PDF is (course, school, level) and earn the PDF Detective badge.",
+        status: "done",
+      },
+      {
+        title: "Typed past questions and notes",
+        description:
+          "Type out past questions and notes beside the PDF so they're searchable. Saves as you go, even offline.",
+        status: "done",
+      },
+      {
+        title: "Profiles, badges and roles",
+        description: "Public profiles, badges for what you contribute, and roles from collaborator to course rep and lecturer.",
+        status: "done",
+      },
+      {
+        title: "Comments, reactions and reports",
+        description: "Discuss materials in threads, react, and report anything wrong.",
+        status: "done",
+      },
+      {
+        title: "Surveys and email updates",
+        description: "Answer surveys that shape UniArchive, and choose which emails you get.",
+        status: "done",
+      },
+    ],
+  },
+  {
+    id: "scouts",
+    title: "Phase 3: Archive Scouts",
+    stage: "Next",
+    summary: "Small tasks that keep the library accurate, with rewards worth showing off.",
+    items: [
+      {
+        title: "Scout tasks",
+        description: "Bite-sized jobs: check a PDF is readable, confirm its details, spot-check an answer, type a page.",
+        status: "planned",
+      },
+      {
+        title: "Archive Credits and XP",
+        description: "Earn credits and experience for every task you complete.",
+        status: "planned",
+      },
+      {
+        title: "Daily streaks",
+        description: "Keep your streak alive to multiply what you earn.",
+        status: "planned",
+      },
+      {
+        title: "Rewards to show off",
+        description: "Animated profile frames, gradient badges and names, and exclusive reader themes.",
+        status: "planned",
+      },
+      {
+        title: "Leaderboards",
+        description: "Top scouts in each department, and Campus Pioneer banners for the first in a school.",
+        status: "planned",
+      },
+    ],
+  },
+  {
+    id: "mobile",
+    title: "Phase 4: The UniArchive app",
+    stage: "Later",
+    summary: "A phone app built for slow campus networks and low-end phones.",
+    items: [
+      {
+        title: "Android app",
+        description: "Opens instantly and only downloads what changed, so it stays fast on slow networks.",
+        status: "planned",
+      },
+      {
+        title: "Encrypted offline library",
+        description: "Your PDFs stored securely on your phone and readable without data.",
+        status: "planned",
+      },
+      {
+        title: "Contribute offline",
+        description: "Type and check materials without a connection; it syncs when you're back online.",
+        status: "planned",
+      },
+    ],
+  },
+  {
+    id: "learn",
+    title: "Phase 5: A full learning platform",
+    stage: "Later",
+    summary: "From finding materials to studying, practising and learning together.",
+    items: [
+      {
+        title: "Search inside scanned PDFs",
+        description: "Scanned pages turned into searchable text automatically.",
+        status: "planned",
+      },
+      {
+        title: "Course pages",
+        description: "Syllabus tracking, modules and your progress through each course.",
+        status: "planned",
+      },
+      {
+        title: "Practice",
+        description: "Quizzes, flashcards and self-tests built from past questions.",
+        status: "planned",
+      },
+      {
+        title: "Assignments",
+        description: "Submit assignments to your lecturers and course reps.",
+        status: "planned",
+      },
+      {
+        title: "Study together",
+        description: "Shared libraries, study groups, department channels and messages.",
+        status: "planned",
+      },
+      {
+        title: "Live study rooms",
+        description: "Group audio with a shared whiteboard for working through problems together.",
         status: "planned",
       },
     ],

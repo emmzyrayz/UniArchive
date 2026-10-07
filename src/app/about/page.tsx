@@ -29,8 +29,10 @@ export default function AboutPage() {
               Where we are today
             </h2>
             <p className="text-sm text-text-secondary">
-              A personal PDF library — upload your materials, read them in your
-              browser, and keep everything organized in one place.
+              The UniLibrary: past questions, notes and textbooks for your
+              school and course, free to browse and checked by students and
+              our team. Plus your own PDF library and a reader that works on
+              low-end phones.
             </p>
           </div>
           <div className="rounded-xl border border-border bg-surface-raised p-6">
@@ -38,8 +40,9 @@ export default function AboutPage() {
               Where we&apos;re headed
             </h2>
             <p className="text-sm text-text-secondary">
-              A full learning platform — searchable scanned notes, shared
-              libraries, and live study rooms with friends.
+              Archive Scouts with rewards for keeping the library accurate, a
+              phone app built for slow networks, and then a full learning
+              platform: course pages, practice tests and live study rooms.
             </p>
           </div>
         </section>

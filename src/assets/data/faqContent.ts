@@ -33,7 +33,7 @@ export const faqCategories: FAQCategory[] = [
       {
         question: "Is there a file size limit?",
         answer:
-          "We're finalizing upload limits as we roll out storage. This section will be updated with exact limits before launch.",
+          "Each PDF can be up to 500 MB. Files up to 10 MB upload fastest; larger ones go to our long-term storage and may take a moment longer to process.",
       },
       {
         question: "Can other people see the materials I upload?",
@@ -48,12 +48,12 @@ export const faqCategories: FAQCategory[] = [
       {
         question: "Can I read scanned PDFs, or only typed documents?",
         answer:
-          "You can upload and read both today. Full-text search inside scanned PDFs (via OCR) is coming in a future update — for now, search works on file titles and tags.",
+          "You can upload and read both today. Search covers titles, course codes, descriptions and tables of contents, and past questions people have typed out are searchable on their material's page. Searching inside scanned pages (OCR) is on our roadmap.",
       },
       {
         question: "Does UniArchive work offline?",
         answer:
-          "Offline access for previously opened materials is on our roadmap. Check the Roadmap section on our About page for current progress.",
+          "Partly. Install UniArchive from your browser, then use 💾 Save offline in the reader to keep a PDF on your device; smaller PDFs work offline today and larger ones are coming. Typing out past questions also keeps working offline and syncs when you're back online.",
       },
       {
         question: "Can I highlight or take notes on my PDFs?",
