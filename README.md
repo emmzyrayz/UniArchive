@@ -244,14 +244,15 @@ for the phone app (or the paid PDF worker); they're told to use a
 computer meanwhile.
 
 Production chores (owner):
-- Run `pnpm db:word-counts --apply` (dry run first; not yet run).
-- Confirm `pnpm db:text-index --apply` was run (outline search).
+- ~~`pnpm db:word-counts --apply`~~ and ~~`pnpm db:text-index --apply`~~:
+  run 2026-10-07, nothing was missing.
 - ~~Send a first real broadcast to a small audience~~ (sent 2026-10-07).
   Still worth confirming from it: the sender `updates@` shows without a
   spoofing warning, the first-name greeting fills in, and an unsubscribe
   click turns off both kinds in that user's Settings (the webhook).
-- `pnpm brevo:tidy-lists` (dry run), then delete one old list and check its
-  campaign's stats survive before the weekly cron does the rest.
+- `pnpm brevo:tidy-lists` dry run done 2026-10-07 (one list, too new to
+  delete). When the first list passes 30 days, check its campaign's stats
+  survive the cron's first deletion.
 - Vercel: `CRON_SECRET` set, `NEXT_PUBLIC_APP_URL` on the apex domain,
   `EMAIL_USER`/`EMAIL_PASS` removed; Google OAuth redirect URI and the
   Brevo webhook URL on the apex domain; sitemap submitted in Search

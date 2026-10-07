@@ -460,7 +460,7 @@ vars are documented in `.env.example`.
   never duplicate. Note edits send `baseUpdatedAt`; a changed note gets 409
   with the latest version. `wordCount` is stored on questions and notes;
   older records need `pnpm db:word-counts --apply` (dry run without
-  `--apply`; **not yet run on production**).
+  `--apply`; run on production 2026-10-07, nothing was missing).
 - Dashboard Conversions tab (`/dashboard?tab=conversions`): drafts in
   progress plus stats from published work (`GET /api/conversions/stats`,
   `lib/conversionStats.ts`), cached 5 min in Upstash per user, dropped on
