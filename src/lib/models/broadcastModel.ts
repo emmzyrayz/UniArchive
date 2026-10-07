@@ -42,6 +42,8 @@ export interface IBroadcast {
   sentBy?: StaffRef;
   brevoCampaignId?: number;
   brevoListId?: number;
+  /** When lib/broadcast/tidyLists.ts deleted that list from Brevo */
+  brevoListDeletedAt?: Date;
   error?: string;
   stats?: {
     delivered: number;
@@ -89,6 +91,7 @@ const BroadcastSchema = new Schema<IBroadcast, IBroadcastModel>(
     sentBy: { type: StaffRefSchema },
     brevoCampaignId: { type: Number },
     brevoListId: { type: Number },
+    brevoListDeletedAt: { type: Date },
     error: { type: String },
     stats: {
       delivered: Number,

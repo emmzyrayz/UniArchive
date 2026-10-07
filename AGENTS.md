@@ -149,8 +149,18 @@ vars are documented in `.env.example`.
     `PUT /emailCampaigns/{id}/status {status: "cancel"}` (Brevo won't
     delete a scheduled campaign). Stats come from `globalStats` (cached 5
     min; also flips scheduled -> sent). 10 sends a day per admin.
-  - Not yet: a cleanup of old per-broadcast Brevo lists, and sending more
-    than ~40s of imports in one request (fine at our size).
+  - Old lists are tidied (`lib/broadcast/tidyLists.ts`): weekly Vercel
+    Cron `/api/cron/tidy-brevo-lists` (Mondays 03:00 UTC, Bearer
+    `CRON_SECRET` via `lib/cronAuth.ts`, 50 a run) and `pnpm
+    brevo:tidy-lists` (dry run; `--apply` deletes). Only lists in the
+    folder named `UA broadcast <id> (<UTC stamp>)` are touched: deleted
+    30 days after their broadcast was sent, failed or cancelled, or after
+    a day when no broadcast holds them (a send that fell back to draft and
+    was retried, or a deleted draft). Lists of scheduled or sending
+    broadcasts are kept. The broadcast gets `brevoListDeletedAt`; the
+    contacts and the campaign's stats stay in Brevo.
+  - Not yet: sending more than ~40s of imports in one request (fine at our
+    size).
 - Check settings with `pnpm email:test uniarchive.team@gmail.com`. To test
   sending code without real mail, point `SMTP_HOST` at a local fake SMTP
   server (`smtp-server` in a scratch folder) and run with

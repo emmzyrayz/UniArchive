@@ -96,16 +96,44 @@ export async function ensureContactAttributes(): Promise<void> {
 
 const FOLDER_NAME = "UniArchive broadcasts";
 
-/** The contact folder broadcast lists live in (created on first use). */
-export async function broadcastFolderId(): Promise<number> {
+/** The contact folder broadcast lists live in, or null if there isn't one yet. */
+export async function findBroadcastFolderId(): Promise<number | null> {
   const { folders = [] } = await brevoRequest<{ folders?: { id: number; name: string }[] }>(
     "GET",
     "/contacts/folders?limit=50&offset=0",
   );
-  const found = folders.find((f) => f.name === FOLDER_NAME);
-  if (found) return found.id;
+  return folders.find((f) => f.name === FOLDER_NAME)?.id ?? null;
+}
+
+/** The contact folder broadcast lists live in (created on first use). */
+export async function broadcastFolderId(): Promise<number> {
+  const found = await findBroadcastFolderId();
+  if (found !== null) return found;
   const { id } = await brevoRequest<{ id: number }>("POST", "/contacts/folders", { name: FOLDER_NAME });
   return id;
+}
+
+/** Every list in a folder (Brevo pages them 50 at a time). */
+export async function folderLists(folderId: number): Promise<{ id: number; name: string }[]> {
+  const all: { id: number; name: string }[] = [];
+  for (let offset = 0; ; offset += 50) {
+    const { lists = [], count = 0 } = await brevoRequest<{ lists?: { id: number; name: string }[]; count?: number }>(
+      "GET",
+      `/contacts/folders/${folderId}/lists?limit=50&offset=${offset}`,
+    );
+    all.push(...lists.map((l) => ({ id: l.id, name: l.name })));
+    if (lists.length < 50 || all.length >= count) return all;
+  }
+}
+
+/** Deletes a contact list (its contacts stay in Brevo). Gone already is fine. */
+export async function deleteContactList(listId: number): Promise<void> {
+  try {
+    await brevoRequest("DELETE", `/contacts/lists/${listId}`);
+  } catch (error) {
+    if (error instanceof BrevoError && error.status === 404) return;
+    throw error;
+  }
 }
 
 export async function createContactList(name: string, folderId: number): Promise<number> {

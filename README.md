@@ -223,8 +223,6 @@ content, and what would make them come back.
 
 Unordered; pick by what matters most at the time.
 
-- **Tidy Brevo lists**: each broadcast leaves a list in Brevo's "UniArchive
-  broadcasts" folder; delete old ones now and then (by hand or a script).
 - **Automated tests**: there's no test suite yet; changes are checked with
   typecheck, lint, build, and manual and scripted runs against throwaway
   databases.
