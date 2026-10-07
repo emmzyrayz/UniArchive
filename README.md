@@ -266,6 +266,81 @@ Engineering (optional for v1):
   (unit tests plus database tests on an in-memory MongoDB, run by CI on
   every push); routes, pages and components are still checked by hand.
 
+### v1.5 (next, before v2): Google Drive import
+
+Many students keep study material in Google Drive and pass the share link
+around. UniArchive takes those PDFs in directly, server to server, so a
+student's data is spent only on choosing files, not on moving them. Planned
+2026-10-07; to build before v2.
+
+Four ways in:
+1. **Public Drive link** (students and staff): paste an "anyone with the
+   link" folder or file URL, see its PDFs (folders searched up to 3
+   levels, 500 files), import all or some. No Google sign-in.
+2. **Student Drive import**: Google's own file picker (multi-select, so a
+   whole folder's PDFs at once) into the personal library; from there they
+   submit to the UniLibrary as today.
+3. **Staff Drive import** on `/mod|admin/materials/upload`: the picker or a
+   public link, into the platform verify queue like bulk uploads.
+4. **Platform inbox**: people who'd rather not join share PDFs or folders
+   with the UniArchive Gmail; a daily job (and "Check now" in the admin)
+   imports new PDFs into the staff queue as unidentified uploads, noting
+   who shared them. No contributor credit, as with gifts.
+
+Exact duplicates are skipped and listed in the import summary (by Drive
+file, and by SHA-256 of the file: the owner's library for library imports,
+the platform queue for staff and inbox imports).
+
+**Why the picker and not folder browsing inside UniArchive.** Google's
+`drive.file` permission (only the files a person picks in Google's
+Picker) needs no paid security assessment. Listing a person's folders
+needs the restricted `drive.readonly` permission: a paid third-party
+security assessment (CASA) and weeks of review before the public can use
+it. Trade-off accepted: a folder isn't "followed", so files added later
+are imported by picking them again. The platform inbox does use
+`drive.readonly`, but only for UniArchive's own account.
+
+Build order (one commit each, each tested and documented):
+1. **Core pipeline**: Drive URL parser (`lib/drive/urls.ts`), a small
+   fetch-based Drive v3 client (`lib/drive/api.ts`, `DRIVE_API_URL` for
+   tests), and one import pipeline for every source
+   (`lib/drive/importFile.ts`): check it's a PDF of at most 500 MB, skip
+   files already imported, download, hash, store, create the Book, log a
+   `DriveImport` row. Files up to 50 MB are buffered (page count with
+   pdf-lib); bigger ones stream to Backblaze with multipart upload
+   (`@aws-sdk/lib-storage`). Library imports of 10 MB or less go to
+   Cloudinary (page images, old phones), larger to Backblaze; platform
+   imports to Backblaze. Book creation moves into `lib/bookCreate.ts`,
+   shared with today's upload routes, so the records are identical.
+   Library books get a checksum (dedupe index per owner).
+2. **Public link import**: `POST /api/drive/scan` and
+   `POST /api/drive/import` (one file per request, the browser runs the
+   queue with progress), `DriveImportDialog` on the Library page and the
+   staff upload page, daily limits.
+3. **Picker import**: Google Identity Services token (`drive.file`,
+   short-lived, never stored) plus the Google Picker, in the same dialog.
+4. **Platform inbox**: admin page to connect UniArchive's Google account
+   (separate OAuth client, refresh token encrypted), daily cron
+   `/api/cron/drive-inbox` plus "Check now", queue badge and sharer.
+   Admin-only permission.
+Each also updates the privacy page (Google API "Limited Use" statement),
+terms, the data export and purge (`DriveImport`), AGENTS.md and
+`.env.example`.
+
+Owner setup in Google Cloud (before production use):
+- Main project: enable the Drive API and the Picker API; a browser API
+  key restricted to uniarchive.com.ng (Picker); a server API key
+  restricted to the Drive API (public links); add `drive.file` to the
+  OAuth consent screen (brand verification only).
+- Inbox: a separate project and OAuth client with `drive.readonly`,
+  published (not "Testing": its refresh tokens expire after 7 days), used
+  only by the UniArchive account.
+
+Testable here: the pipeline against a fake Drive server and the local
+storage harness, permissions, limits, duplicates. Not testable without
+real Google keys: the Picker, the inbox sign-in and a real public folder;
+the owner checks those in production with a test account.
+
 ### v2 (next): Archive Scouts
 
 Make keeping the library accurate feel like a game instead of work, with
