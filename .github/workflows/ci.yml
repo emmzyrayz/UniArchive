@@ -1,0 +1,35 @@
+# Typecheck, lint and tests on every push to main and every pull request.
+# The build isn't run here: it pre-renders the sitemap from a database
+# (see AGENTS.md); Vercel builds every deploy anyway.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The database tests' MongoDB binary (downloaded on first use)
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: mongodb-binaries-${{ runner.os }}-
+      - run: npx tsc --noEmit -p .
+      - run: pnpm lint
+      - run: pnpm test

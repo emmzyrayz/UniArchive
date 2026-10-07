@@ -71,8 +71,9 @@ submissions, school suggestions and reports, upload platform materials,
 and send email announcements and newsletters. There is no mobile app, no
 paid tier and no advertising.
 
-**Not there yet**: an automated test suite, page images for large PDFs on
-low-end phones (needs a paid background worker).
+**Not there yet**: page images for large PDFs on low-end phones (needs a
+paid background worker); automated tests cover the core logic
+(`pnpm test`), not yet the API routes and pages.
 
 ## Writing survey questions
 
@@ -223,9 +224,9 @@ content, and what would make them come back.
 
 Unordered; pick by what matters most at the time.
 
-- **Automated tests**: there's no test suite yet; changes are checked with
-  typecheck, lint, build, and manual and scripted runs against throwaway
-  databases.
+- **Tests for API routes and pages**: `pnpm test` covers the core logic
+  (unit tests plus database tests on an in-memory MongoDB, run by CI on
+  every push); routes, pages and components are still checked by hand.
 
 ## Running it locally
 
@@ -233,6 +234,7 @@ Unordered; pick by what matters most at the time.
 pnpm install
 cp .env.example .env.local   # fill in the values
 pnpm build && pnpm start -p 3000
+pnpm test        # unit + database tests (in-memory MongoDB, never .env.local)
 ```
 
 `.env.local` points at the real database: never write test data to it.

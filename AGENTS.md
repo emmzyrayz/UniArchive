@@ -19,7 +19,8 @@ Repo: https://github.com/emmzyrayz/UniArchive, deploys from `main` on Vercel.
 ## Workflow rules
 
 - **Test every fix thoroughly before calling it done.** At minimum:
-  `npx tsc --noEmit -p .`, `pnpm lint` (no new warnings), and `pnpm build`.
+  `npx tsc --noEmit -p .`, `pnpm lint` (no new warnings), `pnpm test`, and
+  `pnpm build`. Add or update tests for logic you change (see Tests).
   Then exercise the change against a running app (`pnpm start -p 3100` after
   a build, or `pnpm dev`): hit the affected pages and API routes, including
   the error paths, and check the server log. Say plainly what could not be
@@ -543,15 +544,39 @@ public profiles (`/profile/[upid]`), surveys (`/surveys`, results in the
 admin), full admin panel (`/admin`), SEO
 (metadata, sitemap, robots, OG images, JSON-LD), privacy and terms pages.
 
+## Tests
+
+- `pnpm test` (Vitest; `pnpm test:watch` while working). Two projects in
+  `vitest.config.mts`: `tests/unit` (pure logic, no database or network)
+  and `tests/db` (logic that talks to MongoDB). The db project starts its
+  own in-memory MongoDB (`mongodb-memory-server-core`,
+  `tests/db/globalSetup.ts`; the first run downloads the binary to
+  `~/.cache/mongodb-binaries`), gives each file a fresh database, and
+  refuses any URI that isn't that server (`tests/db/setup.ts`). It never
+  reads `.env.local`: the config sets fixed test secrets
+  (`ENCRYPTION_KEY`, `JWT_SECRET`, `HASH_SALT`, `NEXT_PUBLIC_APP_URL`).
+- Seed with `Model.collection.insertMany` to skip schema validation; users
+  need unique `emailHash` and `uuid`. Stub external APIs in-process with
+  `vi.stubGlobal("fetch", ...)` (see `tests/db/tidyLists.test.ts` for a
+  fake Brevo).
+- Covered so far: survey questions/answers, outlines, route access,
+  draft merging, broadcast templates (escaping, links, digest), Lagos
+  months, field encryption and preference links, school email matching,
+  the material lifecycle (unverified -> verified -> removed), broadcast
+  recipients, digest numbers and Brevo list tidying. Not covered: API
+  routes and pages (still exercised by hand or scripted runs against
+  `pnpm start`), React components.
+- CI (`.github/workflows/ci.yml`): typecheck, lint and tests on every push
+  to main and every pull request (Node 24). The build isn't run there: it
+  needs a database for the sitemap, and Vercel builds every deploy.
+
 ## Known gaps
 
 - `/settings` has no UI-only controls left (profile editing links to
   `/profile/edit`).
-- No automated test suite yet; verification is typecheck, lint, build and
-  manual endpoint checks (see Workflow rules). For logic that touches the
-  database, run it against a throwaway `mongodb-memory-server` installed in
-  a scratch folder (not a project dependency), never the `.env.local` DB.
-  For Backblaze, run `s3rver` with a self-signed cert (the storage client
+- No automated tests for API routes, pages or components yet: those are
+  checked against a running app (see Workflow rules), with scripted runs
+  against a throwaway MongoDB, never the `.env.local` DB. For Backblaze, run `s3rver` with a self-signed cert (the storage client
   always uses https) and `NODE_TLS_REJECT_UNAUTHORIZED=0` for Node. Chrome
   rejects its certificate; to load PDFs in the browser, run a plain-HTTP
   relay to it on another port and, in the page, rewrite the signed URL's
