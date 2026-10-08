@@ -32,7 +32,8 @@ type Action =
   | "mail.broadcast" // compose and send bulk email (Brevo)
   // Surveys
   | "survey.manage" // build surveys and see their responses
-  | "material.drive_inbox"; // connect and run the Google Drive inbox (PDFs shared with UniArchive's Gmail)
+  | "material.drive_inbox" // connect and run the Google Drive inbox (PDFs shared with UniArchive's Gmail)
+  | "economy.manage"; // credits economy: prices, rewards, caps, modules on/off, adjustments
 
 const PERMISSIONS: Record<UserRole, Action[]> = {
   student: ["download", "comment", "upload"],
@@ -109,6 +110,7 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "mail.broadcast",
     "survey.manage",
     "material.drive_inbox",
+    "economy.manage",
   ],
   webmaster: [
     "download",
@@ -160,6 +162,7 @@ const PERMISSIONS: Record<UserRole, Action[]> = {
     "mail.broadcast",
     "survey.manage",
     "material.drive_inbox",
+    "economy.manage",
   ],
 };
 

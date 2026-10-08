@@ -65,6 +65,10 @@ const limiters = {
   materialReport: make(20, "24 h", "rl:material-report"),
   // "Help identify this PDF" suggestions, per user
   materialSuggest: make(20, "24 h", "rl:material-suggest"),
+  // Buying with credits, per user (each purchase is also idempotent)
+  economyBuy: make(60, "1 h", "rl:economy-buy"),
+  // Staff economy changes (settings, adjustments), per admin
+  economyAdmin: make(60, "1 h", "rl:economy-admin"),
   // Posting comments
   comment: make(10, "1 m", "rl:comment"),
   // Public read (materials, profiles) — generous

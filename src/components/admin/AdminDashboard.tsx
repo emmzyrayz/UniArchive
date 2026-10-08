@@ -25,6 +25,8 @@ export interface AdminViewer {
   canSurveys: boolean;
   /** "material.drive_inbox": the platform Google Drive inbox */
   canDriveInbox?: boolean;
+  /** "economy.manage": credits economy settings and adjustments */
+  canEconomy?: boolean;
 }
 
 function StatCard({ label, value, href }: { label: string; value?: number; href?: string }) {
@@ -98,6 +100,7 @@ export function AdminDashboard({ viewer }: { viewer: AdminViewer }) {
       show: viewer.canIngest,
     },
     { label: "Google Drive inbox", href: `${base}/materials/drive-inbox`, show: !!viewer.canDriveInbox },
+    { label: "Credits economy", href: `${base}/economy`, show: !!viewer.canEconomy },
     { label: "Materials", href: `${base}/materials`, show: true },
     { label: "Reported comments", href: `${base}/comments`, count: counts?.reportedComments, show: true },
     { label: "Institutions", href: `${base}/institutions`, show: viewer.canManageInstitutions },

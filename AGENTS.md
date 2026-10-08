@@ -272,6 +272,58 @@ vars are documented in `.env.example`.
   serves the dropdown and the page; opening one marks it read.
 - In the data export; deleted in the purge.
 
+## Credits economy (lib/economy)
+
+The points system behind Archive Scouts (and later the app and `/hub`).
+Open by design: the core knows nothing about Scouts; every feature that
+pays or charges credits is a module.
+- **Ledger** (`ledger.ts`, `LedgerEntry`): append-only, double entry.
+  `post()` writes one entry whose postings add up to zero per currency
+  and updates `Wallet` balances in the same MongoDB transaction (Atlas is
+  a replica set; the db tests and the local harness run a one-node
+  replica set too). Accounts: `user:<id>`, `system:mint` (credits come
+  from here; the only account allowed below zero), `system:burn`
+  (spending, fees), `system:treasury` (budgets), `escrow:<id>`,
+  `user:former` (the purge). Currencies (`currencies.ts`): AC (spendable)
+  and XP (only mint <-> a person; levels, boards). Amounts are whole
+  numbers. `sourceKey` is unique: posting it again returns the first
+  entry, so retries never pay twice. `reverse(sourceKey)` writes the
+  opposite entry (may leave someone below zero; they can't spend until
+  it's back) and marks the original. Entries carry `day` (Lagos) and
+  `countsForBoards`.
+- **Modules** (`registry.ts`, registered in `modules/index.ts`; `core` is
+  the only one so far): a manifest with earn sources (`defineEarnSource`
+  shape: id `<module>.<name>`, rewards, optional `dailyCap`, `capped`
+  (counts toward the overall daily AC cap, default 150, setting "core"),
+  `streakBoost`, `countsForBoards`), products (price >= 1 AC, `kind` for
+  the shop card, `minLevel`, `perDay`, `parse(body)`, `available()`,
+  `destination()` (default burn), `fulfil()`) and ledger listeners (run
+  after the response, never failing the entry). To add a module: write
+  its manifest in `lib/economy/modules/`, add it to `MODULES`; the shop,
+  history, wallet and admin page pick it up.
+- **Paying** (`earn.ts`): `earn(userId, sourceId, sourceKey, {multiplier,
+  rewards, from, meta})` applies the rewards (or the caller's), the
+  multiplier (1-2x, streakBoost sources only), then the caps (AC only; XP
+  is never capped). Returns paid / duplicate / capped / disabled.
+  Caps are read before the write, so a burst can overshoot by one payment.
+- **Buying** (`shop.ts`): `POST /api/economy/shop/[productId]/buy` with an
+  `Idempotency-Key` header (a retry returns the first purchase). Checks
+  enabled, level, per-day limit, balance, the product's `available()`,
+  then pays and calls `fulfil()`; if that throws, the payment is reversed.
+  `GET /api/economy/shop` lists products with why each can't be bought yet.
+- **People**: `GET /api/economy/wallet` (AC, XP, level from `levels.ts`,
+  today's AC against the cap) and `GET /api/economy/history`. In the data
+  export (`credits`); the purge moves their postings to `user:former`.
+- **Staff**: `/admin/economy` (permission `economy.manage`: com_admin,
+  dev): totals, the daily cap, each module's sources and products
+  (rewards, caps, prices, on/off, back to defaults; `EconomySetting`,
+  cached 30 s per server), adjustments to a member or the treasury
+  (`POST /api/admin/economy/adjust`, a note is required and kept).
+  Limiters `economyBuy` (60/h), `economyAdmin` (60/h).
+- `pnpm economy:recompute` rebuilds wallets from the ledger (dry run;
+  `--apply` fixes).
+- Credits never affect roles: nothing in role eligibility reads them.
+
 ## Staff areas (/mod and /admin)
 
 - Moderators (`MOD_ROLES`: auditor, course_rep, lecturer, ed_admin) use
@@ -727,7 +779,9 @@ admin), full admin panel (`/admin`), SEO
   the material lifecycle (unverified -> verified -> removed), broadcast
   recipients, digest numbers, Brevo list tidying, Drive links, the
   Drive import pipeline and the Drive inbox (fake Google, mocked
-  storage), queue access rules, notifications. Not covered: API
+  storage), queue access rules, notifications, the credits economy (a
+  test-only module proves plug-and-play). The db project runs a
+  one-node replica set (transactions). Not covered: API
   routes and pages (still exercised by hand or scripted runs against
   `pnpm start`), React components.
 - CI (`.github/workflows/ci.yml`): typecheck, lint and tests on every push

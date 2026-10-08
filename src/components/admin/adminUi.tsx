@@ -26,7 +26,7 @@ export const dangerButton =
  */
 export async function adminRequest<T>(
   url: string,
-  method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "GET",
   body?: unknown,
 ): Promise<T> {
   const res = await fetch(url, {

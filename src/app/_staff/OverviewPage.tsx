@@ -20,6 +20,7 @@ export async function OverviewPage({ area }: { area: StaffArea }) {
         canBroadcast: area === "admin" && can(session.role, "mail.broadcast"),
         canSurveys: area === "admin" && can(session.role, "survey.manage"),
         canDriveInbox: area === "admin" && can(session.role, "material.drive_inbox"),
+        canEconomy: area === "admin" && can(session.role, "economy.manage"),
       }}
     />
   );

@@ -36,6 +36,9 @@ import { getMaterialReportModel } from "@/lib/models/materialReportModel";
 import { getDriveImportModel } from "@/lib/models/driveImportModel";
 import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
 import { getNotificationModel } from "@/lib/models/notificationModel";
+import { balancesOf, historyOf } from "@/lib/economy/ledger";
+import { toHistoryItem } from "@/lib/economy/wallet";
+import { userAccount } from "@/lib/economy/currencies";
 import { decryptSensitiveData } from "@/lib/encryption";
 import { BADGE_DEFINITIONS, type BadgeId } from "@/lib/constants/badges";
 import { effectiveEmailPrefs } from "@/lib/emailPrefs";
@@ -151,6 +154,16 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     .lean();
   const notifications = await (await getNotificationModel()).find({ userId: id }).sort({ _id: -1 })
     .select("type title body link readAt createdAt").lean();
+  // Credits: balances and every entry that touched their wallet
+  const creditAccount = userAccount(id);
+  const creditEntries = [];
+  for (let before: string | undefined, page = 0; page < 200; page++) {
+    const { entries, nextCursor } = await historyOf(creditAccount, before, 500);
+    creditEntries.push(...entries.map((e) => toHistoryItem(e, creditAccount)));
+    if (!nextCursor) break;
+    before = nextCursor;
+  }
+  const credits = { balances: await balancesOf(creditAccount), history: creditEntries };
   const pdfSuggestions = await (await getMaterialSuggestionModel()).find({ userId: id }).select("materialId fields status createdAt updatedAt").lean();
 
   const account = {
@@ -211,6 +224,7 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     contributionHistory: scrub(contributions),
     messagesFromTheUniArchiveTeam: scrub(messages),
     notifications: scrub(notifications),
+    credits,
     signInHistory: scrub(signIns),
     activeSessions: scrub(sessions),
     trustedDevices: scrub(devices),

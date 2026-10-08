@@ -391,7 +391,8 @@ Build order (one commit each, each tested and documented):
 1. **Notification centre** (done 2026-10-08): a bell with unread count,
    a notifications page, hooked to badges, suggestions, submissions and
    role applications (also what the app's push notifications will use).
-2. **Economy core** as above, with levels.
+2. **Economy core** (done 2026-10-08) as above, with levels, the wallet
+   and history APIs, and `/admin/economy`.
 3. **Scout tasks**: one card at a time at `/scouts/play`, picked nearest
    first (your department, faculty, school), never your own content.
    Answers settle by consensus (3 agree before 5 disagree); only confirmed
