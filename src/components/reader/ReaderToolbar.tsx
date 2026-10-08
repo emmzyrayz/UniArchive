@@ -96,7 +96,9 @@ export function ReaderToolbar({ book }: { book: Book }) {
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* On a phone the controls are wider than the screen: they scroll sideways
+            inside the toolbar instead of pushing the page wider */}
+        <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&>*]:shrink-0 [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:[mask-image:none]">
           {/* Page navigation */}
           <button
             type="button"
@@ -138,7 +140,7 @@ export function ReaderToolbar({ book }: { book: Book }) {
             </svg>
           </button>
 
-          <div className="w-px h-5 bg-neutral-700 mx-1" />
+          <div className="hidden sm:block w-px h-5 bg-neutral-700 mx-1" />
 
           {/* Zoom */}
           <button
@@ -158,7 +160,7 @@ export function ReaderToolbar({ book }: { book: Book }) {
               <path d="M5 12h14" />
             </svg>
           </button>
-          <span className="text-xs text-neutral-400 min-w-[40px] text-center">
+          <span className="hidden sm:inline text-xs text-neutral-400 min-w-[40px] text-center">
             {Math.round(zoom * 100)}%
           </span>
           <button
@@ -179,7 +181,7 @@ export function ReaderToolbar({ book }: { book: Book }) {
             </svg>
           </button>
 
-          <div className="w-px h-5 bg-neutral-700 mx-1" />
+          <div className="hidden sm:block w-px h-5 bg-neutral-700 mx-1" />
 
           {/* Highlight */}
           <button
@@ -257,7 +259,7 @@ export function ReaderToolbar({ book }: { book: Book }) {
             </svg>
           </button>
 
-          <div className="w-px h-5 bg-neutral-700 mx-1" />
+          <div className="hidden sm:block w-px h-5 bg-neutral-700 mx-1" />
 
           {/* View mode toggle — hidden on low-end devices */}
           {canUseScrollMode ? (
