@@ -70,6 +70,8 @@ export interface ListFilesResult {
 }
 
 interface StorageConfig {
+  /** "https" always, except an explicit http:// endpoint (local stand-ins like s3rver) */
+  scheme: "http" | "https";
   keyId: string;
   applicationKey: string;
   bucketName: string;
@@ -97,6 +99,7 @@ function readConfig(): StorageConfig {
   }
 
   const bucketName = process.env.BACKBLAZE_BUCKET_NAME!;
+  const scheme = /^http:\/\//i.test(process.env.BACKBLAZE_ENDPOINT!) ? "http" : "https";
   const endpoint = process.env.BACKBLAZE_ENDPOINT!.replace(/^https?:\/\//, "");
   // B2 endpoints look like s3.<region>.backblazeb2.com
   const region =
@@ -110,6 +113,7 @@ function readConfig(): StorageConfig {
     .replace(/\/+$/, "");
 
   return {
+    scheme,
     keyId: process.env.BACKBLAZE_KEY_ID!,
     applicationKey: process.env.BACKBLAZE_APPLICATION_KEY!,
     bucketName,
@@ -129,7 +133,7 @@ export class StorageClient {
     if (!this.client || !this.config) {
       this.config = readConfig();
       this.client = new S3Client({
-        endpoint: `https://${this.config.endpoint}`,
+        endpoint: `${this.config.scheme}://${this.config.endpoint}`,
         region: this.config.region,
         credentials: {
           accessKeyId: this.config.keyId,

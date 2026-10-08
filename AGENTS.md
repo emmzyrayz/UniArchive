@@ -283,6 +283,9 @@ vars are documented in `.env.example`.
   deletions stick, and an item both still have keeps this tab's version
   when only this tab changed it (a note), else theirs.
 
+- The toolbar never makes the page wider than a phone: its controls
+  scroll sideways inside it (`overflow-x-auto`, a fade at the right edge
+  on small screens), and dividers and the zoom percentage hide below `sm`.
 - Night mode (`useReaderNight`, the toolbar's moon): a per-device setting
   in localStorage (`ua_reader_night`) that adds `reader-night` to the page
   container; `globals.css` inverts only the page canvas / page image
@@ -725,9 +728,8 @@ this Next.js + MongoDB codebase.
   `/profile/edit`).
 - No automated tests for API routes, pages or components yet: those are
   checked against a running app (see Workflow rules), with scripted runs
-  against a throwaway MongoDB, never the `.env.local` DB. For Backblaze, run `s3rver` with a self-signed cert (the storage client
-  always uses https) and `NODE_TLS_REJECT_UNAUTHORIZED=0` for Node. Chrome
-  rejects its certificate; to load PDFs in the browser, run a plain-HTTP
-  relay to it on another port and, in the page, rewrite the signed URL's
-  origin to the relay in `fetch`/`XMLHttpRequest` before the PDF loads
-  (pdf.js fetches on the main thread). Browser uploads to it are untested.
+  against a throwaway MongoDB, never the `.env.local` DB. For Backblaze, run `s3rver` over plain http with a CORS rule (GET,
+  HEAD, PUT; expose Content-Range, Content-Length, Accept-Ranges) and set
+  `BACKBLAZE_ENDPOINT=http://127.0.0.1:<port>`: the storage client keeps an
+  explicit `http://` (anything else is https), so Chrome can read PDFs and
+  the reader works end to end. Browser uploads to it are untested.
