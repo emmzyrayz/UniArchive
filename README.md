@@ -72,6 +72,11 @@ to 500L/600L, postgraduate) and course code.
   phones) tells you when your material is verified or turned down, a PDF
   you helped identify is verified, you earn a badge, or a role application
   is decided.
+- **Archive Scouts**: small tasks at `/scouts` (identify a PDF, say
+  whether one is readable, check a typed past question against the
+  paper), nearest to your department first. Answers are paid in Archive
+  Credits and XP once confirmed (3 Scouts agree, or staff accept the
+  details); credits have no cash value and never change roles.
 - **Have a say**: surveys anyone can answer at `/surveys`.
 - **Share without an account**: share PDFs or folders with UniArchive's
   Gmail in Google Drive; they're imported for our team to check and
@@ -393,7 +398,7 @@ Build order (one commit each, each tested and documented):
    role applications (also what the app's push notifications will use).
 2. **Economy core** (done 2026-10-08) as above, with levels, the wallet
    and history APIs, and `/admin/economy`.
-3. **Scout tasks**: one card at a time at `/scouts/play`, picked nearest
+3. **Scout tasks** (done 2026-10-08): one card at a time at `/scouts/play`, picked nearest
    first (your department, faculty, school), never your own content.
    Answers settle by consensus (3 agree before 5 disagree); only confirmed
    answers pay. Identify a PDF (today's Help identify; pays when staff

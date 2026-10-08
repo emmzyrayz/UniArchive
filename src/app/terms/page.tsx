@@ -71,7 +71,18 @@ export default function TermsPage() {
         />
       </LegalSection>
 
-      <LegalSection number={6} title="Account Termination">
+      <LegalSection number={6} title="Archive Credits and Scouts">
+        <LegalList
+          items={[
+            "Archive Credits (AC) and XP are earned for Archive Scouts tasks and other contributions once the result is confirmed. They have no cash value, can't be sold, bought or exchanged for money, and don't affect your role.",
+            "If a result is later overturned (for example, our team finds a PDF Scouts called unreadable is fine), the credits paid for it are taken back, even if that leaves your balance below zero.",
+            "Answering at random, using more than one account, or working with others to game the results can pause your answers or remove credits, and is a breach of these terms.",
+            "We may change what tasks pay and what credits buy, and limits on both.",
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection number={7} title="Account Termination">
         <LegalList
           items={[
             "We may suspend accounts that break these terms.",
@@ -83,21 +94,21 @@ export default function TermsPage() {
         />
       </LegalSection>
 
-      <LegalSection number={7} title="Disclaimer">
+      <LegalSection number={8} title="Disclaimer">
         <p>
           UniArchive is provided &ldquo;as is&rdquo;. We are not responsible for
           the accuracy of user-contributed materials.
         </p>
       </LegalSection>
 
-      <LegalSection number={8} title="Governing Law">
+      <LegalSection number={9} title="Governing Law">
         <p>
           These terms are governed by the laws of the Federal Republic of
           Nigeria.
         </p>
       </LegalSection>
 
-      <LegalSection number={9} title="Contact">
+      <LegalSection number={10} title="Contact">
         <p>
           Email: <LegalEmail />
         </p>

@@ -36,6 +36,7 @@ import { getMaterialReportModel } from "@/lib/models/materialReportModel";
 import { getDriveImportModel } from "@/lib/models/driveImportModel";
 import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
 import { getNotificationModel } from "@/lib/models/notificationModel";
+import { getScoutAnswerModel } from "@/lib/models/scoutAnswerModel";
 import { balancesOf, historyOf } from "@/lib/economy/ledger";
 import { toHistoryItem } from "@/lib/economy/wallet";
 import { userAccount } from "@/lib/economy/currencies";
@@ -164,6 +165,8 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     before = nextCursor;
   }
   const credits = { balances: await balancesOf(creditAccount), history: creditEntries };
+  const scoutAnswers = await (await getScoutAnswerModel()).find({ userId: id }).sort({ _id: -1 })
+    .select("task subjectId materialId answer note status counted createdAt settledAt").lean();
   const pdfSuggestions = await (await getMaterialSuggestionModel()).find({ userId: id }).select("materialId fields status createdAt updatedAt").lean();
 
   const account = {
@@ -225,6 +228,7 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     messagesFromTheUniArchiveTeam: scrub(messages),
     notifications: scrub(notifications),
     credits,
+    scoutAnswers: scrub(scoutAnswers),
     signInHistory: scrub(signIns),
     activeSessions: scrub(sessions),
     trustedDevices: scrub(devices),

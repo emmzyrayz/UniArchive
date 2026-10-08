@@ -7,7 +7,8 @@
 // Permission: "admin.view_submissions" for both.
 //
 // Body (all optional): isActive, clearReports (true: puts a PDF hidden by
-// reports back in the listing and resets its report count), title, courseCode, level, semester,
+// reports or by Archive Scouts back in the listing, resets its report count
+// and overturns a Scouts "unreadable" result), title, courseCode, level, semester,
 // academicYear, tags, outline ({ entries: [...] }, or null / no entries to
 // remove it; see lib/outline.ts). An empty string clears courseCode / level /
 // semester / academicYear. Everything else (submitter, book, storage, verification
@@ -20,6 +21,7 @@ import { enforceRateLimit } from "@/lib/rateLimitRedis";
 import { fail, optionalString } from "@/lib/adminApi";
 import { getMaterialModel } from "@/lib/models/materialModel";
 import { parseOutline } from "@/lib/outline";
+import { overturnSubject } from "@/lib/scouts/engine";
 import {
   SUBMISSION_LEVELS,
   SUBMISSION_SEMESTERS,
@@ -186,6 +188,16 @@ export async function PATCH(request: NextRequest, context: Context) {
       .select(ADMIN_MATERIAL_FIELDS)
       .lean<AdminMaterialDoc>();
     if (!updated) return fail(404, "Material not found.");
+
+    // Restoring a PDF that Archive Scouts voted unreadable (or not study
+    // material) overturns their result: their credits are taken back
+    if (body.clearReports === true) {
+      const verdict = (await Material.findById(id).select("scoutCheck").lean())?.scoutCheck?.readability;
+      if (verdict === "unreadable" || verdict === "not_study") {
+        await overturnSubject("readable", id, { note: "Our team found this PDF readable.", actorId: session.userId });
+        await Material.updateOne({ _id: id }, { $set: { "scoutCheck.readability": "readable" }, $unset: { "scoutCheck.flagged": "" } });
+      }
+    }
 
     // No audit log model yet; the server log is the trail for now
     console.info(`admin: @${session.upid} updated material ${id}: ${changed.join(", ")}`);

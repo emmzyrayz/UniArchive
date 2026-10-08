@@ -11,6 +11,8 @@ export const NOTIFICATION_KINDS = {
   submission_rejected: { icon: "📄" },
   role_approved: { icon: "⭐" },
   role_rejected: { icon: "📝" },
+  typed_verified: { icon: "✅" },
+  typed_disputed: { icon: "✏️" },
 } as const;
 
 export type NotificationType = keyof typeof NOTIFICATION_KINDS;

@@ -69,6 +69,9 @@ const limiters = {
   economyBuy: make(60, "1 h", "rl:economy-buy"),
   // Staff economy changes (settings, adjustments), per admin
   economyAdmin: make(60, "1 h", "rl:economy-admin"),
+  // Archive Scouts: answers per user per day, and task fetches per hour
+  scoutAnswer: make(300, "24 h", "rl:scout-answer"),
+  scoutNext: make(300, "1 h", "rl:scout-next"),
   // Posting comments
   comment: make(10, "1 m", "rl:comment"),
   // Public read (materials, profiles) — generous

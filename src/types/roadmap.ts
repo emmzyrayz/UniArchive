@@ -123,12 +123,12 @@ export const roadmap: RoadmapPhase[] = [
       {
         title: "Scout tasks",
         description: "Bite-sized jobs on your phone: check a PDF is readable, tell us what it is, check a typed answer.",
-        status: "in-progress",
+        status: "done",
       },
       {
         title: "Archive Credits and XP",
         description: "Earn credits and experience for every task that's confirmed. Credits are never cash and never buy power.",
-        status: "in-progress",
+        status: "done",
       },
       {
         title: "Spend your credits",

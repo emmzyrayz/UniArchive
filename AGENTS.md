@@ -324,6 +324,54 @@ pays or charges credits is a module.
   `--apply` fixes).
 - Credits never affect roles: nothing in role eligibility reads them.
 
+## Archive Scouts (lib/scouts)
+
+- `/scouts` (hub: wallet, level, today against the cap, three task cards
+  with what's waiting, pending and accuracy, latest credits, how it works)
+  and `/scouts/play?task=identify|readable|check_typed` (one card at a
+  time: the PDF via `ScoutPdf`, i.e. `PdfPane` or page images, beside the
+  question; Skip; a first-time tip per task). Linked from the navbar
+  ("Scouts") on Library, Dashboard and UniLibrary.
+- Tasks (`taskTypes.ts`, client-safe): **identify** reuses Help identify
+  (the card POSTs to `/api/materials/[id]/suggestions`; staff decide and
+  `settleSuggestions` pays every accepted suggestion `scouts.identify`,
+  15 AC / 20 XP, key `scouts.identify:<suggestionId>`). **readable** and
+  **check_typed** are voted: `ScoutAnswer` (one per person per subject;
+  status pending -> confirmed / disagreed / stuck, later overturned).
+- Picking (`engine.ts` `nextTask`): nearest first through
+  `lib/nearness.ts` (shared with "Materials that need typing"), never the
+  person's own upload or typing, never twice, `skip` ids from the client.
+  readable prefers PDFs closest to settling (`Material.scoutCheck.votes`).
+  check_typed: pending `TypedQuestion`s (the right option is never sent).
+  Suspended accounts and ones pending deletion get no tasks (403).
+- Answering: `GET /api/scouts/next` hands out an HMAC task token
+  (`token.ts`, key from JWT_SECRET: person, task, subject, time);
+  `POST /api/scouts/answer {token, answer, note?}` refuses it under 4 s
+  (425) or after an hour. "mistakes" / "wrong_question" need a note.
+  Limiters `scoutNext` (300/h), `scoutAnswer` (300/day).
+- Consensus (`consensus.ts`, pure): 3 matching counted answers settle a
+  subject; 7 without that = stuck (staff). Settling is claimed with a
+  conditional update on the subject (`scoutCheck.settledAt`), so it
+  happens once. Confirmed + counted answers are paid through
+  `earn("scouts.<task>", "scouts.<task>:<answerId>", {multiplier})`
+  (3 AC / 5 XP readable, 5 AC / 8 XP check_typed; capped, streakBoost,
+  leaderboards; the multiplier stored on the answer is 1 until streaks).
+- Results: readable writes `Material.scoutCheck.readability`; unreadable
+  or "not study material" hides an unverified PDF (`hiddenByReports`, the
+  same as 3 reports) or flags a verified one (`scoutCheck.flagged`).
+  check_typed sets the question verified (typist paid
+  `scouts.typed_verified` 5 AC, notification) or disputed (agreeing
+  notes in `scoutCheck.notes`, notification to fix it).
+- Accuracy per person per task: confirmed / (confirmed + disagreed +
+  overturned). After 20 settled, below 60% their answers are saved with
+  `counted: false` (don't decide or earn) until they're back above it.
+- Overturning (`overturnSubject`): reverses every payment for the
+  subject and marks those answers overturned. Staff "Restore" on a PDF
+  Scouts called unreadable (`PATCH /api/admin/materials/[id]
+  clearReports`) does this and marks it readable.
+- `ScoutAnswer` is in the data export and deleted in the purge. Terms
+  section 6 covers credits (no cash value, taken back when overturned).
+
 ## Staff areas (/mod and /admin)
 
 - Moderators (`MOD_ROLES`: auditor, course_rep, lecturer, ed_admin) use
@@ -780,7 +828,8 @@ admin), full admin panel (`/admin`), SEO
   recipients, digest numbers, Brevo list tidying, Drive links, the
   Drive import pipeline and the Drive inbox (fake Google, mocked
   storage), queue access rules, notifications, the credits economy (a
-  test-only module proves plug-and-play). The db project runs a
+  test-only module proves plug-and-play), Scout tasks (picking,
+  consensus, payments, accuracy, overturning, races). The db project runs a
   one-node replica set (transactions). Not covered: API
   routes and pages (still exercised by hand or scripted runs against
   `pnpm start`), React components.

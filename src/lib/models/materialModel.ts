@@ -130,6 +130,15 @@ export interface IMaterial {
   isActive: boolean;
   /** Unverified and reported by REPORTS_TO_HIDE people: out of the listing until staff look */
   hiddenByReports?: boolean;
+  /** Archive Scouts' "Is this readable?" (lib/scouts): votes so far, then the result */
+  scoutCheck?: {
+    votes?: number;
+    readability?: "readable" | "hard_to_read" | "unreadable" | "not_study";
+    stuck?: boolean;
+    // Verified but voted unreadable / not study material: for staff to look at
+    flagged?: boolean;
+    settledAt?: Date;
+  };
 
   createdAt: Date;
   updatedAt: Date;
@@ -233,6 +242,13 @@ const MaterialSchema = new Schema<IMaterial, IMaterialModel>(
 
     isActive: { type: Boolean, default: true },
     hiddenByReports: { type: Boolean },
+    scoutCheck: {
+      votes: { type: Number },
+      readability: { type: String, enum: ["readable", "hard_to_read", "unreadable", "not_study"] },
+      stuck: { type: Boolean },
+      flagged: { type: Boolean },
+      settledAt: { type: Date },
+    },
   },
   { timestamps: true },
 );

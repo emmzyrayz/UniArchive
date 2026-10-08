@@ -112,6 +112,7 @@ const navConfig: PageNavConfig = {
     standaloneItems: [
       { name: "My Library", path: "/home", requiresAuth: true },
       { name: "UniLibrary", path: UNILIBRARY_PATH },
+      { name: "Scouts", path: "/scouts", requiresAuth: true },
       {
         name: "Upload",
         path: "/upload",
@@ -127,6 +128,7 @@ const navConfig: PageNavConfig = {
     title: "Dashboard",
     standaloneItems: [
       { name: "Overview", path: "/dashboard", requiresAuth: true },
+      { name: "Scouts", path: "/scouts", requiresAuth: true },
     ],
     categories: [
       {
@@ -187,9 +189,21 @@ const navConfig: PageNavConfig = {
     standaloneItems: [
       { name: "Home", path: "/" },
       { name: "My Library", path: "/home", requiresAuth: true },
+      { name: "Scouts", path: "/scouts", requiresAuth: true },
     ],
     categories: [{ name: "Browse", items: UNILIBRARY_ITEMS }],
     showSearch: true,
+  },
+
+  "/scouts": {
+    title: "Scouts",
+    standaloneItems: [
+      { name: "Scouts", path: "/scouts", requiresAuth: true },
+      { name: "My Library", path: "/home", requiresAuth: true },
+      { name: "UniLibrary", path: UNILIBRARY_PATH },
+    ],
+    categories: [],
+    showSearch: false,
   },
 
   // Also used for every /admin/* and /mod/* page (see getCurrentPageConfig)

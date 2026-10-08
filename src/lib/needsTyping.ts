@@ -5,16 +5,15 @@
 // (lib/conversionDrafts.ts): past questions (EXAMS) for anyone signed in,
 // notes (LEARNING_AIDS, BOOKS) for collaborator and above.
 //
-// Nearness comes from the profile, in tiers filled in order: same department
-// and level, same department, same faculty, same school, then anywhere.
-// Within a tier, the most-viewed (most wanted) come first.
+// Nearness comes from the profile (lib/nearness.ts), in tiers filled in
+// order. Within a tier, the most-viewed (most wanted) come first.
 import { Types } from "mongoose";
 import { getMaterialModel } from "@/lib/models/materialModel";
-import { getUserModel } from "@/lib/models/userModel";
 import { getConversionDraftModel } from "@/lib/models/conversionDraftModel";
 import { NOTE_CATEGORIES, QUESTION_CATEGORIES } from "@/lib/constants/layer2";
 import { canWriteNotes } from "@/lib/layer2";
 import { levelLabel, materialKindLabel } from "@/components/unilibrary/materialLabels";
+import { isPersonalised, loadNearnessProfile, nearnessTiers } from "@/lib/nearness";
 import type { MaterialCategory, MaterialSubcategory } from "@/lib/constants/materialCategories";
 import type { SessionUser } from "@/lib/auth/session";
 import type { NeedsTypingResult } from "@/types/needsTyping";
@@ -34,57 +33,16 @@ type MaterialRow = {
   viewCount?: number;
 };
 
-type ProfileRow = {
-  universityId?: Types.ObjectId;
-  universityName?: string;
-  school?: string;
-  facultyId?: Types.ObjectId;
-  departmentId?: Types.ObjectId;
-  level?: string;
-};
-
-/** "200L" (profile) and "200" (materials) mean the same level. */
-function levelValues(level?: string): string[] {
-  if (!level) return [];
-  const bare = level.replace(/L$/i, "");
-  return [...new Set([level, bare, `${bare}L`])];
-}
-
 export async function materialsNeedingTyping(session: SessionUser, limit: number): Promise<NeedsTypingResult> {
   const userId = new Types.ObjectId(session.userId);
-  const [User, Material, Draft] = await Promise.all([getUserModel(), getMaterialModel(), getConversionDraftModel()]);
-  const profile = (await User.findById(userId)
-    .select("universityId universityName school facultyId departmentId level")
-    .lean<ProfileRow>()) ?? {};
+  const [Material, Draft] = await Promise.all([getMaterialModel(), getConversionDraftModel()]);
+  const profile = await loadNearnessProfile(userId);
 
   const categories = [...QUESTION_CATEGORIES, ...(canWriteNotes(session.role) ? NOTE_CATEGORIES : [])];
   // Already in this user's "In progress"
   const mine = await Draft.distinct("materialId", { userId, status: "active" });
   const base = { isActive: true, hasTypedContent: false, category: { $in: categories }, _id: { $nin: mine } };
-
-  const levels = levelValues(profile.level);
-  const schoolName = profile.universityName || profile.school;
-  const tiers: { reason: string; filter: Record<string, unknown> }[] = [];
-  if (profile.departmentId && levels.length) {
-    tiers.push({
-      reason: `Your department · ${levelLabel(profile.level!.replace(/L$/i, ""))}`,
-      filter: { departmentId: profile.departmentId, level: { $in: levels } },
-    });
-  }
-  if (profile.departmentId) tiers.push({ reason: "Your department", filter: { departmentId: profile.departmentId } });
-  if (profile.facultyId) tiers.push({ reason: "Your faculty", filter: { facultyId: profile.facultyId } });
-  if (profile.universityId || schoolName) {
-    tiers.push({
-      reason: "Your school",
-      filter: {
-        $or: [
-          ...(profile.universityId ? [{ universityId: profile.universityId }] : []),
-          ...(schoolName ? [{ universityName: schoolName }] : []),
-        ],
-      },
-    });
-  }
-  tiers.push({ reason: "Popular", filter: {} });
+  const tiers = nearnessTiers(profile);
 
   const picked: { row: MaterialRow; reason: string }[] = [];
   const seen = new Set<string>();
@@ -112,7 +70,7 @@ export async function materialsNeedingTyping(session: SessionUser, limit: number
   const typingBy = new Map(typing.map((t) => [String(t._id), t.users]));
 
   return {
-    personalised: !!(profile.departmentId || profile.facultyId || profile.universityId || schoolName),
+    personalised: isPersonalised(profile),
     items: picked.map(({ row, reason }) => ({
       id: String(row._id),
       title: row.title,

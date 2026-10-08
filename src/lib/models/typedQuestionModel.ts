@@ -39,6 +39,16 @@ export interface ITypedQuestion {
   verifiedBy?: Types.ObjectId;
   verifiedAt?: Date;
 
+  // Archive Scouts' "Check a typed answer" (lib/scouts): votes so far, then the result
+  scoutCheck?: {
+    votes?: number;
+    result?: "correct" | "mistakes" | "wrong_question";
+    // What the checkers said was wrong (on "mistakes" / "wrong_question")
+    notes?: string[];
+    stuck?: boolean;
+    settledAt?: Date;
+  };
+
   // Denormalised, updated when an answer is submitted
   answerCount: number;
 
@@ -81,6 +91,13 @@ const TypedQuestionSchema = new Schema<ITypedQuestion, ITypedQuestionModel>(
     status: { type: String, enum: ["pending", "verified", "disputed"], default: "pending" },
     verifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
     verifiedAt: { type: Date },
+    scoutCheck: {
+      votes: { type: Number },
+      result: { type: String, enum: ["correct", "mistakes", "wrong_question"] },
+      notes: { type: [String], default: undefined },
+      stuck: { type: Boolean },
+      settledAt: { type: Date },
+    },
 
     answerCount: { type: Number, default: 0 },
     wordCount: { type: Number, min: 0 },

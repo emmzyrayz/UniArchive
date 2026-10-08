@@ -16,6 +16,7 @@ import type { SuggestionFieldsDto, SuggestionGroupDto } from "@/types/unilibrary
 import { awardBadgesAfter } from "@/lib/badges";
 import { getMaterialModel, type IMaterial } from "@/lib/models/materialModel";
 import { notifyAfter } from "@/lib/notifications";
+import { earn } from "@/lib/economy/earn";
 
 /** Validates a suggestion; throws the same 400/404 responses as a submission. */
 export async function parseSuggestion(body: Partial<SubmissionBody> | null): Promise<MaterialSuggestionFields> {
@@ -129,12 +130,19 @@ export async function settleSuggestions(materialId: Types.ObjectId, accepted?: I
     const ids = [...new Set([String(accepted._id), ...agreeing.map((s) => String(s._id))])];
     await Suggestion.updateMany({ _id: { $in: ids }, status: "pending" }, { $set: { status: "accepted", decidedAt: now } });
     for (const userId of [String(accepted.userId), ...agreeing.map((s) => String(s.userId))]) acceptedUsers.add(userId);
+    // Archive Scouts: each accepted suggestion pays (once, by suggestion id)
+    const paid = [{ _id: accepted._id, userId: accepted.userId }, ...agreeing];
+    for (const s of paid) {
+      await earn(s.userId, "scouts.identify", `scouts.identify:${String(s._id)}`, {
+        meta: { materialId: String(materialId) },
+      }).catch((error) => console.error(`[suggestions] paying ${String(s._id)} failed:`, error));
+    }
     for (const userId of acceptedUsers) {
       awardBadgesAfter(userId, "suggestion_accepted");
       notifyAfter(userId, {
         type: "suggestion_accepted",
         title: "Your details for a PDF were right",
-        body: `Our team verified "${title}" with the details you suggested. Thanks for helping identify it.`,
+        body: `Our team verified "${title}" with the details you suggested. Thanks for helping identify it: credits are in your wallet.`,
         link,
         dedupeKey: `suggestion:${String(materialId)}`,
       });

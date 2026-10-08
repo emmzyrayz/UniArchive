@@ -44,6 +44,7 @@ import { getMaterialReportModel } from "@/lib/models/materialReportModel";
 import { getDriveImportModel } from "@/lib/models/driveImportModel";
 import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
 import { getNotificationModel } from "@/lib/models/notificationModel";
+import { getScoutAnswerModel } from "@/lib/models/scoutAnswerModel";
 import { anonymiseLedger } from "@/lib/economy/wallet";
 import { getPendingLinkModel } from "@/lib/models/pendingLinkModel";
 import { getSentMailModel } from "@/lib/models/sentMailModel";
@@ -288,6 +289,7 @@ export async function purgeAccount(userId: Types.ObjectId): Promise<PurgeSummary
   await remove("driveImports", async () => (await getDriveImportModel()).deleteMany({ importedBy: id }));
   // Credits: kept in the ledger as "a former member" so every total still adds up
   await anonymise("credits", async () => ({ modifiedCount: await anonymiseLedger(id) }));
+  await remove("scoutAnswers", async () => (await getScoutAnswerModel()).deleteMany({ userId: id }));
   await remove("notifications", async () => (await getNotificationModel()).deleteMany({ userId: id }));
   await remove("helpIdentifySuggestions", async () => (await getMaterialSuggestionModel()).deleteMany({ userId: id }));
 

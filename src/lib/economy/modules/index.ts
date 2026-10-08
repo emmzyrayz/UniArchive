@@ -4,8 +4,9 @@
 // MODULES. Nothing else in the core changes.
 import { registerModule, type EconomyModule } from "../registry";
 import { coreModule } from "./core";
+import { scoutsModule } from "./scouts";
 
-export const MODULES: EconomyModule[] = [coreModule];
+export const MODULES: EconomyModule[] = [coreModule, scoutsModule];
 
 let loaded = false;
 
