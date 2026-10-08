@@ -18,10 +18,14 @@ import { getCommentModel } from "@/lib/models/commentModel";
 import { getUserBadgeModel, type IUserBadge } from "@/lib/models/userBadgeModel";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
 import { redis } from "@/lib/redis";
+import { getScoutAnswerModel } from "@/lib/models/scoutAnswerModel";
+import { scoutStreak } from "@/lib/scouts/streaks";
 import { notify } from "@/lib/notifications";
 import {
   BADGE_DEFINITIONS,
   PDF_DETECTIVE_ACCEPTED,
+  CENTURY_SCOUT_CONFIRMED,
+  CAMPUS_PIONEERS_PER_SCHOOL,
   BADGE_IDS,
   EARLY_ADOPTER_DAYS,
   PLATFORM_LAUNCH_DATE,
@@ -44,6 +48,9 @@ export type BadgeTrigger =
   | "view_milestone"
   | "school_email_verified"
   | "suggestion_accepted"
+  // Archive Scouts: a task confirmed (paid), a day's tasks done
+  | "scout_confirmed"
+  | "scout_streak"
   // Every badge: catches up users who qualified before badges existed, or
   // whose check was missed (see catchUpBadgesAfter)
   | "catch_up";
@@ -67,7 +74,9 @@ const TRIGGER_BADGES: Record<BadgeTrigger, BadgeId[]> = {
   role_changed: ["collaborator", "auditor", "verified_lecturer"],
   view_milestone: ["popular_material"],
   school_email_verified: ["verified_student"],
-  suggestion_accepted: ["pdf_detective"],
+  suggestion_accepted: ["pdf_detective", "first_scout", "century_scout", "campus_pioneer"],
+  scout_confirmed: ["first_scout", "century_scout", "campus_pioneer"],
+  scout_streak: ["streak_7", "streak_30"],
   catch_up: BADGE_IDS,
 };
 
@@ -85,6 +94,15 @@ type BadgeUser = {
   universityId?: Types.ObjectId;
   schoolEmailVerifiedAt?: Date;
 } & Parameters<typeof calculateProfileCompletion>[0];
+
+/** Scout tasks confirmed: voted answers that agreed (and counted) plus accepted Help identify suggestions. */
+async function confirmedScoutTasks(userId: Types.ObjectId): Promise<number> {
+  const [answers, suggestions] = await Promise.all([
+    (await getScoutAnswerModel()).countDocuments({ userId, status: "confirmed", counted: true }),
+    (await getMaterialSuggestionModel()).countDocuments({ userId, status: "accepted" }),
+  ]);
+  return answers + suggestions;
+}
 
 async function qualifies(badgeId: BadgeId, user: BadgeUser): Promise<boolean> {
   const userId = user._id;
@@ -144,6 +162,20 @@ async function qualifies(badgeId: BadgeId, user: BadgeUser): Promise<boolean> {
     }
     case "verified_student":
       return !!user.schoolEmailVerifiedAt;
+    case "first_scout":
+      return (await confirmedScoutTasks(userId)) >= 1;
+    case "century_scout":
+      return (await confirmedScoutTasks(userId)) >= CENTURY_SCOUT_CONFIRMED;
+    case "streak_7":
+      return (await scoutStreak(userId)).best >= 7;
+    case "streak_30":
+      return (await scoutStreak(userId)).best >= 30;
+    case "campus_pioneer": {
+      if (!user.universityId || (await confirmedScoutTasks(userId)) < 1) return false;
+      const holders = await (await getUserBadgeModel()).distinct("userId", { badgeId: "campus_pioneer" });
+      const atSchool = await (await getUserModel()).countDocuments({ _id: { $in: holders }, universityId: user.universityId });
+      return atSchool < CAMPUS_PIONEERS_PER_SCHOOL;
+    }
     case "pdf_detective":
       return (
         (await (await getMaterialSuggestionModel()).countDocuments({ userId, status: "accepted" })) >= PDF_DETECTIVE_ACCEPTED

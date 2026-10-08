@@ -10,6 +10,12 @@ export type BadgeId =
   | "fifteen_verified"
   | "fifty_verified"
   | "pdf_detective"
+  // Archive Scouts
+  | "first_scout"
+  | "century_scout"
+  | "streak_7"
+  | "streak_30"
+  | "campus_pioneer"
   // Quality
   | "endorsed"
   | "top_contributor"
@@ -32,6 +38,10 @@ export type BadgeRarity = "common" | "uncommon" | "rare" | "legendary";
 
 /** Accepted "Help identify" suggestions that earn the PDF Detective badge. */
 export const PDF_DETECTIVE_ACCEPTED = 5;
+/** Confirmed Scout tasks for the Century Scout badge. */
+export const CENTURY_SCOUT_CONFIRMED = 100;
+/** The first this many Scouts of a school are its Campus Pioneers. */
+export const CAMPUS_PIONEERS_PER_SCHOOL = 10;
 
 export interface BadgeDefinition {
   id: BadgeId;
@@ -162,6 +172,46 @@ export const BADGE_DEFINITIONS: Record<BadgeId, BadgeDefinition> = {
     emoji: "🕵️",
     category: "contribution",
     rarity: "uncommon",
+  },
+  first_scout: {
+    id: "first_scout",
+    name: "First Scout",
+    description: "Had a first Archive Scouts task confirmed",
+    emoji: "🧭",
+    category: "contribution",
+    rarity: "common",
+  },
+  century_scout: {
+    id: "century_scout",
+    name: "Century Scout",
+    description: `Had ${CENTURY_SCOUT_CONFIRMED} Archive Scouts tasks confirmed`,
+    emoji: "💯",
+    category: "contribution",
+    rarity: "rare",
+  },
+  streak_7: {
+    id: "streak_7",
+    name: "Week Streak",
+    description: "Did Scout tasks 7 days in a row",
+    emoji: "🔥",
+    category: "engagement",
+    rarity: "uncommon",
+  },
+  streak_30: {
+    id: "streak_30",
+    name: "Month Streak",
+    description: "Did Scout tasks 30 days in a row",
+    emoji: "☄️",
+    category: "engagement",
+    rarity: "legendary",
+  },
+  campus_pioneer: {
+    id: "campus_pioneer",
+    name: "Campus Pioneer",
+    description: `One of the first ${CAMPUS_PIONEERS_PER_SCHOOL} Archive Scouts at their school`,
+    emoji: "🚩",
+    category: "community",
+    rarity: "rare",
   },
   verified_student: {
     id: "verified_student",

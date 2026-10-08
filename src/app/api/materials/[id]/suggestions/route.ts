@@ -17,6 +17,8 @@ import { getMaterialSuggestionModel, type IMaterialSuggestion } from "@/lib/mode
 import { parseSuggestion, suggestionFingerprint, suggestionGroups, toSuggestionFieldsDto } from "@/lib/materialSuggestions";
 import type { SubmissionBody } from "@/lib/submissions";
 import type { MaterialSuggestionsResponse } from "@/types/unilibrary";
+import { scoutStreak } from "@/lib/scouts/streaks";
+import { awardBadgesAfter } from "@/lib/badges";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -73,11 +75,17 @@ export async function POST(request: NextRequest, context: Context) {
     const owner = { materialId: material._id, userId: new Types.ObjectId(session.userId) };
     const existing = await Suggestion.findOne(owner).select("status").lean();
     if (existing && existing.status !== "pending") return fail(409, "Your suggestion for this PDF has already been reviewed.");
+    // Archive Scouts: a new suggestion counts toward the streak and keeps the multiplier it was sent with
+    const multiplier = existing ? undefined : (await scoutStreak(session.userId)).multiplier;
     const saved = await Suggestion.findOneAndUpdate(
       { ...owner, status: "pending" },
-      { $set: { fields, fingerprint: suggestionFingerprint(fields), userUpid: session.upid } },
+      {
+        $set: { fields, fingerprint: suggestionFingerprint(fields), userUpid: session.upid },
+        ...(multiplier ? { $setOnInsert: { multiplier } } : {}),
+      },
       { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
     ).lean<IMaterialSuggestion>();
+    if (!existing) awardBadgesAfter(session.userId, "scout_streak");
     return NextResponse.json({ mine: mineDto(saved), created: !existing }, { status: existing ? 200 : 201 });
   } catch (error) {
     return handleRouteError(error, "POST /api/materials/[id]/suggestions");

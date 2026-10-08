@@ -13,6 +13,7 @@ export const NOTIFICATION_KINDS = {
   role_rejected: { icon: "📝" },
   typed_verified: { icon: "✅" },
   typed_disputed: { icon: "✏️" },
+  streak_risk: { icon: "🔥" },
 } as const;
 
 export type NotificationType = keyof typeof NOTIFICATION_KINDS;

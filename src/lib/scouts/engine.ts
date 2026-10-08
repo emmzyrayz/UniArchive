@@ -20,6 +20,7 @@ import { levelLabel, materialKindLabel } from "@/components/unilibrary/materialL
 import { earn } from "@/lib/economy/earn";
 import { EconomyError, reverse } from "@/lib/economy/ledger";
 import { notifyAfter } from "@/lib/notifications";
+import { awardBadgesAfter } from "@/lib/badges";
 import { accuracyOf, decideConsensus, type Accuracy } from "./consensus";
 import { issueTaskToken } from "./token";
 import {
@@ -317,6 +318,7 @@ export async function settleSubject(task: VotedTask, subjectId: Types.ObjectId):
 
   const agreed = await ScoutAnswer.find({ task, subjectId, status: "confirmed", counted: true }).lean<IScoutAnswer[]>();
   for (const a of agreed) {
+    awardBadgesAfter(a.userId, "scout_confirmed");
     await earn(a.userId, `scouts.${task}`, `scouts.${task}:${a._id}`, {
       multiplier: a.multiplier,
       meta: { subjectId: String(subjectId), materialId: String(a.materialId) },
@@ -421,6 +423,8 @@ export async function overturnSubject(
 }
 
 // ---------------------------------------------------------------- the hub
+
+export type { StreakState } from "./streaks";
 
 export interface ScoutTaskSummary {
   task: ScoutTask;

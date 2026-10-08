@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { WalletSummary, HistoryItem } from "@/lib/economy/wallet";
 import type { ScoutTaskSummary } from "@/lib/scouts/engine";
+import type { StreakState } from "@/lib/scouts/streaks";
 import { SCOUT_TASKS } from "@/lib/scouts/taskTypes";
 import { MIN_ACCURACY, MIN_SETTLED, AGREE } from "@/lib/scouts/taskTypes";
 import { timeAgo } from "@/components/notifications/notificationClient";
@@ -15,6 +16,7 @@ import { timeAgo } from "@/components/notifications/notificationClient";
 interface Summary {
   wallet: WalletSummary;
   tasks: ScoutTaskSummary[];
+  streak: StreakState;
   waitingCap: number;
 }
 
@@ -59,6 +61,39 @@ function WalletCard({ wallet }: { wallet: WalletSummary }) {
           <Bar value={today.earnedAC} max={today.capAC} label="AC earned today out of the daily limit" />
         </div>
         <p className="mt-1 text-xs text-text-muted">The daily limit resets at midnight. XP has no limit.</p>
+      </div>
+    </section>
+  );
+}
+
+function StreakCard({ s }: { s: StreakState }) {
+  const left = Math.max(0, s.perDay - s.today);
+  return (
+    <section className="flex flex-col gap-4 rounded-2xl border border-border bg-surface-raised p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <span aria-hidden className={`text-4xl ${s.current > 0 ? "" : "opacity-40 grayscale"}`}>
+          🔥
+        </span>
+        <div>
+          <p className="text-lg font-semibold text-text-primary">
+            {s.current === 0 ? "No streak yet" : `${s.current}-day streak`}
+            {s.multiplier > 1 && <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 text-sm text-primary">×{s.multiplier} credits</span>}
+          </p>
+          <p className="text-sm text-text-secondary">
+            {s.todayDone
+              ? "Today counts. Come back tomorrow to keep it going."
+              : `${left} more task${left === 1 ? "" : "s"} today ${s.current > 0 ? "to keep it" : "to start one"}.`}
+            {s.next && ` ${s.next.days - s.current} day${s.next.days - s.current === 1 ? "" : "s"} more for ×${s.next.multiplier}.`}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="flex gap-1.5" aria-label={`${s.today} of ${s.perDay} tasks today`}>
+          {Array.from({ length: s.perDay }, (_, i) => (
+            <span key={i} className={`h-3 w-8 rounded-full ${i < s.today ? "bg-primary" : "bg-border"}`} />
+          ))}
+        </div>
+        <p className="text-xs text-text-muted">Best {s.best}</p>
       </div>
     </section>
   );
@@ -152,6 +187,7 @@ export function ScoutsHub() {
         {data && (
           <>
             <WalletCard wallet={data.wallet} />
+            <StreakCard s={data.streak} />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               {data.tasks.map((t) => (
                 <TaskCard key={t.task} t={t} cap={data.waitingCap} />
@@ -195,7 +231,8 @@ export function ScoutsHub() {
               <li>Answers that disagree earn nothing but cost nothing. Guessing doesn&apos;t pay: after {MIN_SETTLED} answers, if fewer than {Math.round(MIN_ACCURACY * 100)}% agree with the result, yours stop counting for a while.</li>
               <li>You never get tasks on your own uploads or your own typing.</li>
               <li>Credits have no cash value, can&apos;t be sold, and never change your role. If our team later overturns a result, the credits for it are taken back.</li>
-              <li>Coming soon: streaks, a shop to spend credits in, and weekly department leaderboards.</li>
+              <li>Do 3 tasks a day to build a streak: 3 days in a row earns ×1.1, 7 days ×1.25, 14 days ×1.5 (applied when each answer is paid).</li>
+              <li>Coming soon: a shop to spend credits in, and weekly department leaderboards.</li>
             </ul>
           </section>
         </div>

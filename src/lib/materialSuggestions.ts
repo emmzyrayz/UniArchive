@@ -125,15 +125,16 @@ export async function settleSuggestions(materialId: Types.ObjectId, accepted?: I
   const acceptedUsers = new Set<string>();
   if (accepted) {
     const agreeing = await Suggestion.find({ materialId, status: "pending", fingerprint: accepted.fingerprint })
-      .select("_id userId")
+      .select("_id userId multiplier")
       .lean();
     const ids = [...new Set([String(accepted._id), ...agreeing.map((s) => String(s._id))])];
     await Suggestion.updateMany({ _id: { $in: ids }, status: "pending" }, { $set: { status: "accepted", decidedAt: now } });
     for (const userId of [String(accepted.userId), ...agreeing.map((s) => String(s.userId))]) acceptedUsers.add(userId);
     // Archive Scouts: each accepted suggestion pays (once, by suggestion id)
-    const paid = [{ _id: accepted._id, userId: accepted.userId }, ...agreeing];
+    const paid = [{ _id: accepted._id, userId: accepted.userId, multiplier: accepted.multiplier }, ...agreeing];
     for (const s of paid) {
       await earn(s.userId, "scouts.identify", `scouts.identify:${String(s._id)}`, {
+        multiplier: s.multiplier,
         meta: { materialId: String(materialId) },
       }).catch((error) => console.error(`[suggestions] paying ${String(s._id)} failed:`, error));
     }

@@ -39,6 +39,8 @@ export interface IMaterialSuggestion {
   fingerprint: string;
   status: MaterialSuggestionStatus;
   decidedAt?: Date;
+  /** Archive Scouts streak multiplier when it was first sent (applied if it's accepted) */
+  multiplier?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -77,6 +79,7 @@ const MaterialSuggestionSchema = new Schema<IMaterialSuggestion, IMaterialSugges
     fingerprint: { type: String, required: true },
     status: { type: String, enum: SUGGESTION_STATUSES, default: "pending" },
     decidedAt: Date,
+    multiplier: { type: Number },
   },
   { timestamps: true, collection: "materialsuggestions" },
 );
@@ -84,6 +87,8 @@ const MaterialSuggestionSchema = new Schema<IMaterialSuggestion, IMaterialSugges
 MaterialSuggestionSchema.index({ materialId: 1, userId: 1 }, { unique: true });
 MaterialSuggestionSchema.index({ materialId: 1, status: 1, fingerprint: 1 });
 MaterialSuggestionSchema.index({ userId: 1, status: 1 });
+// Scout streaks (tasks per day)
+MaterialSuggestionSchema.index({ userId: 1, createdAt: -1 });
 
 export async function getMaterialSuggestionModel(): Promise<IMaterialSuggestionModel> {
   const conn = await connectDB();

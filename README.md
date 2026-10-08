@@ -76,7 +76,10 @@ to 500L/600L, postgraduate) and course code.
   whether one is readable, check a typed past question against the
   paper), nearest to your department first. Answers are paid in Archive
   Credits and XP once confirmed (3 Scouts agree, or staff accept the
-  details); credits have no cash value and never change roles.
+  details); credits have no cash value and never change roles. Three
+  tasks a day builds a streak that multiplies pay (up to x1.5), with a
+  reminder before it ends and Scout badges (Week Streak, Campus Pioneer
+  and more).
 - **Have a say**: surveys anyone can answer at `/surveys`.
 - **Share without an account**: share PDFs or folders with UniArchive's
   Gmail in Google Drive; they're imported for our team to check and
@@ -408,7 +411,7 @@ Build order (one commit each, each tested and documented):
    question and pays its typist 5 AC, "mistakes" disputes it and tells
    the typist; 5 AC / 8 XP). Staff can overturn, which takes the credits
    back.
-4. **Streaks**: 3 tasks a day keeps it; multipliers ×1.1 (3 days), ×1.25
+4. **Streaks** (done 2026-10-08): 3 tasks a day keeps it; multipliers ×1.1 (3 days), ×1.25
    (7), ×1.5 (14+). A daily cron sends "streak at risk". Scout badges,
    Campus Pioneer for the first 10 Scouts in a school.
 5. **Spending**:

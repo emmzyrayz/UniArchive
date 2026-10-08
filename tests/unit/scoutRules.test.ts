@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { accuracyOf, decideConsensus } from "@/lib/scouts/consensus";
 import { checkTaskToken, issueTaskToken } from "@/lib/scouts/token";
 import { MIN_SECONDS, TOKEN_TTL_SECONDS } from "@/lib/scouts/taskTypes";
+import { multiplierFor, nextMilestone, streakFrom } from "@/lib/scouts/streaks";
 
 describe("consensus", () => {
   it("settles on the first answer to reach three", () => {
@@ -51,5 +52,39 @@ describe("task tokens", () => {
     expect(checkTaskToken(`${payload}.${sig.slice(0, -2)}xx`, user, t0 + 10_000).ok).toBe(false);
     expect(checkTaskToken("junk", user).ok).toBe(false);
     expect(checkTaskToken(42, user).ok).toBe(false);
+  });
+});
+
+describe("streaks", () => {
+  // Noon in Lagos on 2026-10-08
+  const now = new Date("2026-10-08T11:00:00Z");
+  const day = (back: number) => new Date(now.getTime() - back * 86_400_000).toISOString().slice(0, 10);
+  const counts = (entries: [number, number][]) => new Map(entries.map(([back, n]) => [day(back), n]));
+
+  it("counts days with three tasks, ending today or yesterday", () => {
+    expect(streakFrom(counts([]), now)).toMatchObject({ current: 0, best: 0, today: 0, todayDone: false, multiplier: 1 });
+    // Yesterday and the two days before done; today not yet
+    const s = streakFrom(counts([[1, 3], [2, 5], [3, 3], [0, 2]]), now);
+    expect(s).toMatchObject({ current: 3, today: 2, todayDone: false, multiplier: 1.1, next: { days: 7, multiplier: 1.25 } });
+    // Today done too
+    expect(streakFrom(counts([[0, 3], [1, 3]]), now)).toMatchObject({ current: 2, todayDone: true });
+    // A day with only two breaks it
+    expect(streakFrom(counts([[1, 3], [2, 2], [3, 3]]), now).current).toBe(1);
+    // Missed yesterday: gone
+    expect(streakFrom(counts([[2, 3], [3, 3]]), now).current).toBe(0);
+  });
+
+  it("remembers the best run and counts covered days", () => {
+    const old = counts(Array.from({ length: 9 }, (_, i) => [20 + i, 3] as [number, number]));
+    expect(streakFrom(old, now)).toMatchObject({ current: 0, best: 9 });
+    const covered = new Set([day(2)]);
+    expect(streakFrom(counts([[1, 3], [3, 3]]), now, covered).current).toBe(3);
+  });
+
+  it("multiplies by streak length", () => {
+    expect([0, 2, 3, 6, 7, 13, 14, 99].map(multiplierFor)).toEqual([1, 1, 1.1, 1.1, 1.25, 1.25, 1.5, 1.5]);
+    expect(nextMilestone(0)).toEqual({ days: 3, multiplier: 1.1 });
+    expect(nextMilestone(8)).toEqual({ days: 14, multiplier: 1.5 });
+    expect(nextMilestone(14)).toBeNull();
   });
 });

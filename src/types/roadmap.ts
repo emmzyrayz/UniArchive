@@ -138,8 +138,8 @@ export const roadmap: RoadmapPhase[] = [
       },
       {
         title: "Daily streaks",
-        description: "Keep your streak alive to multiply what you earn.",
-        status: "planned",
+        description: "Do 3 tasks a day to build a streak that multiplies what you earn, with a reminder before it ends.",
+        status: "done",
       },
       {
         title: "Rewards to show off",

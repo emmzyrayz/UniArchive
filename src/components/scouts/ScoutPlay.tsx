@@ -33,6 +33,7 @@ import {
 import { MathText } from "@/components/layer2/math";
 import type { MaterialSuggestionsResponse } from "@/types/unilibrary";
 import { ScoutPdf } from "./ScoutPdf";
+import type { StreakState } from "@/lib/scouts/streaks";
 
 type Load = { kind: "loading" } | { kind: "empty" } | { kind: "error"; message: string } | { kind: "ready"; card: ScoutTaskCard };
 type Feedback = { tone: "good" | "info" | "bad"; text: string } | null;
@@ -88,10 +89,12 @@ function VotePanel({
   card,
   onAnswered,
   setFeedback,
+  onStreak,
 }: {
   card: Extract<ScoutTaskCard, { task: "readable" | "check_typed" }>;
   onAnswered: () => void;
   setFeedback: (f: Feedback) => void;
+  onStreak: (s: StreakState) => void;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -118,8 +121,10 @@ function VotePanel({
         if (res.status !== 425) onAnswered();
         return;
       }
+      if (data.streak) onStreak(data.streak);
       const s = data.settled;
-      if (s?.stuck) setFeedback({ tone: "info", text: "Saved. Scouts couldn't agree on this one, so our team will decide." });
+      if (data.dayCompleted) setFeedback({ tone: "good", text: `Today's ${data.streak.perDay} tasks done: you're on a ${data.streak.current}-day streak.` });
+      else if (s?.stuck) setFeedback({ tone: "info", text: "Saved. Scouts couldn't agree on this one, so our team will decide." });
       else if (s?.youAgreed) setFeedback({ tone: "good", text: s.paid ? "Settled, and you agreed: credits added to your wallet." : "Settled, and you agreed." });
       else if (s) setFeedback({ tone: "info", text: "Settled: other Scouts saw it differently, so no credits this time." });
       else if (!data.counted) setFeedback({ tone: "info", text: "Saved. Your answers aren't counting for now (see your accuracy on the Scouts page)." });
@@ -260,6 +265,7 @@ export function ScoutPlay({ task }: { task: ScoutTask }) {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [round, setRound] = useState(0);
   const [introSeen, setIntroSeen] = useState(true);
+  const [streak, setStreak] = useState<StreakState | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -306,6 +312,12 @@ export function ScoutPlay({ task }: { task: ScoutTask }) {
           </Link>
           <h1 className="truncate text-base font-semibold text-text-primary">
             <span aria-hidden>{def.icon}</span> {def.title}
+            {streak && streak.current > 0 && (
+              <span className="ml-2 text-sm font-normal text-text-secondary" title="Your streak">
+                🔥 {streak.current}
+                {streak.multiplier > 1 && ` · ×${streak.multiplier}`}
+              </span>
+            )}
           </h1>
           <button
             type="button"
@@ -373,7 +385,7 @@ export function ScoutPlay({ task }: { task: ScoutTask }) {
               {card.task === "identify" ? (
                 <IdentifyPanel key={card.material.materialId} materialId={card.material.materialId} onAnswered={next} setFeedback={setFeedback} />
               ) : (
-                <VotePanel key={subjectId} card={card} onAnswered={next} setFeedback={setFeedback} />
+                <VotePanel key={subjectId} card={card} onAnswered={next} setFeedback={setFeedback} onStreak={setStreak} />
               )}
             </div>
           </div>

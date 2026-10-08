@@ -369,6 +369,25 @@ pays or charges credits is a module.
   subject and marks those answers overturned. Staff "Restore" on a PDF
   Scouts called unreadable (`PATCH /api/admin/materials/[id]
   clearReports`) does this and marks it readable.
+- Streaks (`streaks.ts`): a Lagos day counts with 3 Scout tasks (voted
+  answers plus new Help identify suggestions, aggregated by
+  `$dateToString` in Africa/Lagos); the streak ends today, or yesterday
+  while today isn't done. Multiplier 3 days x1.1, 7 x1.25, 14 x1.5, taken
+  when answering (`ScoutAnswer.multiplier`; a new suggestion stores
+  `MaterialSuggestion.multiplier`) and applied by `earn` when it's paid.
+  `streakFrom(counts, now, covered)` is pure; `covered` is for streak
+  freezes. The answer response and `/api/scouts/summary` carry the
+  streak; the hub shows it, the task screen a 🔥 counter.
+- Daily Vercel Cron `/api/cron/scouts` (17:00 UTC = 18:00 Lagos, Bearer
+  `CRON_SECRET`, `lib/scouts/daily.ts`): people with Scout activity in
+  the last 2 days whose streak is 3+ and today isn't done get a
+  `streak_risk` notification (dedupe per day).
+- Scout badges (`lib/badges.ts`): First Scout, Century Scout (100
+  confirmed), Week Streak (7), Month Streak (30), Campus Pioneer (the
+  first 10 at a school with a confirmed task). Triggers `scout_confirmed`
+  (on settling and on accepted suggestions) and `scout_streak` (when a
+  day completes). "Confirmed" = counted confirmed answers + accepted
+  suggestions.
 - `ScoutAnswer` is in the data export and deleted in the purge. Terms
   section 6 covers credits (no cash value, taken back when overturned).
 
@@ -829,7 +848,8 @@ admin), full admin panel (`/admin`), SEO
   Drive import pipeline and the Drive inbox (fake Google, mocked
   storage), queue access rules, notifications, the credits economy (a
   test-only module proves plug-and-play), Scout tasks (picking,
-  consensus, payments, accuracy, overturning, races). The db project runs a
+  consensus, payments, accuracy, overturning, races), streaks, the
+  daily reminder and Scout badges. The db project runs a
   one-node replica set (transactions). Not covered: API
   routes and pages (still exercised by hand or scripted runs against
   `pnpm start`), React components.
