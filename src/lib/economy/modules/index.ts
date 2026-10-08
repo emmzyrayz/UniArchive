@@ -5,8 +5,9 @@
 import { registerModule, type EconomyModule } from "../registry";
 import { coreModule } from "./core";
 import { scoutsModule } from "./scouts";
+import { streaksModule } from "./streaks";
 
-export const MODULES: EconomyModule[] = [coreModule, scoutsModule];
+export const MODULES: EconomyModule[] = [coreModule, scoutsModule, streaksModule];
 
 let loaded = false;
 

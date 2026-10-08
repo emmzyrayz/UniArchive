@@ -37,6 +37,7 @@ import { getDriveImportModel } from "@/lib/models/driveImportModel";
 import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
 import { getNotificationModel } from "@/lib/models/notificationModel";
 import { getScoutAnswerModel } from "@/lib/models/scoutAnswerModel";
+import { getScoutStreakModel } from "@/lib/models/scoutStreakModel";
 import { balancesOf, historyOf } from "@/lib/economy/ledger";
 import { toHistoryItem } from "@/lib/economy/wallet";
 import { userAccount } from "@/lib/economy/currencies";
@@ -229,6 +230,7 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     notifications: scrub(notifications),
     credits,
     scoutAnswers: scrub(scoutAnswers),
+    streakProtection: scrub(await (await getScoutStreakModel()).findOne({ userId: id }).select("freezes covered updatedAt").lean()),
     signInHistory: scrub(signIns),
     activeSessions: scrub(sessions),
     trustedDevices: scrub(devices),

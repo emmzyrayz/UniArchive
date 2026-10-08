@@ -43,6 +43,8 @@ export interface ProductDef<C = unknown> {
   parse?: (body: Record<string, unknown>) => C;
   /** Whether this person can buy it now (owned already, limit reached...). */
   available?: (userId: string, ctx: C) => Promise<{ ok: true } | { ok: false; reason: string }>;
+  /** A line about this person's situation for the shop card ("You hold 1 of 2"). */
+  detail?: (userId: string) => Promise<string | undefined>;
   /** Where the credits go (default: burned). */
   destination?: (userId: string, ctx: C) => string | Promise<string>;
   /** Delivers it. If this throws, the payment is reversed. */

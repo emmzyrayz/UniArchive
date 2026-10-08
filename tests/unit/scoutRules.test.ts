@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { accuracyOf, decideConsensus } from "@/lib/scouts/consensus";
 import { checkTaskToken, issueTaskToken } from "@/lib/scouts/token";
 import { MIN_SECONDS, TOKEN_TTL_SECONDS } from "@/lib/scouts/taskTypes";
-import { multiplierFor, nextMilestone, streakFrom } from "@/lib/scouts/streaks";
+import { freezePlan, multiplierFor, nextMilestone, repairOption, streakFrom } from "@/lib/scouts/streaks";
 
 describe("consensus", () => {
   it("settles on the first answer to reach three", () => {
@@ -86,5 +86,34 @@ describe("streaks", () => {
     expect(nextMilestone(0)).toEqual({ days: 3, multiplier: 1.1 });
     expect(nextMilestone(8)).toEqual({ days: 14, multiplier: 1.5 });
     expect(nextMilestone(14)).toBeNull();
+  });
+});
+
+describe("streak protection", () => {
+  const now = new Date("2026-10-08T11:00:00Z");
+  const day = (back: number) => new Date(now.getTime() - back * 86_400_000).toISOString().slice(0, 10);
+  const counts = (backs: number[]) => new Map(backs.map((b) => [day(b), 3]));
+  const none = new Set<string>();
+
+  it("freezes cover a gap ending yesterday, if enough are held", () => {
+    expect(freezePlan(counts([2, 3]), none, 1, now)).toEqual([day(1)]);
+    expect(freezePlan(counts([3, 4]), none, 2, now)).toEqual([day(1), day(2)]);
+    expect(freezePlan(counts([3, 4]), none, 1, now)).toEqual([]);
+    expect(freezePlan(counts([1, 2]), none, 2, now)).toEqual([]); // yesterday done
+    expect(freezePlan(counts([0, 1]), none, 2, now)).toEqual([]); // today is never covered
+    expect(freezePlan(counts([]), none, 2, now)).toEqual([]); // no streak to save
+    expect(freezePlan(counts([2]), none, 0, now)).toEqual([]);
+    expect(freezePlan(counts([3]), new Set([day(2)]), 1, now)).toEqual([day(1)]);
+  });
+
+  it("repairs one recent missed day after a run of 3+", () => {
+    expect(repairOption(counts([2, 3, 4]), none, now)).toEqual({ day: day(1), restoresTo: 4 });
+    // Missed the day before yesterday, did yesterday
+    expect(repairOption(counts([1, 3, 4, 5]), none, now)).toEqual({ day: day(2), restoresTo: 5 });
+    expect(repairOption(counts([0, 1, 3, 4, 5]), none, now)).toEqual({ day: day(2), restoresTo: 6 });
+    expect(repairOption(counts([3, 4, 5]), none, now)).toBeNull(); // two days missed
+    expect(repairOption(counts([2, 3]), none, now)).toBeNull(); // run of 2
+    expect(repairOption(counts([1, 2, 3]), none, now)).toBeNull(); // nothing broken
+    expect(repairOption(counts([2, 3, 4]), new Set([day(1)]), now)).toBeNull(); // already covered
   });
 });

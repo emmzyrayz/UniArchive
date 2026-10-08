@@ -300,7 +300,8 @@ pays or charges credits is a module.
   `destination()` (default burn), `fulfil()`) and ledger listeners (run
   after the response, never failing the entry). To add a module: write
   its manifest in `lib/economy/modules/`, add it to `MODULES`; the shop,
-  history, wallet and admin page pick it up.
+  history, wallet and admin page pick it up. A product may add
+  `detail(userId)`: a line about the person shown on its shop card.
 - **Paying** (`earn.ts`): `earn(userId, sourceId, sourceKey, {multiplier,
   rewards, from, meta})` applies the rewards (or the caller's), the
   multiplier (1-2x, streakBoost sources only), then the caps (AC only; XP
@@ -378,6 +379,21 @@ pays or charges credits is a module.
   `streakFrom(counts, now, covered)` is pure; `covered` is for streak
   freezes. The answer response and `/api/scouts/summary` carry the
   streak; the hub shows it, the task screen a 🔥 counter.
+- Streak protection (`economy/modules/streaks.ts`, `ScoutStreak`: freezes
+  held, covered days): a freeze (40 AC, hold 2) covers a missed day
+  automatically: `scoutStreak()` applies `freezePlan` (the gap ending
+  yesterday, if a done day precedes it and it's no longer than the
+  freezes held; today never) with a conditional update, then notifies
+  `streak_saved`. Since every streak read applies it, the daily job does
+  it too for people who don't come back. A repair (100 AC, once every 30
+  days) covers one missed day, yesterday or the day before with
+  yesterday done, after a run of 3+ (`repairOption`). Covered days count
+  as done everywhere (multiplier, badges).
+- Shop: `/scouts/shop` (`ScoutShop`) lists every product from every
+  module, grouped by `kind`, with `detail` (the optional
+  `ProductDef.detail(userId)` line) and the blocked reason (the product's
+  own `available()` first); Buy -> inline confirm -> buy with an
+  Idempotency-Key. Linked from the hub, the streak card and the navbar.
 - Daily Vercel Cron `/api/cron/scouts` (17:00 UTC = 18:00 Lagos, Bearer
   `CRON_SECRET`, `lib/scouts/daily.ts`): people with Scout activity in
   the last 2 days whose streak is 3+ and today isn't done get a
@@ -849,7 +865,7 @@ admin), full admin panel (`/admin`), SEO
   storage), queue access rules, notifications, the credits economy (a
   test-only module proves plug-and-play), Scout tasks (picking,
   consensus, payments, accuracy, overturning, races), streaks, the
-  daily reminder and Scout badges. The db project runs a
+  daily reminder and Scout badges, streak freezes and repairs. The db project runs a
   one-node replica set (transactions). Not covered: API
   routes and pages (still exercised by hand or scripted runs against
   `pnpm start`), React components.

@@ -79,7 +79,8 @@ to 500L/600L, postgraduate) and course code.
   details); credits have no cash value and never change roles. Three
   tasks a day builds a streak that multiplies pay (up to x1.5), with a
   reminder before it ends and Scout badges (Week Streak, Campus Pioneer
-  and more).
+  and more). Credits buy streak freezes and repairs in the Scouts shop
+  (`/scouts/shop`).
 - **Have a say**: surveys anyone can answer at `/surveys`.
 - **Share without an account**: share PDFs or folders with UniArchive's
   Gmail in Google Drive; they're imported for our team to check and
@@ -414,7 +415,9 @@ Build order (one commit each, each tested and documented):
 4. **Streaks** (done 2026-10-08): 3 tasks a day keeps it; multipliers ×1.1 (3 days), ×1.25
    (7), ×1.5 (14+). A daily cron sends "streak at risk". Scout badges,
    Campus Pioneer for the first 10 Scouts in a school.
-5. **Spending**:
+5. **Spending**, one feature per commit, each planned first (order:
+   freeze/repair and the shop (done 2026-10-08), looks, tips and gifts,
+   bounties and boosts, event codes, certificates, exam packs, storage):
    - Bounties (post AC on a missing paper or on typing a material; others
      can add to the pool; paid when the material is verified, 10% fee,
      refunded after 60 days) and boosts (push a material up the typing

@@ -221,7 +221,8 @@ describe("reverse", () => {
 describe("shop", () => {
   it("lists every registered product with why it can't be bought yet", async () => {
     await give(ada, 20);
-    const items = await listShop(ada);
+    // Other modules' products are listed too; these are the test module's
+    const items = (await listShop(ada)).filter((i) => i.module === "test");
     expect(items.map((i) => i.id).sort()).toEqual(["test.broken", "test.daily", "test.thing"]);
     expect(items.find((i) => i.id === "test.thing")?.blocked).toBe("You need 10 more AC.");
     expect(items.find((i) => i.id === "test.daily")?.blocked).toBe("Unlocks at level 2.");
@@ -346,7 +347,7 @@ describe("wallets, adjustments and the purge", () => {
 describe("plug and play", () => {
   it("drops a module's products and sources when it is unregistered", async () => {
     unregisterModule("test");
-    expect(await listShop(ada)).toEqual([]);
+    expect((await listShop(ada)).some((i) => i.module === "test")).toBe(false);
     await expect(earn(ada, "test.task", "x")).rejects.toMatchObject({ code: "not_found" });
   });
 });

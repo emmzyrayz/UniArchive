@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { WalletSummary, HistoryItem } from "@/lib/economy/wallet";
 import type { ScoutTaskSummary } from "@/lib/scouts/engine";
-import type { StreakState } from "@/lib/scouts/streaks";
+import type { ScoutStreakInfo } from "@/lib/scouts/streaks";
 import { SCOUT_TASKS } from "@/lib/scouts/taskTypes";
 import { MIN_ACCURACY, MIN_SETTLED, AGREE } from "@/lib/scouts/taskTypes";
 import { timeAgo } from "@/components/notifications/notificationClient";
@@ -16,7 +16,7 @@ import { timeAgo } from "@/components/notifications/notificationClient";
 interface Summary {
   wallet: WalletSummary;
   tasks: ScoutTaskSummary[];
-  streak: StreakState;
+  streak: ScoutStreakInfo;
   waitingCap: number;
 }
 
@@ -66,7 +66,7 @@ function WalletCard({ wallet }: { wallet: WalletSummary }) {
   );
 }
 
-function StreakCard({ s }: { s: StreakState }) {
+function StreakCard({ s }: { s: ScoutStreakInfo }) {
   const left = Math.max(0, s.perDay - s.today);
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-border bg-surface-raised p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -87,7 +87,10 @@ function StreakCard({ s }: { s: StreakState }) {
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <Link href="/scouts/shop" className="text-sm text-text-secondary hover:text-text-primary" title="Streak freezes held">
+          ❄️ {s.freezes} freeze{s.freezes === 1 ? "" : "s"}
+        </Link>
         <div className="flex gap-1.5" aria-label={`${s.today} of ${s.perDay} tasks today`}>
           {Array.from({ length: s.perDay }, (_, i) => (
             <span key={i} className={`h-3 w-8 rounded-full ${i < s.today ? "bg-primary" : "bg-border"}`} />
@@ -174,7 +177,12 @@ export function ScoutsHub() {
     <main className="mt-[70px] min-h-screen px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-5xl space-y-6">
         <header>
-          <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">Archive Scouts</h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">Archive Scouts</h1>
+            <Link href="/scouts/shop" className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary">
+              🛒 Shop
+            </Link>
+          </div>
           <p className="mt-2 max-w-2xl text-text-secondary">
             Small tasks that keep the UniLibrary accurate. Each takes a minute on your phone, and you earn Archive
             Credits (AC) and XP once your answer is confirmed.
@@ -188,6 +196,15 @@ export function ScoutsHub() {
           <>
             <WalletCard wallet={data.wallet} />
             <StreakCard s={data.streak} />
+            {data.streak.repair && (
+              <Link
+                href="/scouts/shop"
+                className="block rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-900 hover:bg-amber-500/15 dark:text-amber-200"
+              >
+                Your streak broke on {data.streak.repair.day}. Repair it in the shop to get back to{" "}
+                {data.streak.repair.restoresTo} days →
+              </Link>
+            )}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               {data.tasks.map((t) => (
                 <TaskCard key={t.task} t={t} cap={data.waitingCap} />
@@ -232,7 +249,7 @@ export function ScoutsHub() {
               <li>You never get tasks on your own uploads or your own typing.</li>
               <li>Credits have no cash value, can&apos;t be sold, and never change your role. If our team later overturns a result, the credits for it are taken back.</li>
               <li>Do 3 tasks a day to build a streak: 3 days in a row earns ×1.1, 7 days ×1.25, 14 days ×1.5 (applied when each answer is paid).</li>
-              <li>Coming soon: a shop to spend credits in, and weekly department leaderboards.</li>
+              <li>Spend credits in the shop: streak freezes and repairs so far, with more coming. Weekly department leaderboards are coming too.</li>
             </ul>
           </section>
         </div>

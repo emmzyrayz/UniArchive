@@ -134,7 +134,7 @@ export const roadmap: RoadmapPhase[] = [
         title: "Spend your credits",
         description:
           "Post bounties for papers you need, tip people whose notes helped, freeze your streak, get exam packs, certificates and more.",
-        status: "planned",
+        status: "in-progress",
       },
       {
         title: "Daily streaks",

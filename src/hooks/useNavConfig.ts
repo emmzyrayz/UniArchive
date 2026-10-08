@@ -199,6 +199,7 @@ const navConfig: PageNavConfig = {
     title: "Scouts",
     standaloneItems: [
       { name: "Scouts", path: "/scouts", requiresAuth: true },
+      { name: "Shop", path: "/scouts/shop", requiresAuth: true },
       { name: "My Library", path: "/home", requiresAuth: true },
       { name: "UniLibrary", path: UNILIBRARY_PATH },
     ],

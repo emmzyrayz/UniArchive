@@ -14,6 +14,7 @@ export const NOTIFICATION_KINDS = {
   typed_verified: { icon: "✅" },
   typed_disputed: { icon: "✏️" },
   streak_risk: { icon: "🔥" },
+  streak_saved: { icon: "❄️" },
 } as const;
 
 export type NotificationType = keyof typeof NOTIFICATION_KINDS;

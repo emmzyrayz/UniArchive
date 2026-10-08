@@ -5,10 +5,16 @@
 // yesterday while today isn't done yet (so it doesn't reset at midnight).
 // A longer streak multiplies what Scout tasks pay; the multiplier is taken
 // when someone answers and applied when the answer is paid.
+//
+// Bought protection (ScoutStreak): a held freeze covers a missed day
+// automatically the next time the streak is read (here, so every caller
+// and the daily job apply it); a repair covers one recent missed day.
 import { Types } from "mongoose";
 import { readingDay } from "@/lib/readingStats";
 import { getScoutAnswerModel } from "@/lib/models/scoutAnswerModel";
 import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
+import { COVERED_KEEP, getScoutStreakModel, type IScoutStreak } from "@/lib/models/scoutStreakModel";
+import { notify } from "@/lib/notifications";
 
 export const STREAK_TASKS_PER_DAY = 3;
 
@@ -83,6 +89,66 @@ export function streakFrom(counts: Map<string, number>, now = new Date(), covere
   };
 }
 
+// ---------------------------------------------------------------- protection
+
+/** A repair must have the streak it restores at least this long. */
+export const REPAIR_MIN_STREAK = 3;
+export const REPAIR_EVERY_DAYS = 30;
+
+const dayBefore = (d: Date) => new Date(d.getTime() - DAY_MS);
+const isDone = (counts: Map<string, number>, covered: Set<string>, day: string) =>
+  (counts.get(day) ?? 0) >= STREAK_TASKS_PER_DAY || covered.has(day);
+
+/** Days in a row ending on `from` (inclusive). */
+function runEnding(counts: Map<string, number>, covered: Set<string>, from: Date): number {
+  let n = 0;
+  let cursor = from;
+  while (n < LOOKBACK_DAYS && isDone(counts, covered, readingDay(cursor))) {
+    n++;
+    cursor = dayBefore(cursor);
+  }
+  return n;
+}
+
+/**
+ * The missed days a held freeze should cover now: the gap ending yesterday,
+ * when a done day comes before it and the gap is no longer than `held`.
+ * Today is still open, so it's never covered. Pure.
+ */
+export function freezePlan(counts: Map<string, number>, covered: Set<string>, held: number, now = new Date()): string[] {
+  if (held <= 0) return [];
+  const gap: string[] = [];
+  let cursor = dayBefore(now);
+  while (!isDone(counts, covered, readingDay(cursor))) {
+    gap.push(readingDay(cursor));
+    if (gap.length > held) return [];
+    cursor = dayBefore(cursor);
+  }
+  return gap;
+}
+
+/**
+ * A missed day a repair could cover: one missed day, yesterday or the day
+ * before (with yesterday done), after a run of REPAIR_MIN_STREAK or more.
+ * `restoresTo` is the streak once it's covered. Pure.
+ */
+export function repairOption(
+  counts: Map<string, number>,
+  covered: Set<string>,
+  now = new Date(),
+): { day: string; restoresTo: number } | null {
+  const yesterday = dayBefore(now);
+  const twoAgo = dayBefore(yesterday);
+  let missed: Date | null = null;
+  if (!isDone(counts, covered, readingDay(yesterday))) missed = yesterday;
+  else if (!isDone(counts, covered, readingDay(twoAgo))) missed = twoAgo;
+  if (!missed) return null;
+  if (runEnding(counts, covered, dayBefore(missed)) < REPAIR_MIN_STREAK) return null;
+  const day = readingDay(missed);
+  const withRepair = new Set(covered).add(day);
+  return { day, restoresTo: streakFrom(counts, now, withRepair).current };
+}
+
 /** Scout tasks per Lagos day over the lookback window. */
 export async function scoutDayCounts(userId: string | Types.ObjectId, now = new Date()): Promise<Map<string, number>> {
   const id = new Types.ObjectId(String(userId));
@@ -100,6 +166,56 @@ export async function scoutDayCounts(userId: string | Types.ObjectId, now = new 
   return counts;
 }
 
-export async function scoutStreak(userId: string | Types.ObjectId, now = new Date()): Promise<StreakState> {
-  return streakFrom(await scoutDayCounts(userId, now), now);
+export interface ScoutStreakInfo extends StreakState {
+  /** Freezes held */
+  freezes: number;
+  /** A repair on offer, if the streak just broke */
+  repair: { day: string; restoresTo: number } | null;
+  /** When the last repair was bought (one every REPAIR_EVERY_DAYS) */
+  lastRepairAt: string | null;
+}
+
+/** The streak, after using any held freezes on a gap ending yesterday. */
+export async function scoutStreak(userId: string | Types.ObjectId, now = new Date()): Promise<ScoutStreakInfo> {
+  const id = new Types.ObjectId(String(userId));
+  const [counts, state] = await Promise.all([
+    scoutDayCounts(id, now),
+    (await getScoutStreakModel()).findOne({ userId: id }).lean<IScoutStreak>(),
+  ]);
+  const covered = new Set((state?.covered ?? []).map((c) => c.day));
+  let freezes = state?.freezes ?? 0;
+
+  const plan = freezePlan(counts, covered, freezes, now);
+  if (plan.length) {
+    const used = await (await getScoutStreakModel()).updateOne(
+      { userId: id, freezes: { $gte: plan.length }, "covered.day": { $nin: plan } },
+      {
+        $inc: { freezes: -plan.length },
+        $push: { covered: { $each: plan.map((day) => ({ day, kind: "freeze", at: now })), $slice: -COVERED_KEEP } },
+        $set: { updatedAt: now },
+      },
+    );
+    if (used.modifiedCount === 1) {
+      for (const day of plan) covered.add(day);
+      freezes -= plan.length;
+      const saved = streakFrom(counts, now, covered).current;
+      await notify(id, {
+        type: "streak_saved",
+        title: `A streak freeze saved your ${saved}-day streak`,
+        body: `${plan.length === 1 ? "A freeze" : `${plan.length} freezes`} covered the day${plan.length === 1 ? "" : "s"} you missed. ${
+          freezes > 0 ? `You have ${freezes} left.` : "You have none left: get another in the Scouts shop."
+        }`,
+        link: "/scouts",
+        dedupeKey: `freeze:${plan.join(",")}`,
+      });
+    }
+  }
+
+  const lastRepair = (state?.covered ?? []).filter((c) => c.kind === "repair").sort((a, b) => +new Date(b.at) - +new Date(a.at))[0];
+  return {
+    ...streakFrom(counts, now, covered),
+    freezes,
+    repair: repairOption(counts, covered, now),
+    lastRepairAt: lastRepair ? new Date(lastRepair.at).toISOString() : null,
+  };
 }

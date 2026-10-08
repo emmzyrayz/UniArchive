@@ -24,6 +24,8 @@ export interface ShopItem {
   description: string;
   price: number;
   minLevel?: number;
+  /** The product's line about this person ("You hold 1 of 2"). */
+  detail?: string;
   /** Why this person can't buy it now, if they can't. */
   blocked?: string;
 }
@@ -64,6 +66,12 @@ export async function listShop(userId: string): Promise<ShopItem[]> {
   for (const def of listProducts()) {
     const p = (await effectiveProduct(def.id))!;
     if (!p.enabled) continue;
+    let blocked = await blockedReason(p, userId, balance);
+    // The product's own rule (owned already, nothing to repair...) comes first
+    if (p.available) {
+      const ok = await p.available(userId, undefined as never).catch(() => ({ ok: true as const }));
+      if (!ok.ok) blocked = ok.reason;
+    }
     items.push({
       id: p.id,
       module: p.module,
@@ -72,7 +80,8 @@ export async function listShop(userId: string): Promise<ShopItem[]> {
       description: p.description,
       price: p.price,
       minLevel: p.minLevel,
-      blocked: await blockedReason(p, userId, balance),
+      detail: p.detail ? await p.detail(userId).catch(() => undefined) : undefined,
+      blocked,
     });
   }
   return items;
