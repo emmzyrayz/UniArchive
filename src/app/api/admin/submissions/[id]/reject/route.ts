@@ -18,6 +18,7 @@ import {
   reviewNote,
 } from "@/lib/adminSubmissions";
 import { sendSubmissionRejectedEmail } from "@/utils/email";
+import { notifyAfter } from "@/lib/notifications";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -62,6 +63,13 @@ export async function PATCH(request: NextRequest, context: Context) {
     }
     // It leaves the UniLibrary, where it was listed as unverified
     await removeUnverifiedMaterial(rejected.bookId);
+    notifyAfter(rejected.submittedBy, {
+      type: "submission_rejected",
+      title: "Your submission wasn't accepted",
+      body: `"${rejected.title}": ${reason}`,
+      link: "/upload",
+      dedupeKey: `submission-rejected:${String(rejected._id)}`,
+    });
 
     const contact = await loadSubmitterContact(rejected.submittedBy);
     if (contact) {

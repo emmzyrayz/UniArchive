@@ -35,6 +35,7 @@ import { answerText } from "@/lib/survey/questions";
 import { getMaterialReportModel } from "@/lib/models/materialReportModel";
 import { getDriveImportModel } from "@/lib/models/driveImportModel";
 import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
+import { getNotificationModel } from "@/lib/models/notificationModel";
 import { decryptSensitiveData } from "@/lib/encryption";
 import { BADGE_DEFINITIONS, type BadgeId } from "@/lib/constants/badges";
 import { effectiveEmailPrefs } from "@/lib/emailPrefs";
@@ -148,6 +149,8 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     .find({ importedBy: id })
     .select("target via driveFileId name size status message bookId createdAt")
     .lean();
+  const notifications = await (await getNotificationModel()).find({ userId: id }).sort({ _id: -1 })
+    .select("type title body link readAt createdAt").lean();
   const pdfSuggestions = await (await getMaterialSuggestionModel()).find({ userId: id }).select("materialId fields status createdAt updatedAt").lean();
 
   const account = {
@@ -207,6 +210,7 @@ export async function buildDataExport(userId: string): Promise<Record<string, un
     helpIdentifySuggestions: scrub(pdfSuggestions),
     contributionHistory: scrub(contributions),
     messagesFromTheUniArchiveTeam: scrub(messages),
+    notifications: scrub(notifications),
     signInHistory: scrub(signIns),
     activeSessions: scrub(sessions),
     trustedDevices: scrub(devices),

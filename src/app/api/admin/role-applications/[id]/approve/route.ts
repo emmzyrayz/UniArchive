@@ -25,6 +25,7 @@ import { sendRoleApplicationApprovedEmail } from "@/utils/email";
 import { cacheTokenVersion } from "@/lib/auth/tokenVersionCache";
 import type { UserRole } from "@/types/roles";
 import { awardBadgesAfter } from "@/lib/badges";
+import { notifyAfter } from "@/lib/notifications";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -96,6 +97,13 @@ export async function PATCH(request: NextRequest, context: Context) {
     const bumped = await User.findById(approved.applicantId).select("tokenVersion").lean();
     if (bumped) await cacheTokenVersion(String(approved.applicantId), bumped.tokenVersion ?? 0);
     awardBadgesAfter(approved.applicantId, "role_changed");
+    notifyAfter(approved.applicantId, {
+      type: "role_approved",
+      title: `You're now a ${APPLICABLE_ROLE_LABELS[approved.targetRole]}`,
+      body: "Your role application was approved. Your dashboard shows what you can do now.",
+      link: "/dashboard",
+      dedupeKey: `role:${String(approved._id)}`,
+    });
 
     const contact = await loadSubmitterContact(approved.applicantId);
     if (contact) {

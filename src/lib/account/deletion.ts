@@ -43,6 +43,7 @@ import { getSurveyResponseModel } from "@/lib/models/surveyResponseModel";
 import { getMaterialReportModel } from "@/lib/models/materialReportModel";
 import { getDriveImportModel } from "@/lib/models/driveImportModel";
 import { getMaterialSuggestionModel } from "@/lib/models/materialSuggestionModel";
+import { getNotificationModel } from "@/lib/models/notificationModel";
 import { getPendingLinkModel } from "@/lib/models/pendingLinkModel";
 import { getSentMailModel } from "@/lib/models/sentMailModel";
 import { decryptSensitiveData } from "@/lib/encryption";
@@ -284,6 +285,7 @@ export async function purgeAccount(userId: Types.ObjectId): Promise<PurgeSummary
   await remove("staffMessages", () => SentMail.deleteMany({ toUserId: id }));
   await remove("materialReports", async () => (await getMaterialReportModel()).deleteMany({ userId: id }));
   await remove("driveImports", async () => (await getDriveImportModel()).deleteMany({ importedBy: id }));
+  await remove("notifications", async () => (await getNotificationModel()).deleteMany({ userId: id }));
   await remove("helpIdentifySuggestions", async () => (await getMaterialSuggestionModel()).deleteMany({ userId: id }));
 
   // 4. Outside services

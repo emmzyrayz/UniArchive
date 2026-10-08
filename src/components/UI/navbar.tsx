@@ -11,6 +11,7 @@ import { useUser } from "@/context/userContext";
 import BrandLogo from "@/app/auth/components/UI/BrandLogo";
 import { Button } from "@/components/UI/Buttons";
 import { useDraftSafeSignOut } from "@/components/conversions/useDraftSafeSignOut";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 // ─── Inline icons ─────────────────────────────────────────────────────────────
 
@@ -628,6 +629,8 @@ export const Navbar: React.FC = () => {
                 </button>
               </>
             )}
+
+            <NotificationBell enabled={hasActiveSession} />
 
             {/* User section — desktop */}
             <div className="hidden xl:flex items-center pl-2 border-l border-white/10">

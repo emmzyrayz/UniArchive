@@ -248,6 +248,30 @@ vars are documented in `.env.example`.
   share the code step in `lib/schoolEmailChallenge.ts`. There's no
   "remove" (the badge is kept for good), only "change".
 
+## Notifications (in-app)
+
+- `Notification` (`lib/models/notificationModel.ts`): userId, type, title,
+  body, link (site paths only, `isSafeNotificationLink`), optional
+  `dedupeKey` (unique per user: sending it again does nothing), readAt;
+  deleted 90 days after creation (TTL). Types and icons live in
+  `lib/notificationTypes.ts` (client-safe): add one there first.
+- Send with `notify(userId, {...})` or `notifyAfter` (inside `after()`,
+  like `awardBadgesAfter`); both never throw. Sent today on: a badge
+  awarded (in `checkAndAwardBadges`), Help identify suggestions settled
+  (accepted / declined, in `settleSuggestions`, so both tier-1 verify and
+  platform publish), a submission verified, endorsed (tier 2) or rejected,
+  a role application approved or rejected. Emails for those still go out
+  as before.
+- `GET /api/notifications` (cursor `?before=<id>`, 20 a page, plus
+  `unread`; `?count=1` = only the count) and `POST
+  /api/notifications/read` (`{ids}` up to 100, or `{all: true}`).
+- UI: `NotificationBell` in the navbar (signed in): a dropdown on `xl`,
+  a link to `/notifications` below it. The unread count is one store for
+  the page (`notificationClient.ts`), polled every minute while the tab
+  is visible (the first check on load always runs). `NotificationList`
+  serves the dropdown and the page; opening one marks it read.
+- In the data export; deleted in the purge.
+
 ## Staff areas (/mod and /admin)
 
 - Moderators (`MOD_ROLES`: auditor, course_rep, lecturer, ed_admin) use
@@ -703,7 +727,7 @@ admin), full admin panel (`/admin`), SEO
   the material lifecycle (unverified -> verified -> removed), broadcast
   recipients, digest numbers, Brevo list tidying, Drive links, the
   Drive import pipeline and the Drive inbox (fake Google, mocked
-  storage), queue access rules. Not covered: API
+  storage), queue access rules, notifications. Not covered: API
   routes and pages (still exercised by hand or scripted runs against
   `pnpm start`), React components.
 - CI (`.github/workflows/ci.yml`): typecheck, lint and tests on every push

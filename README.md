@@ -68,6 +68,10 @@ to 500L/600L, postgraduate) and course code.
   sign-in history, sign out of other devices, an optional school email
   that earns the Verified Student badge, email preferences, download all
   your data, delete your account.
+- **Notifications**: a bell in the menu (and a notifications page on
+  phones) tells you when your material is verified or turned down, a PDF
+  you helped identify is verified, you earn a badge, or a role application
+  is decided.
 - **Have a say**: surveys anyone can answer at `/surveys`.
 - **Share without an account**: share PDFs or folders with UniArchive's
   Gmail in Google Drive; they're imported for our team to check and
@@ -384,9 +388,9 @@ registers earn sources and shop products, so the phone app, the v2.5
   notifications, badges and leaderboards.
 
 Build order (one commit each, each tested and documented):
-1. **Notification centre**: a bell with unread count, a notifications
-   page, hooked to badges, suggestions, submissions and role applications
-   (also what the app's push notifications will use).
+1. **Notification centre** (done 2026-10-08): a bell with unread count,
+   a notifications page, hooked to badges, suggestions, submissions and
+   role applications (also what the app's push notifications will use).
 2. **Economy core** as above, with levels.
 3. **Scout tasks**: one card at a time at `/scouts/play`, picked nearest
    first (your department, faculty, school), never your own content.

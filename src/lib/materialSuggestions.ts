@@ -7,7 +7,6 @@
 import { Types } from "mongoose";
 import { parseSubmissionBody, resolveAcademicRefs, type SubmissionBody } from "@/lib/submissions";
 import { categoryLabel } from "@/components/admin/reviewShared";
-import type { IMaterial } from "@/lib/models/materialModel";
 import {
   getMaterialSuggestionModel,
   type IMaterialSuggestion,
@@ -15,6 +14,8 @@ import {
 } from "@/lib/models/materialSuggestionModel";
 import type { SuggestionFieldsDto, SuggestionGroupDto } from "@/types/unilibrary";
 import { awardBadgesAfter } from "@/lib/badges";
+import { getMaterialModel, type IMaterial } from "@/lib/models/materialModel";
+import { notifyAfter } from "@/lib/notifications";
 
 /** Validates a suggestion; throws the same 400/404 responses as a submission. */
 export async function parseSuggestion(body: Partial<SubmissionBody> | null): Promise<MaterialSuggestionFields> {
@@ -117,16 +118,40 @@ export async function loadAcceptableSuggestion(
 export async function settleSuggestions(materialId: Types.ObjectId, accepted?: IMaterialSuggestion): Promise<void> {
   const Suggestion = await getMaterialSuggestionModel();
   const now = new Date();
+  const material = await (await getMaterialModel()).findById(materialId).select("title").lean<Pick<IMaterial, "title">>();
+  const title = material?.title ?? "a PDF";
+  const link = `/materials/${String(materialId)}`;
+  const acceptedUsers = new Set<string>();
   if (accepted) {
     const agreeing = await Suggestion.find({ materialId, status: "pending", fingerprint: accepted.fingerprint })
       .select("_id userId")
       .lean();
     const ids = [...new Set([String(accepted._id), ...agreeing.map((s) => String(s._id))])];
     await Suggestion.updateMany({ _id: { $in: ids }, status: "pending" }, { $set: { status: "accepted", decidedAt: now } });
-    const users = new Set([String(accepted.userId), ...agreeing.map((s) => String(s.userId))]);
-    for (const userId of users) awardBadgesAfter(userId, "suggestion_accepted");
+    for (const userId of [String(accepted.userId), ...agreeing.map((s) => String(s.userId))]) acceptedUsers.add(userId);
+    for (const userId of acceptedUsers) {
+      awardBadgesAfter(userId, "suggestion_accepted");
+      notifyAfter(userId, {
+        type: "suggestion_accepted",
+        title: "Your details for a PDF were right",
+        body: `Our team verified "${title}" with the details you suggested. Thanks for helping identify it.`,
+        link,
+        dedupeKey: `suggestion:${String(materialId)}`,
+      });
+    }
   }
+  const declined = await Suggestion.find({ materialId, status: "pending" }).select("userId").lean();
   await Suggestion.updateMany({ materialId, status: "pending" }, { $set: { status: "declined", decidedAt: now } });
+  for (const userId of new Set(declined.map((s) => String(s.userId)))) {
+    if (acceptedUsers.has(userId)) continue;
+    notifyAfter(userId, {
+      type: "suggestion_declined",
+      title: "A PDF you helped with was identified",
+      body: `"${title}" was verified with different details from the ones you suggested. Have a look at what it turned out to be.`,
+      link,
+      dedupeKey: `suggestion:${String(materialId)}`,
+    });
+  }
 }
 
 /** The details a submission takes from an accepted suggestion. */

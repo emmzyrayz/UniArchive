@@ -16,6 +16,7 @@ import {
   toAdminRoleApplicationDto,
 } from "@/lib/roleApplications";
 import { sendRoleApplicationRejectedEmail } from "@/utils/email";
+import { notifyAfter } from "@/lib/notifications";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -60,6 +61,13 @@ export async function PATCH(request: NextRequest, context: Context) {
       { returnDocument: "after" },
     ).lean();
     if (!rejected) return fail(409, "This application changed. Reload and try again.");
+    notifyAfter(rejected.applicantId, {
+      type: "role_rejected",
+      title: `Your ${APPLICABLE_ROLE_LABELS[rejected.targetRole]} application wasn't approved this time`,
+      body: reviewNote || "You can apply again later from your dashboard.",
+      link: "/dashboard",
+      dedupeKey: `role:${String(rejected._id)}`,
+    });
 
     const contact = await loadSubmitterContact(rejected.applicantId);
     if (contact) {

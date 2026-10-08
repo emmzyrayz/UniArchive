@@ -36,6 +36,7 @@ import { awardBadgesAfter } from "@/lib/badges";
 import { verifyMaterialRecord } from "@/lib/materialPublish";
 import { loadAcceptableSuggestion, settleSuggestions, submissionFieldsFrom } from "@/lib/materialSuggestions";
 import type { IMaterialSuggestion } from "@/lib/models/materialSuggestionModel";
+import { notifyAfter } from "@/lib/notifications";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -159,6 +160,13 @@ async function verifyTier1(
   const User = await getUserModel();
   await User.updateOne({ _id: verified.submittedBy }, { $inc: { verifiedMaterialCount: 1 } });
   awardBadgesAfter(verified.submittedBy, "material_verified");
+  notifyAfter(verified.submittedBy, {
+    type: "submission_verified",
+    title: "Your material was verified",
+    body: `"${material.title}" is now verified in the UniLibrary. Thank you for sharing it.`,
+    link: `/materials/${String(material._id)}`,
+    dedupeKey: `submission-verified:${String(verified._id)}`,
+  });
 
   // The role-progression audit trail. The verification is already committed,
   // so a failed ledger write is logged rather than failing the request.
@@ -228,6 +236,13 @@ async function verifyTier2(
       : fail(404, "No material record exists for this submission.");
   }
   awardBadgesAfter(material.submittedBy, "tier2_endorsed");
+  notifyAfter(material.submittedBy, {
+    type: "submission_endorsed",
+    title: "Your material was endorsed by a lecturer",
+    body: `"${material.title}" got the second, academic check.`,
+    link: `/materials/${String(material._id)}`,
+    dedupeKey: `submission-endorsed:${String(submission._id)}`,
+  });
 
   let updated = submission;
   if (note) {

@@ -2,7 +2,8 @@
 // The badge award engine. After an action that could earn a badge, routes
 // call awardBadgesAfter(userId, trigger): once the response is sent, the
 // badges relevant to that trigger are checked and any newly earned ones are
-// recorded (unseen, so the BadgeToast picks them up).
+// recorded (unseen, so the BadgeToast picks them up) and a notification
+// is sent.
 //
 // - Never double-awards: the { userId, badgeId } unique index decides.
 // - Never throws: a badge problem is logged, never the action's problem.
@@ -17,6 +18,7 @@ import { getCommentModel } from "@/lib/models/commentModel";
 import { getUserBadgeModel, type IUserBadge } from "@/lib/models/userBadgeModel";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
 import { redis } from "@/lib/redis";
+import { notify } from "@/lib/notifications";
 import {
   BADGE_DEFINITIONS,
   PDF_DETECTIVE_ACCEPTED,
@@ -187,6 +189,14 @@ export async function checkAndAwardBadges(userId: string, trigger: BadgeTrigger)
           seen: false,
         });
         awarded.push(badgeId);
+        const def = BADGE_DEFINITIONS[badgeId];
+        await notify(id, {
+          type: "badge_earned",
+          title: `You earned the ${def.emoji} ${def.name} badge`,
+          body: def.description,
+          link: "/profile",
+          dedupeKey: `badge:${badgeId}`,
+        });
       } catch (error) {
         // Awarded meanwhile by a parallel check: that's fine
         if ((error as { code?: number }).code !== 11000) {
