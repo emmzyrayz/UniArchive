@@ -715,8 +715,11 @@ admin), full admin panel (`/admin`), SEO
 README "Roadmap" is the plan of record: v1 (the web platform, Phases 1-2)
 is live, with a short "left before v2" list; v2 is Archive Scouts
 (gamified micro-tasks, Archive Credits, streaks, cosmetic rewards) and a
-Flutter phone app; later is a full learning platform (OCR, courses,
-practice, assignments, study rooms). Each v2/later item lists what it
+Flutter phone app, Scouts first (planned 2026-10-08 on an open,
+plug-and-play credits economy: modules register earn sources and shop
+products on a double-entry ledger); v2.5 is `/hub` (student social life,
+later 3D); later is a full learning platform (OCR, courses, practice,
+assignments, study rooms). Each v2/later item lists what it
 needs first (e.g. a notification centre and a credit ledger before
 Scouts; token auth and a versioned `/api/v1` before the app). Earlier
 planning documents assumed FastAPI + PostgreSQL; that was superseded by

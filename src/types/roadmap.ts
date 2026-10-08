@@ -122,12 +122,18 @@ export const roadmap: RoadmapPhase[] = [
     items: [
       {
         title: "Scout tasks",
-        description: "Bite-sized jobs: check a PDF is readable, confirm its details, spot-check an answer, type a page.",
-        status: "planned",
+        description: "Bite-sized jobs on your phone: check a PDF is readable, tell us what it is, check a typed answer.",
+        status: "in-progress",
       },
       {
         title: "Archive Credits and XP",
-        description: "Earn credits and experience for every task you complete.",
+        description: "Earn credits and experience for every task that's confirmed. Credits are never cash and never buy power.",
+        status: "in-progress",
+      },
+      {
+        title: "Spend your credits",
+        description:
+          "Post bounties for papers you need, tip people whose notes helped, freeze your streak, get exam packs, certificates and more.",
         status: "planned",
       },
       {
@@ -137,12 +143,12 @@ export const roadmap: RoadmapPhase[] = [
       },
       {
         title: "Rewards to show off",
-        description: "Animated profile frames, gradient badges and names, and exclusive reader themes.",
+        description: "Animated profile frames, gradient names and exclusive reader themes. Reading stays free for everyone.",
         status: "planned",
       },
       {
         title: "Leaderboards",
-        description: "Top scouts in each department, and Campus Pioneer banners for the first in a school.",
+        description: "Weekly top scouts in each department, and Campus Pioneer banners for the first in a school.",
         status: "planned",
       },
     ],
@@ -171,8 +177,26 @@ export const roadmap: RoadmapPhase[] = [
     ],
   },
   {
+    id: "hub",
+    title: "Phase 5: Student life",
+    stage: "Later",
+    summary: "A social space for campus life, built with the people who run your department's events.",
+    items: [
+      {
+        title: "The Hub",
+        description: "School and department spaces with channels and events, and lots to spend your credits on.",
+        status: "planned",
+      },
+      {
+        title: "Your campus, in 3D",
+        description: "Lightweight 3D avatars and scenes of school life, if the Hub takes off.",
+        status: "planned",
+      },
+    ],
+  },
+  {
     id: "learn",
-    title: "Phase 5: A full learning platform",
+    title: "Phase 6: A full learning platform",
     stage: "Later",
     summary: "From finding materials to studying, practising and learning together.",
     items: [

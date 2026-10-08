@@ -160,8 +160,9 @@ content, and what would make them come back.
 
 Three stages. **v1** is the web platform (Phases 1 and 2), live at
 uniarchive.com.ng. **v2** adds Archive Scouts (Phase 3) and a phone app
-(Phase 4); its exact scope is settled in v2 planning. **Later** turns
-UniArchive into a full learning platform (Phase 5). The public, plain
+(Phase 4). **v2.5** adds `/hub`, a social space for student life
+(Phase 5). **Later** turns UniArchive into a full learning platform
+(Phase 6). The public, plain
 language version is the roadmap on `/about` (`src/types/roadmap.ts`);
 keep the two in step.
 
@@ -348,37 +349,88 @@ storage harness, permissions, limits, duplicates. Not testable without
 real Google keys: the Picker, the inbox sign-in and a real public folder;
 the owner checks those in production with a test account.
 
-### v2 (next): Archive Scouts
+### v2 (next, being planned 2026-10-08): Archive Scouts
 
-Make keeping the library accurate feel like a game instead of work, with
-no cash payouts.
-- **Scout tasks**: bite-sized jobs from the existing queues: is this PDF
-  readable, are these details right (today's Help identify), spot-check a
-  typed answer, type one page. Each task is small enough for a phone and a
-  few minutes.
-- **Archive Credits (AC) and XP** per task, scaled by how much the result
-  was needed and whether it held up (agreed with others, accepted by
-  staff).
-- **Daily streaks** with multipliers for days in a row.
-- **Rewards**: animated profile frames and avatar rings, gradient names
-  and badges in comments and profiles, exclusive reader themes (OLED black
-  and others, on top of v1's dark mode), department leaderboards and
-  Campus Pioneer banners.
+Make keeping the library accurate feel like a game instead of work.
+Students do small tasks on their phones and earn Archive Credits (AC), XP,
+levels and streaks. Credits never affect roles (those keep today's rules)
+and are never cash. Reading, searching and offline saving stay free for
+everyone: credits buy extras, never the basics.
 
-Builds on: badges and `awardBadgesAfter`, `ContributionEvent` (role
-progression), `MaterialSuggestion` (agreement by fingerprint),
-"Materials that need typing", two-tier verification.
+Decisions (2026-10-08): Scouts before the phone app; first task types are
+Identify a PDF, Is this readable? and Check a typed answer; weekly
+leaderboards per department (with an opt-out); credits buy bounties and
+boosts, streak freezes, certificates, tips and gifts, exam packs, extra
+storage and looks; sponsor-funded real rewards (data, airtime, printing
+vouchers) wait for a later season.
 
-Needs first:
-- An in-app notification centre (credits earned, streak at risk, a
-  suggestion accepted). Today everything is email.
-- Anti-farming rules: credits only for results that are confirmed
-  (consensus or staff), daily caps, no credit for your own uploads,
-  reversal when work is rejected later.
-- A ledger (append-only credit transactions) rather than a counter, so
-  balances can be audited and corrected.
-- Decide whether credits ever affect roles (today roles come from
-  `ContributionEvent`s) or stay cosmetic.
+**The economy core is open (plug and play).** The core knows nothing
+about Scouts: every feature that earns or spends credits is a module that
+registers earn sources and shop products, so the phone app, the v2.5
+`/hub` and partner events plug in without changing it.
+- A double-entry, append-only ledger (`LedgerEntry`): every entry moves
+  credits between accounts (`user:<id>`, `system:mint`, `system:burn`,
+  `system:treasury`, `escrow:<bounty>`, later `hub:<server>`) and sums to
+  zero, so an audit is a sum. Each has a unique `sourceKey`, so nothing
+  pays twice. Currencies: AC (spendable) and XP (earned only; levels and
+  boards); more can be added (a hub or event currency).
+- `Wallet` balances updated in the same transaction, rebuildable from the
+  ledger.
+- `defineEarnSource` (rewards, caps, streak boost, reversible) and
+  `defineProduct` (price, limits, level, `fulfil`): one generic buy route
+  and a shop page that shows any registered product.
+- Admins change prices, rewards, caps and switch modules on or off at
+  `/admin/economy` without a deploy. Listeners after each entry drive
+  notifications, badges and leaderboards.
+
+Build order (one commit each, each tested and documented):
+1. **Notification centre**: a bell with unread count, a notifications
+   page, hooked to badges, suggestions, submissions and role applications
+   (also what the app's push notifications will use).
+2. **Economy core** as above, with levels.
+3. **Scout tasks**: one card at a time at `/scouts/play`, picked nearest
+   first (your department, faculty, school), never your own content.
+   Answers settle by consensus (3 agree before 5 disagree); only confirmed
+   answers pay. Identify a PDF (today's Help identify; pays when staff
+   accept: 15 AC / 20 XP), Is this readable? (3 sample pages; unreadable
+   or "not study material" counts like a report; 3 AC / 5 XP), Check a
+   typed answer (beside its PDF page; "correct" verifies the typed
+   question and pays its typist 5 AC, "mistakes" disputes it and tells
+   the typist; 5 AC / 8 XP). Staff can overturn, which takes the credits
+   back.
+4. **Streaks**: 3 tasks a day keeps it; multipliers ×1.1 (3 days), ×1.25
+   (7), ×1.5 (14+). A daily cron sends "streak at risk". Scout badges,
+   Campus Pioneer for the first 10 Scouts in a school.
+5. **Spending**:
+   - Bounties (post AC on a missing paper or on typing a material; others
+     can add to the pool; paid when the material is verified, 10% fee,
+     refunded after 60 days) and boosts (push a material up the typing
+     and task queues for 7 days).
+   - Streak freeze (40 AC, hold 2) and repair (100 AC, within 48 h).
+   - Tips (5-50 AC, no XP, daily limits) and gifting looks to friends.
+   - Exam packs (all verified past questions of a course in one PDF,
+     30 AC, built once and shared) and extra library storage.
+   - Certificates (a PDF with a public check page, unlocked by level),
+     Scout of the week, and invitations to a Campus Scout programme.
+   - Event codes: staff or trusted organisers (such as a department's
+     Director of Socials) hand out credits at events, from a budget.
+   - Looks: avatar frames and rings, gradient names, reader themes (OLED
+     black, sepia...), Pioneer banners.
+6. **Department leaderboards**: XP earned Monday to Sunday (Lagos); the
+   top 3 get a bonus when the week closes.
+7. **Staff side**: `/admin/economy` and `/admin/scouts` (settle rates,
+   materials flagged by Scouts, people paused for low accuracy, ledger
+   adjustments).
+
+Anti-farming: credits only for confirmed results; a daily cap (150 AC
+from tasks); a signed task token and a minimum time per task; nothing for
+your own uploads or typing; votes stop counting below 60% accuracy after
+20 settled answers; reversal when staff overturn a result; tips give no
+XP and are limited per pair of people.
+
+Builds on: badges and `awardBadgesAfter`, `MaterialSuggestion` (agreement
+by fingerprint), "Materials that need typing", `TypedQuestion.status`
+(nothing set it before), reading streak days (`readingStats.ts`).
 
 ### v2 (next): the phone app
 
@@ -400,6 +452,23 @@ Needs first, on the web side:
 - Internal tooling idea: a generator that reads the web API into a JSON
   blueprint and fills a reusable Flutter shell (a Claude skill), so the
   app tracks the web without hand-copying every endpoint.
+
+### v2.5 (after the app): `/hub`, student life
+
+Planned only; to be designed after v2. A place for student life beyond
+studying, built with campus community hosts (a department's Director of
+Socials runs events and parties and reaches many school communities).
+- First, a Discord-like social space: school and department servers,
+  channels, events, and plenty to spend points on (server boosts, custom
+  emoji, event tickets, profile items).
+- Then, if it takes off: lightweight 3D avatars and scenes modelled on
+  campus and school life, in the spirit of the Lagos Life sim game.
+- Plugs into the economy core as a `hub` module (its own products, earn
+  sources, maybe its own currency); event codes from v2 are the first
+  step.
+- Needs first: moderation, reporting and blocking from day one, and a
+  realtime service (Vercel functions can't hold connections open: a
+  hosted one such as Ably or LiveKit, or our own server).
 
 ### Later: a full learning platform
 
